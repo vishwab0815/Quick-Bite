@@ -1,23 +1,41 @@
 {
-  "name": "backend",
+  "name": "quickbite-backend",
   "version": "1.0.0",
-  "description": "",
+  "description": "QuickBite Backend API - Restaurant Management System",
   "main": "server.js",
   "scripts": {
+    "start": "node server.js",
+    "dev": "nodemon server.js",
+    "start:prod": "NODE_ENV=production node server.js",
+    "seed": "node seedDatabase.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
-  "keywords": [],
+  "keywords": [
+    "restaurant",
+    "food",
+    "delivery",
+    "api"
+  ],
   "author": "",
   "license": "ISC",
+  "engines": {
+    "node": ">=16.0.0",
+    "npm": ">=8.0.0"
+  },
   "dependencies": {
+    "@exortek/express-mongo-sanitize": "^1.1.1",
+    "@sendgrid/mail": "^8.1.4",
     "bcryptjs": "^3.0.2",
     "cookie-parser": "^1.4.7",
     "cors": "^2.8.5",
     "dotenv": "^16.5.0",
     "express": "^5.1.0",
+    "express-rate-limit": "^8.2.1",
+    "helmet": "^8.1.0",
     "jsonwebtoken": "^9.0.2",
-    "mongoose": "^8.14.1",
-    "nodemailer": "^7.0.3",
+    "mongoose": "^8.14.1"
+  },
+  "devDependencies": {
     "nodemon": "^3.1.10"
   }
 }

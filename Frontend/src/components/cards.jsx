@@ -1,23 +1,22 @@
-import React from 'react'
-import { motion } from 'framer-motion'
+import React from 'react';
+import { motion } from 'framer-motion';
 
 const Cards = (props) => {
     const { foodData, index, onClick } = props;
     const dataIndex = foodData[index];
 
-    
     const cardVariants = {
         hidden: { opacity: 0, y: 50 },
-        visible: { 
-            opacity: 1, 
+        visible: {
+            opacity: 1,
             y: 0,
-            transition: { 
-                duration: 0.5, 
+            transition: {
+                duration: 0.5,
                 ease: "easeOut",
                 delay: index * 0.05
             }
         },
-        hover: { 
+        hover: {
             scale: 1.03,
             boxShadow: "0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)"
         },
@@ -34,7 +33,7 @@ const Cards = (props) => {
             variants={cardVariants}
             className="w-72 h-[32rem] flex flex-col rounded-2xl overflow-hidden shadow-lg bg-white border border-gray-100 cursor-pointer"
         >
-            
+            {/* Food Image */}
             <div className="relative h-48 overflow-hidden">
                 <img
                     src={dataIndex.image}
@@ -46,54 +45,58 @@ const Cards = (props) => {
 
             <div className="flex flex-col justify-between flex-1 p-5">
                 <div>
+                    {/* Title and Rating */}
                     <div className="flex justify-between items-center mb-2">
                         <h3 className="text-xl font-bold text-gray-900 line-clamp-2 leading-tight">
                             {dataIndex.name}
                         </h3>
-                        <div className="flex-shrink-0 flex items-center bg-amber-100 text-amber-800 text-sm px-2.5 py-1 rounded-full ml-2">
+                        <div className="flex-shrink-0 flex items-center bg-orange-100 text-orange-800 text-sm px-2.5 py-1 rounded-full ml-2">
                             <span className="font-semibold">{dataIndex.rating}</span>
                             <span className="ml-0.5">★</span>
                         </div>
                     </div>
 
+                    {/* Cuisine and Difficulty Badges */}
                     <div className="flex gap-2 mb-4">
-                        <span className="bg-emerald-100 text-emerald-800 text-xs font-medium px-3 py-1.5 rounded-full">
+                        <span className="bg-orange-50 text-orange-700 text-xs font-medium px-3 py-1.5 rounded-full border border-orange-200">
                             {dataIndex.cuisine}
                         </span>
-                        <span className="bg-blue-100 text-blue-800 text-xs font-medium px-3 py-1.5 rounded-full">
+                        <span className="bg-pink-50 text-pink-700 text-xs font-medium px-3 py-1.5 rounded-full border border-pink-200">
                             {dataIndex.difficulty}
                         </span>
                     </div>
 
+                    {/* Meta Info Grid */}
                     <div className="grid grid-cols-3 gap-2 mb-4">
                         <div className="flex flex-col items-center text-center">
-                            <div className="flex items-center justify-center w-8 h-8 bg-gray-100 rounded-full mb-1">
-                                <ClockIcon className="w-4 h-4 text-gray-600" />
+                            <div className="flex items-center justify-center w-8 h-8 bg-gradient-to-br from-orange-100 to-pink-100 rounded-full mb-1">
+                                <ClockIcon className="w-4 h-4 text-orange-600" />
                             </div>
                             <span className="text-xs font-medium text-gray-600">{dataIndex.cookTimeMinutes} min</span>
                         </div>
                         <div className="flex flex-col items-center text-center">
-                            <div className="flex items-center justify-center w-8 h-8 bg-gray-100 rounded-full mb-1">
-                                <UserIcon className="w-4 h-4 text-gray-600" />
+                            <div className="flex items-center justify-center w-8 h-8 bg-gradient-to-br from-orange-100 to-pink-100 rounded-full mb-1">
+                                <UserIcon className="w-4 h-4 text-orange-600" />
                             </div>
                             <span className="text-xs font-medium text-gray-600">3 serves</span>
                         </div>
                         <div className="flex flex-col items-center text-center">
-                            <div className="flex items-center justify-center w-8 h-8 bg-gray-100 rounded-full mb-1">
-                                <FireIcon className="w-4 h-4 text-gray-600" />
+                            <div className="flex items-center justify-center w-8 h-8 bg-gradient-to-br from-orange-100 to-pink-100 rounded-full mb-1">
+                                <FireIcon className="w-4 h-4 text-orange-600" />
                             </div>
                             <span className="text-xs font-medium text-gray-600">280 cal</span>
                         </div>
                     </div>
 
+                    {/* Tags */}
                     <div className="mb-4">
                         <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">Tags</p>
                         <div className="flex gap-2 flex-wrap">
                             {dataIndex.tags.slice(0, 3).map((item, i) => (
-                                <motion.div 
+                                <motion.div
                                     key={i}
                                     whileHover={{ scale: 1.05 }}
-                                    className="bg-emerald-50 text-emerald-700 text-xs font-medium px-3 py-1 rounded-full border border-emerald-100"
+                                    className="bg-gradient-to-r from-orange-50 to-pink-50 text-orange-700 text-xs font-medium px-3 py-1 rounded-full border border-orange-200"
                                 >
                                     {item}
                                 </motion.div>
@@ -102,12 +105,13 @@ const Cards = (props) => {
                     </div>
                 </div>
 
+                {/* Meal Type Badges */}
                 <div className="flex flex-wrap gap-2 mt-auto pt-3 border-t border-gray-100">
                     {dataIndex.mealType.map((item, i) => (
-                        <motion.span 
+                        <motion.span
                             key={i}
                             whileHover={{ scale: 1.05 }}
-                            className="bg-purple-50 text-purple-700 text-xs font-medium px-3 py-1 rounded-full border border-purple-100"
+                            className="bg-gradient-to-r from-pink-50 to-purple-50 text-pink-700 text-xs font-medium px-3 py-1 rounded-full border border-pink-200"
                         >
                             {item}
                         </motion.span>
@@ -115,8 +119,8 @@ const Cards = (props) => {
                 </div>
             </div>
         </motion.div>
-    )
-}
+    );
+};
 
 const ClockIcon = ({ className }) => (
     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" className={className}>
@@ -137,4 +141,4 @@ const FireIcon = ({ className }) => (
     </svg>
 );
 
-export default Cards
+export default Cards;

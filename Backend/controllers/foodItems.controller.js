@@ -5,30 +5,48 @@ const fs = require('fs').promises;
 const path = require('path');
 const Recipe = require('../models/fooditems.model'); // Import your Recipe model
 
+/**
+ * Seed food items from JSON file to database
+ * SECURITY: This should only be called once during initial setup
+ * Consider adding admin authentication or removing this endpoint in production
+ */
 module.exports.fetchFoodItems = async (req, res, next) => {
     try {
-        // 1. Read the JSON file
+        // Check if data already exists
+        const existingCount = await Recipe.countDocuments();
+
+        if (existingCount > 0) {
+            return res.status(400).json({
+                success: false,
+                message: "Database already contains food items. Use the admin endpoint to reset.",
+                count: existingCount
+            });
+        }
+
+        // Read the JSON file
         const filePath = path.join(__dirname, '../food.json');
         const jsonData = await fs.readFile(filePath, 'utf-8');
         const data = JSON.parse(jsonData);
-        
-        // 2. Store in MongoDB
+
+        // Store in MongoDB (only if empty)
         if (data.recipes && data.recipes.length > 0) {
-            // Delete existing data (optional)
-            await Recipe.deleteMany({});
-            
-            // Insert new data
             const insertedRecipes = await Recipe.insertMany(data.recipes);
-            console.log(`${insertedRecipes.length} recipes inserted into MongoDB`);
+            console.log(`✅ ${insertedRecipes.length} recipes inserted into MongoDB`);
+
+            return res.status(201).json({
+                success: true,
+                message: "Food items seeded successfully",
+                count: insertedRecipes.length,
+                data: insertedRecipes
+            });
         }
-        
-        // 3. Return the data
-        res.status(200).json({
-            success: true,
-            data: data.recipes
+
+        res.status(400).json({
+            success: false,
+            message: "No recipes found in the JSON file"
         });
     } catch (error) {
-        console.error("Error in fetchFoodItems:", error);
+        console.error("❌ Error in fetchFoodItems:", error);
         res.status(500).json({
             success: false,
             message: "Failed to fetch and store food items",
@@ -37,25 +55,42 @@ module.exports.fetchFoodItems = async (req, res, next) => {
     }
 };
 
-module.exports.getFoodItems = async (req,res,next) => {
-    const data = await Recipe.find({});
-    if (!data) {
-        return res.status(404).json({
-            success: false,
-            message: "No food items found"
-        });
-    }
-    try{
+module.exports.getFoodItems = async (req, res, next) => {
+    try {
+        const page = parseInt(req.query.page) || 1;
+        const limit = parseInt(req.query.limit) || 50;
+        const skip = (page - 1) * limit;
+
+        const data = await Recipe.find({})
+            .skip(skip)
+            .limit(limit)
+            .lean();
+
+        const total = await Recipe.countDocuments();
+
+        if (!data || data.length === 0) {
+            return res.status(404).json({
+                success: false,
+                message: "No food items found"
+            });
+        }
+
         res.status(200).json({
             success: true,
+            count: data.length,
+            total: total,
+            page: page,
+            totalPages: Math.ceil(total / limit),
             data: data
         });
+    } catch (error) {
+        console.error("❌ Error in getFoodItems:", error);
+        res.status(500).json({
+            success: false,
+            message: "Failed to fetch food items",
+            error: error.message
+        });
     }
-catch (error){
-    res.json({
-        error: error.array()
-    })
-}
 };
 
 

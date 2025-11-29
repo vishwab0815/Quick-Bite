@@ -30,7 +30,7 @@ const Home = () => {
 
     const checkAuth = async () => {
         try {
-            const res = await axios.get('http://localhost:3000/api/auth/profile', {
+            const res = await axios.get(`${import.meta.env.VITE_API_URL}/api/auth/profile`, {
                 withCredentials: true
             });
             setUser(res.data.user);
@@ -49,7 +49,7 @@ const Home = () => {
             const fetchData = async () => {
                 try {
                     const response = await axios.get(
-                        `http://localhost:3000/fooditems/meal-type/${Item}`
+                        `${import.meta.env.VITE_API_URL}/fooditems/meal-type/${Item}`
                     );
                     setCount(response.data.count);
                     setFoodData(response.data.data || []);
@@ -63,8 +63,33 @@ const Home = () => {
 
     if (!user) {
         return (
-            <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 flex items-center justify-center">
-                <p className="text-lg font-semibold text-fuchsia-600">Loading...</p>
+            <div className="min-h-screen bg-gradient-to-br from-orange-50 via-pink-50 to-purple-50 flex items-center justify-center">
+                <motion.div
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    className="flex flex-col items-center gap-4"
+                >
+                    <motion.div
+                        animate={{
+                            rotate: 360,
+                            scale: [1, 1.1, 1]
+                        }}
+                        transition={{
+                            rotate: {
+                                duration: 2,
+                                repeat: Infinity,
+                                ease: "linear"
+                            },
+                            scale: {
+                                duration: 1.5,
+                                repeat: Infinity,
+                                repeatType: "reverse"
+                            }
+                        }}
+                        className="w-16 h-16 rounded-full border-4 border-orange-500 border-t-transparent"
+                    />
+                    <p className="text-lg font-semibold bg-gradient-to-r from-orange-500 to-pink-500 bg-clip-text text-transparent">Loading...</p>
+                </motion.div>
             </div>
         );
     }
