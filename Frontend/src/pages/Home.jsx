@@ -10,7 +10,7 @@ import Footer from './Footer';
 import ItemsSection from './ItemsSection';
 import CubicGallery from '../components/animation/CubicGallery';
 import SearchInput from '../components/animation/SearchInput';
-import Animate from './animate';
+import Animate from './Animate';
 
 const Home = () => {
     const navigate = useNavigate();
