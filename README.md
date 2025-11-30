@@ -149,10 +149,10 @@ QuickBite/
 │   ├── .env.example                         # Environment variables template
 │   └── package.json
 │
-├── ecosystem.config.js              # PM2 production configuration
+├── ecosystem.config.js              # Process manager configuration
 ├── .gitignore
 ├── README.md                        # This file - project overview
-└── SETUP.md                         # Installation & deployment guide
+└── SETUP.md                         # Installation & setup guide
 ```
 
 ## 🔌 API Endpoints
@@ -256,7 +256,7 @@ The application follows a consistent design system:
 
 ## 🚀 Getting Started
 
-See [SETUP.md](SETUP.md) for detailed installation, configuration, and deployment instructions.
+See [SETUP.md](SETUP.md) for detailed installation and configuration instructions.
 
 Quick start:
 1. Clone the repository
@@ -269,7 +269,7 @@ Quick start:
 
 ## 📝 License
 
-This project is licensed under the ISC License.
+This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
 
 ## 🙏 Acknowledgments
 
