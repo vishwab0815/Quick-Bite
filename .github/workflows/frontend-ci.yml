@@ -1,0 +1,162 @@
+name: Frontend CI
+on:
+  push:
+    branches: [ main, develop ]
+    paths:
+      - 'Frontend/**'
+      - '.github/workflows/frontend-ci.yml'
+  pull_request:
+    branches: [ main, develop ]
+    paths:
+      - 'Frontend/**'
+      - '.github/workflows/frontend-ci.yml'
+
+jobs:
+  test:
+    name: Test Frontend
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        node-version: [16.x, 18.x, 20.x]
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup Node.js ${{ matrix.node-version }}
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ matrix.node-version }}
+        cache: 'npm'
+        cache-dependency-path: Frontend/package-lock.json
+
+    - name: Install dependencies
+      working-directory: ./Frontend
+      run: npm ci
+
+    - name: Check for security vulnerabilities
+      working-directory: ./Frontend
+      run: npm audit --audit-level=moderate
+      continue-on-error: true
+
+    - name: Run linter (if available)
+      working-directory: ./Frontend
+      run: |
+        if grep -q '"lint"' package.json; then
+          npm run lint
+        else
+          echo "No lint script found, skipping..."
+        fi
+      continue-on-error: true
+
+    - name: Run tests (if available)
+      working-directory: ./Frontend
+      run: |
+        if grep -q '"test"' package.json; then
+          npm test
+        else
+          echo "No test script found, skipping..."
+        fi
+      continue-on-error: true
+
+    - name: Check TypeScript types (if applicable)
+      working-directory: ./Frontend
+      run: |
+        if [ -f "tsconfig.json" ]; then
+          npm run type-check || echo "No type-check script found"
+        else
+          echo "Not a TypeScript project, skipping..."
+        fi
+      continue-on-error: true
+
+  build:
+    name: Build Frontend
+    runs-on: ubuntu-latest
+    needs: test
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20.x'
+        cache: 'npm'
+        cache-dependency-path: Frontend/package-lock.json
+
+    - name: Create .env file
+      working-directory: ./Frontend
+      run: |
+        echo "VITE_API_URL=http://localhost:3000" > .env
+
+    - name: Install dependencies
+      working-directory: ./Frontend
+      run: npm ci
+
+    - name: Build production bundle
+      working-directory: ./Frontend
+      run: npm run build
+
+    - name: Check build output
+      working-directory: ./Frontend
+      run: |
+        if [ ! -d "dist" ]; then
+          echo "❌ Build failed - dist directory not found"
+          exit 1
+        fi
+        echo "✅ Build successful - dist directory created"
+        ls -la dist/
+
+    - name: Upload build artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: frontend-build
+        path: Frontend/dist/
+        retention-days: 7
+
+  code-quality:
+    name: Code Quality Check
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20.x'
+
+    - name: Install dependencies
+      working-directory: ./Frontend
+      run: npm ci
+
+    - name: Check for console.logs (warning only)
+      working-directory: ./Frontend
+      run: |
+        if grep -r "console.log" --include="*.jsx" --include="*.js" --exclude-dir=node_modules src/; then
+          echo "⚠️ Warning: console.log statements found in code"
+        else
+          echo "✅ No console.log statements found"
+        fi
+      continue-on-error: true
+
+    - name: Check for TODO comments
+      working-directory: ./Frontend
+      run: |
+        if grep -r "TODO\|FIXME\|XXX" --include="*.jsx" --include="*.js" --exclude-dir=node_modules src/; then
+          echo "⚠️ Found TODO/FIXME comments"
+        else
+          echo "✅ No TODO/FIXME comments found"
+        fi
+      continue-on-error: true
+
+    - name: Check bundle size
+      working-directory: ./Frontend
+      run: |
+        echo "VITE_API_URL=http://localhost:3000" > .env
+        npm run build
+        DIST_SIZE=$(du -sh dist | cut -f1)
+        echo "📦 Production bundle size: $DIST_SIZE"

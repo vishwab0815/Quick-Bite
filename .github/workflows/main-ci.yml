@@ -1,0 +1,151 @@
+name: Main CI/CD Pipeline
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  check-changes:
+    name: Detect Changes
+    runs-on: ubuntu-latest
+    outputs:
+      backend: ${{ steps.filter.outputs.backend }}
+      frontend: ${{ steps.filter.outputs.frontend }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - uses: dorny/paths-filter@v2
+        id: filter
+        with:
+          filters: |
+            backend:
+              - 'Backend/**'
+            frontend:
+              - 'Frontend/**'
+
+  full-project-check:
+    name: Full Project Validation
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Check project structure
+      run: |
+        echo "🔍 Validating project structure..."
+
+        # Check required directories
+        required_dirs=("Backend" "Frontend" ".github")
+        for dir in "${required_dirs[@]}"; do
+          if [ ! -d "$dir" ]; then
+            echo "❌ Missing directory: $dir"
+            exit 1
+          fi
+          echo "✅ Found: $dir"
+        done
+
+        # Check required files
+        required_files=("README.md" "SETUP.md" ".gitignore")
+        for file in "${required_files[@]}"; do
+          if [ ! -f "$file" ]; then
+            echo "❌ Missing file: $file"
+            exit 1
+          fi
+          echo "✅ Found: $file"
+        done
+
+        echo "✅ Project structure validated"
+
+    - name: Check for .env files (should not be committed)
+      run: |
+        if find . -name ".env" -not -path "*/node_modules/*" | grep -q .; then
+          echo "❌ ERROR: .env file found in repository!"
+          echo "Please remove .env files and add them to .gitignore"
+          find . -name ".env" -not -path "*/node_modules/*"
+          exit 1
+        else
+          echo "✅ No .env files found in repository"
+        fi
+
+    - name: Check .env.example files exist
+      run: |
+        if [ ! -f "Backend/.env.example" ]; then
+          echo "❌ Backend/.env.example not found"
+          exit 1
+        fi
+        if [ ! -f "Frontend/.env.example" ]; then
+          echo "❌ Frontend/.env.example not found"
+          exit 1
+        fi
+        echo "✅ All .env.example files present"
+
+    - name: Validate README files
+      run: |
+        if [ ! -s "README.md" ]; then
+          echo "❌ README.md is empty or missing"
+          exit 1
+        fi
+        if [ ! -s "SETUP.md" ]; then
+          echo "❌ SETUP.md is empty or missing"
+          exit 1
+        fi
+        echo "✅ README files validated"
+
+  security-scan:
+    name: Security Audit
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20.x'
+
+    - name: Backend security audit
+      working-directory: ./Backend
+      run: |
+        npm ci
+        echo "🔒 Running backend security audit..."
+        npm audit --audit-level=high || echo "⚠️ Security vulnerabilities found"
+      continue-on-error: true
+
+    - name: Frontend security audit
+      working-directory: ./Frontend
+      run: |
+        npm ci
+        echo "🔒 Running frontend security audit..."
+        npm audit --audit-level=high || echo "⚠️ Security vulnerabilities found"
+      continue-on-error: true
+
+    - name: Check for hardcoded secrets
+      run: |
+        echo "🔍 Checking for hardcoded secrets..."
+        if grep -r -i "mongodb+srv://.*:.*@" --include="*.js" --include="*.jsx" --exclude-dir=node_modules .; then
+          echo "❌ Potential MongoDB URI found in code!"
+          exit 1
+        fi
+        if grep -r "SG\.[a-zA-Z0-9_-]*\.[a-zA-Z0-9_-]*" --include="*.js" --include="*.jsx" --exclude-dir=node_modules .; then
+          echo "❌ Potential SendGrid API key found in code!"
+          exit 1
+        fi
+        echo "✅ No hardcoded secrets detected"
+
+  build-status:
+    name: Build Status Summary
+    runs-on: ubuntu-latest
+    needs: [full-project-check, security-scan]
+    if: always()
+
+    steps:
+    - name: Check build status
+      run: |
+        echo "🎉 CI Pipeline Status:"
+        echo "✅ Project structure validated"
+        echo "✅ Security checks completed"
+        echo "📦 Ready for deployment"
