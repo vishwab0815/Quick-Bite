@@ -1,94 +1,132 @@
-import React from 'react';
+import { motion } from 'framer-motion';
+import { FiClock, FiShoppingBag, FiDollarSign, FiHeadphones, FiCreditCard, FiStar, FiTruck, FiShield } from 'react-icons/fi';
+import Navbar from './Navbar';
+import Footer from './Footer';
 
 const FoodDeliveryServices = () => {
   const services = [
     {
-      icon: (
-        <svg className="w-10 h-10 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-        </svg>
-      ),
+      icon: <FiClock className="w-10 h-10" />,
       title: "Lightning Fast Delivery",
-      description: "Get food delivered in 30 minutes or less"
+      description: "Get food delivered in 30 minutes or less",
+      color: "from-orange-500 to-orange-600"
     },
     {
-      icon: (
-        <svg className="w-10 h-10 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" />
-        </svg>
-      ),
-      title: "10,000+ Restaurants",
-      description: "Choose from top restaurants in your city"
+      icon: <FiShoppingBag className="w-10 h-10" />,
+      title: "500+ Restaurants",
+      description: "Choose from top restaurants in your city",
+      color: "from-pink-500 to-pink-600"
     },
     {
-      icon: (
-        <svg className="w-10 h-10 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4" />
-        </svg>
-      ),
+      icon: <FiDollarSign className="w-10 h-10" />,
       title: "No Minimum Order",
-      description: "Order as much or as little as you want"
+      description: "Order as much or as little as you want",
+      color: "from-purple-500 to-purple-600"
     },
     {
-      icon: (
-        <svg className="w-10 h-10 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 8h2a2 2 0 012 2v6a2 2 0 01-2 2h-2v4l-4-4H9a1.994 1.994 0 01-1.414-.586m0 0L11 14h4a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2v4l.586-.586z" />
-        </svg>
-      ),
+      icon: <FiHeadphones className="w-10 h-10" />,
       title: "24/7 Support",
-      description: "We're always here to help"
+      description: "We're always here to help",
+      color: "from-blue-500 to-blue-600"
     },
     {
-      icon: (
-        <svg className="w-10 h-10 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
-        </svg>
-      ),
+      icon: <FiCreditCard className="w-10 h-10" />,
       title: "Secure Payments",
-      description: "100% secure payment options"
+      description: "100% secure payment options",
+      color: "from-green-500 to-green-600"
     },
     {
-      icon: (
-        <svg className="w-10 h-10 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z" />
-        </svg>
-      ),
-      title: "Premium Members",
-      description: "Exclusive discounts and offers"
+      icon: <FiStar className="w-10 h-10" />,
+      title: "Premium Quality",
+      description: "Exclusive discounts and offers",
+      color: "from-yellow-500 to-yellow-600"
+    },
+    {
+      icon: <FiTruck className="w-10 h-10" />,
+      title: "Live Tracking",
+      description: "Track your order in real-time",
+      color: "from-indigo-500 to-indigo-600"
+    },
+    {
+      icon: <FiShield className="w-10 h-10" />,
+      title: "Safe & Hygienic",
+      description: "Contactless delivery available",
+      color: "from-red-500 to-red-600"
     }
   ];
 
   return (
-    <section className="py-12 bg-white">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="text-center mb-12">
-          <h2 className="text-3xl font-extrabold text-gray-900 sm:text-4xl">
-            Why Choose Us?
-          </h2>
-          <p className="mt-3 max-w-2xl mx-auto text-xl text-gray-500 sm:mt-4">
-            The fastest way to get your favorite food delivered
+    <div className="min-h-screen bg-gradient-to-br from-orange-50 via-pink-50 to-purple-50">
+      <Navbar />
+
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+        {/* Header */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="text-center mb-16"
+        >
+          <h1 className="text-5xl md:text-6xl font-bold mb-4">
+            <span className="text-transparent bg-clip-text bg-gradient-to-r from-orange-600 via-pink-600 to-purple-600">
+              Our Services
+            </span>
+          </h1>
+          <p className="text-xl text-gray-700 max-w-2xl mx-auto">
+            The fastest way to get your favorite food delivered right to your doorstep
           </p>
+        </motion.div>
+
+        {/* Services Grid */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 mb-20">
+          {services.map((service, index) => (
+            <motion.div
+              key={index}
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: index * 0.1 }}
+              className="bg-white/80 backdrop-blur-sm rounded-2xl p-6 shadow-lg border border-white/20 hover:shadow-xl transition-all group hover:scale-105"
+            >
+              <div className={`inline-flex items-center justify-center w-16 h-16 rounded-full bg-gradient-to-r ${service.color} text-white mb-4 group-hover:scale-110 transition-transform`}>
+                {service.icon}
+              </div>
+              <h3 className="text-xl font-bold text-gray-800 mb-2">{service.title}</h3>
+              <p className="text-gray-600 leading-relaxed">{service.description}</p>
+            </motion.div>
+          ))}
         </div>
 
-        <div className="mt-10">
-          <div className="grid grid-cols-1 gap-10 sm:grid-cols-2 lg:grid-cols-3">
-            {services.map((service, index) => (
-              <div key={index} className="flex">
-                <div className="flex-shrink-0">
-                  <div className="flex items-center justify-center h-12 w-12 rounded-md bg-red-100">
-                    {service.icon}
-                  </div>
-                </div>
-                <div className="ml-4">
-                  <h3 className="text-lg leading-6 font-medium text-gray-900">{service.title}</h3>
-                  <p className="mt-2 text-base text-gray-500">{service.description}</p>
-                </div>
-              </div>
-            ))}
+        {/* CTA Section */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.8 }}
+          className="bg-gradient-to-r from-orange-500 via-pink-500 to-purple-500 rounded-3xl p-12 text-center text-white shadow-2xl"
+        >
+          <h2 className="text-3xl md:text-4xl font-bold mb-4">
+            Ready to Order?
+          </h2>
+          <p className="text-xl mb-8 max-w-2xl mx-auto">
+            Join thousands of happy customers and experience the best food delivery service
+          </p>
+          <div className="flex flex-wrap justify-center gap-4">
+            <a
+              href="/home"
+              className="px-8 py-3 bg-white text-pink-600 font-bold rounded-full hover:bg-gray-100 transition-all shadow-lg hover:shadow-xl hover:scale-105"
+            >
+              Browse Menu
+            </a>
+            <a
+              href="/register"
+              className="px-8 py-3 bg-white/20 backdrop-blur-sm text-white font-bold rounded-full hover:bg-white/30 transition-all border-2 border-white hover:scale-105"
+            >
+              Sign Up Now
+            </a>
           </div>
-        </div>
+        </motion.div>
       </div>
-    </section>
+
+      <Footer />
+    </div>
   );
 };
 

@@ -15,6 +15,7 @@ import Register from './pages/Register';
 import Contact from './pages/Contact';
 import GetStarted from './pages/GetStarted';
 import Checkout from './pages/Checkout';
+import About from './pages/About';
 import OrderHistory from './pages/OrderHistory';
 import AdminDashboard from './pages/AdminDashboard';
 
@@ -28,6 +29,7 @@ const App = () => {
                         <Route path="/signin" element={<Signin />} />
                         <Route path="/register" element={<Register />} />
                         <Route path="/contact" element={<Contact />} />
+                        <Route path="/about" element={<About />} />
                         <Route path="/home" element={<Home />} />
                         <Route path="/food/:id" element={<InfoCard />} />
                         <Route path="/checkout" element={<Checkout />} />

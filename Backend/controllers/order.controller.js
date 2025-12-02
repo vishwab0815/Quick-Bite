@@ -89,6 +89,32 @@ module.exports.getUserOrders = async (req, res) => {
 };
 
 /**
+ * Get all orders for admin (all users)
+ */
+module.exports.getAllOrdersForAdmin = async (req, res) => {
+    try {
+        // Admin check is done by middleware
+        const orders = await Order.find({})
+            .sort({ orderDate: -1 })
+            .populate('userId', 'name email')
+            .lean();
+
+        res.status(200).json({
+            success: true,
+            count: orders.length,
+            orders: orders
+        });
+    } catch (error) {
+        console.error("❌ Error fetching all orders:", error);
+        res.status(500).json({
+            success: false,
+            message: "Failed to fetch orders",
+            error: error.message
+        });
+    }
+};
+
+/**
  * Get a specific order by ID
  */
 module.exports.getOrderById = async (req, res) => {
@@ -123,13 +149,14 @@ module.exports.getOrderById = async (req, res) => {
 };
 
 /**
- * Update order status
+ * Update order status (admin can update any order)
  */
 module.exports.updateOrderStatus = async (req, res) => {
     try {
         const orderId = req.params.id;
         const { status } = req.body;
         const userId = req.user?.id;
+        const userRole = req.user?.role;
 
         const validStatuses = ['pending', 'confirmed', 'preparing', 'ready', 'delivered', 'cancelled'];
 
@@ -140,8 +167,13 @@ module.exports.updateOrderStatus = async (req, res) => {
             });
         }
 
+        // Admin can update any order, users can only update their own
+        const query = userRole === 'admin'
+            ? { _id: orderId }
+            : { _id: orderId, userId: userId };
+
         const order = await Order.findOneAndUpdate(
-            { _id: orderId, userId: userId },
+            query,
             { status: status },
             { new: true }
         );
@@ -152,6 +184,8 @@ module.exports.updateOrderStatus = async (req, res) => {
                 message: "Order not found"
             });
         }
+
+        console.log(`✅ Order ${orderId} status updated to ${status} by ${userRole === 'admin' ? 'admin' : 'user'}`);
 
         res.status(200).json({
             success: true,

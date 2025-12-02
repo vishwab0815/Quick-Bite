@@ -20,8 +20,8 @@ export default function AdminDashboard() {
     const fetchAllOrders = async () => {
         try {
             setLoading(true);
-            // For now, we'll get user orders. In production, add an admin-specific endpoint
-            const res = await axios.get(`${import.meta.env.VITE_API_URL}/success/orders`, {
+            // Use admin-specific endpoint to get all orders from all users
+            const res = await axios.get(`${import.meta.env.VITE_API_URL}/success/admin/orders`, {
                 withCredentials: true
             });
 
@@ -33,6 +33,9 @@ export default function AdminDashboard() {
             if (error.response?.status === 401) {
                 showToast.error('Please login to access admin panel');
                 navigate('/signin');
+            } else if (error.response?.status === 403) {
+                showToast.error('Access denied. Admin privileges required.');
+                navigate('/home');
             } else {
                 showToast.error('Failed to fetch orders');
             }
@@ -246,7 +249,7 @@ export default function AdminDashboard() {
                             >
                                 {/* Order Header */}
                                 <div className="p-6 bg-gradient-to-r from-orange-500/10 to-pink-500/10 border-b border-gray-100">
-                                    <div className="flex flex-wrap items-center justify-between gap-4">
+                                    <div className="flex flex-wrap items-center justify-between gap-4 mb-4">
                                         <div>
                                             <p className="text-sm text-gray-500 mb-1">Order ID</p>
                                             <p className="font-mono text-gray-800 font-semibold text-lg">
@@ -273,6 +276,22 @@ export default function AdminDashboard() {
                                             </p>
                                         </div>
                                     </div>
+
+                                    {/* Customer Info */}
+                                    {order.userId && (
+                                        <div className="flex items-center gap-2 bg-white/60 px-4 py-2 rounded-lg">
+                                            <FiUsers className="w-4 h-4 text-gray-600" />
+                                            <div>
+                                                <span className="text-sm text-gray-600">Customer: </span>
+                                                <span className="font-semibold text-gray-800">
+                                                    {order.userId.name || 'Unknown'}
+                                                </span>
+                                                <span className="text-sm text-gray-500 ml-2">
+                                                    ({order.userId.email || 'No email'})
+                                                </span>
+                                            </div>
+                                        </div>
+                                    )}
                                 </div>
 
                                 {/* Order Details */}
