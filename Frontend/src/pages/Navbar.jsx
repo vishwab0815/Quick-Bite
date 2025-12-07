@@ -120,7 +120,7 @@ const Navbar = ({ user }) => {
                                             exit="exit"
                                             variants={menuVariants}
                                             transition={{ duration: 0.2 }}
-                                            className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg py-1 overflow-visible border border-gray-100"
+                                            className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg py-1 overflow-visible border border-gray-100 z-[100]"
                                             onMouseLeave={() => setShowDropdown(false)}
                                         >
                                             <div className="px-4 py-3 border-b border-gray-100">

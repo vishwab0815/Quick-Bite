@@ -32,11 +32,15 @@ const register = async (req, res) => {
             { expiresIn: process.env.JWT_EXPIRES_IN || '7d' }
         );
 
+        // Cookie configuration for JWT token
+        // Production: secure=true (HTTPS), sameSite='none' (cross-origin)
+        // Development: secure=false (HTTP), sameSite='lax' (more permissive)
         res.cookie('token', token, {
-            httpOnly: true,
-            secure: process.env.NODE_ENV === 'production',
-            sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'strict',
-            maxAge: 7 * 24 * 60 * 60 * 1000
+            httpOnly: true,  // Prevents XSS attacks
+            secure: process.env.NODE_ENV === 'production',  // HTTPS only in production
+            sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',  // Cross-origin support
+            maxAge: 7 * 24 * 60 * 60 * 1000,  // 7 days
+            path: '/'  // Available across all routes
         });
 
         // Send welcome email using SendGrid (non-blocking)
@@ -89,11 +93,15 @@ const login = async (req, res) => {
             { expiresIn: process.env.JWT_EXPIRES_IN || '7d' }
         );
 
+        // Cookie configuration for JWT token
+        // Production: secure=true (HTTPS), sameSite='none' (cross-origin)
+        // Development: secure=false (HTTP), sameSite='lax' (more permissive)
         res.cookie('token', token, {
-            httpOnly: true,
-            secure: process.env.NODE_ENV === 'production',
-            sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'strict',
-            maxAge: 7 * 24 * 60 * 60 * 1000,
+            httpOnly: true,  // Prevents XSS attacks
+            secure: process.env.NODE_ENV === 'production',  // HTTPS only in production
+            sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',  // Cross-origin support
+            maxAge: 7 * 24 * 60 * 60 * 1000,  // 7 days
+            path: '/'  // Available across all routes
         });
 
         return res.status(200).json({
@@ -118,10 +126,12 @@ const login = async (req, res) => {
 
 const logout = async (req, res) => {
     try {
+        // Clear cookie with same options as when it was set
         res.clearCookie('token', {
             httpOnly: true,
             secure: process.env.NODE_ENV === 'production',
-            sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'strict',
+            sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
+            path: '/'
         });
 
         return res.status(200).json({ success: true, message: 'Logout successful' });

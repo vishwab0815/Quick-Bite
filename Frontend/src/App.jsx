@@ -9,7 +9,7 @@ import ErrorBoundary from './components/common/ErrorBoundary';
 import Home from './pages/Home';
 import InfoCard from './components/InfoCard';
 import ServicesSection from './pages/Services';
-import PlacedOrder from './components/PlacedOrder';
+import OrderSuccess from './pages/OrderSuccess';
 import Signin from './pages/Signin';
 import Register from './pages/Register';
 import Contact from './pages/Contact';
@@ -33,7 +33,7 @@ const App = () => {
                         <Route path="/home" element={<Home />} />
                         <Route path="/food/:id" element={<InfoCard />} />
                         <Route path="/checkout" element={<Checkout />} />
-                        <Route path="/order-success" element={<PlacedOrder />} />
+                        <Route path="/order-success" element={<OrderSuccess />} />
                         <Route path="/orders" element={<OrderHistory />} />
                         <Route path="/admin" element={<AdminDashboard />} />
                         <Route path="/services" element={<ServicesSection />} />
