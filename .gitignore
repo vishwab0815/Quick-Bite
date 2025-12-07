@@ -59,5 +59,3 @@ coverage/
 temp/
 tmp/
 
-# Claude Code
-.claude/
