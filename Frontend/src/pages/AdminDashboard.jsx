@@ -123,6 +123,8 @@ export default function AdminDashboard() {
         <div className="min-h-screen bg-gradient-to-br from-orange-50 via-pink-50 to-purple-50">
             <Navbar />
 
+            {/* Add padding-top to account for fixed navbar height */}
+            <div className="pt-16 md:pt-20">
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
                 {/* Header */}
                 <motion.div
@@ -334,7 +336,12 @@ export default function AdminDashboard() {
                                                     <FiTruck className="w-4 h-4 text-blue-600" />
                                                     Delivery Address:
                                                 </h4>
-                                                <p className="text-gray-700">{order.deliveryAddress}</p>
+                                                <p className="text-gray-700">
+                                                    {typeof order.deliveryAddress === 'string'
+                                                        ? order.deliveryAddress
+                                                        : `${order.deliveryAddress.street || ''}, ${order.deliveryAddress.city || ''}, ${order.deliveryAddress.state || ''} ${order.deliveryAddress.zipCode || ''}, ${order.deliveryAddress.country || ''}`
+                                                    }
+                                                </p>
                                             </div>
                                         )}
 
@@ -384,6 +391,7 @@ export default function AdminDashboard() {
                         ))}
                     </AnimatePresence>
                 </div>
+            </div>
             </div>
         </div>
     );

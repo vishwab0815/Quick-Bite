@@ -85,6 +85,8 @@ export default function OrderHistory() {
         <div className="min-h-screen bg-gradient-to-br from-orange-50 via-pink-50 to-purple-50">
             <Navbar />
 
+            {/* Add padding-top to account for fixed navbar height */}
+            <div className="pt-16 md:pt-20">
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
                 {/* Header */}
                 <motion.div
@@ -239,7 +241,12 @@ export default function OrderHistory() {
                                     {order.deliveryAddress && (
                                         <div className="mb-4 p-4 bg-blue-50 rounded-lg border border-blue-100">
                                             <h4 className="text-sm font-semibold text-gray-700 mb-2">Delivery Address:</h4>
-                                            <p className="text-gray-700">{order.deliveryAddress}</p>
+                                            <p className="text-gray-700">
+                                                {typeof order.deliveryAddress === 'string'
+                                                    ? order.deliveryAddress
+                                                    : `${order.deliveryAddress.street || ''}, ${order.deliveryAddress.city || ''}, ${order.deliveryAddress.state || ''} ${order.deliveryAddress.zipCode || ''}, ${order.deliveryAddress.country || ''}`
+                                                }
+                                            </p>
                                         </div>
                                     )}
 
@@ -264,6 +271,7 @@ export default function OrderHistory() {
                         ))}
                     </AnimatePresence>
                 </div>
+            </div>
             </div>
         </div>
     );

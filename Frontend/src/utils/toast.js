@@ -48,14 +48,9 @@ export const showWarningToast = (message) => {
 };
 
 // Custom toast with icon
-export const showToast = (message, type = 'default') => {
-    const types = {
-        success: showSuccessToast,
-        error: showErrorToast,
-        info: showInfoToast,
-        warning: showWarningToast,
-    };
-
-    const toastFn = types[type] || toast;
-    toastFn(message);
+export const showToast = {
+    success: (message) => showSuccessToast(message),
+    error: (message) => showErrorToast(message),
+    info: (message) => showInfoToast(message),
+    warning: (message) => showWarningToast(message),
 };

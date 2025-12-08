@@ -1,6 +1,6 @@
 # 🍕 QuickBite - Modern Food Delivery Platform
 
-A full-stack restaurant management and food delivery application built with the MERN stack. Features a beautiful gradient-themed UI, secure authentication, real-time order management, admin dashboard, and automated email notifications.
+A full-stack restaurant management and food delivery application built with the MERN stack. Features a beautiful gradient-themed UI, secure authentication, real-time order management, admin dashboard, cloud image storage, and automated email notifications.
 
 ## ✨ Key Features
 
@@ -9,9 +9,11 @@ A full-stack restaurant management and food delivery application built with the 
 - Role-based access control (User/Admin roles)
 - Password hashing with bcrypt (12 rounds)
 - Enhanced password validation (8+ chars, uppercase, lowercase, number)
-- Rate limiting to prevent brute force attacks
+- Rate limiting to prevent brute force attacks (5 login attempts/15min)
 - Input validation and sanitization
 - CORS protection with configurable origins
+- NoSQL injection protection
+- XSS protection with Helmet security headers
 
 ### 🍔 Food Menu & Shopping
 - Browse delicious food items with beautiful 3D animations
@@ -19,23 +21,40 @@ A full-stack restaurant management and food delivery application built with the 
 - Filter by meal type (Breakfast, Lunch, Dinner, Snack, Dessert, Appetizer, Side Dish, Main Course)
 - Animated category filter bar with gradient icons
 - Detailed food item pages with ingredients and nutrition info
+- **Pricing system** - Consistent pricing across all food items
 - Shopping cart with quantity management and customizations
 - Persistent cart using localStorage
+- Real-time cart badge with item count
+
+### 👨‍💼 Admin Food Management
+- **Create** new food items with all details
+- **Update** existing food items (name, price, ingredients, etc.)
+- **Delete** food items from menu
+- **Upload images** to Cloudinary with automatic optimization
+- Image resizing (800x800px max) and quality optimization
+- Unique ID generation for new items
+- Full CRUD operations protected by admin authentication
 
 ### 📦 Order Management
+
+#### For Users:
 - Complete checkout flow with delivery address
 - Multiple payment methods (Cash, Card, Online, Wallet)
-- **Order History** page for users to view all past orders
+- **Order History** page to view all past orders
+- **Cancel orders** - Cancel pending/confirmed orders
 - Order status tracking (Pending → Confirmed → Preparing → Ready → Delivered)
 - Filter orders by status
 - Order details with items, quantities, and pricing
+- Beautiful **Order Success** page with order summary and estimated delivery time
 
-### 👨‍💼 Admin Dashboard
-- Comprehensive order management system
+#### For Admins:
+- Comprehensive order management dashboard
 - Real-time statistics (total, pending, confirmed, preparing, ready, delivered)
-- One-click order status updates
+- **Update order status** - One-click status changes
+- **Delete orders** - Remove orders from system
 - Filter orders by status
-- Refresh functionality for latest data
+- View all customer orders across the platform
+- Customer information display
 - Admin-only access with role verification
 
 ### 📧 Email Notifications
@@ -44,6 +63,15 @@ A full-stack restaurant management and food delivery application built with the 
 - Beautiful responsive HTML templates
 - Powered by SendGrid (100 free emails/day)
 - Non-blocking async email delivery
+
+### 📸 Image Upload & Storage
+- **Cloudinary Integration** - Cloud-based image storage
+- Automatic image optimization and resizing
+- 5MB max file size limit
+- Support for JPEG, PNG, WEBP, GIF formats
+- CDN delivery for fast loading
+- Public URLs for easy sharing
+- **Free Tier**: 25GB storage, 25GB bandwidth/month
 
 ### 🎨 Modern UI/UX
 - **Gradient Theme**: Consistent orange → pink → purple color scheme
@@ -54,6 +82,7 @@ A full-stack restaurant management and food delivery application built with the 
 - Responsive design for all devices (mobile, tablet, desktop)
 - Error boundaries for graceful error handling
 - Loading states with animated spinners
+- Profile dropdown menu with proper z-index stacking
 
 ## 🛠️ Tech Stack
 
@@ -74,8 +103,11 @@ A full-stack restaurant management and food delivery application built with the 
 - **JWT** (jsonwebtoken 9.0.2) - Secure authentication
 - **bcryptjs** 2.4.3 - Password hashing
 - **SendGrid** - Transactional email service
-- **Helmet** 8.0.0 - Security headers
-- **Express Rate Limit** 7.5.0 - DDoS protection
+- **Cloudinary** 2.8.0 - Image upload and storage
+- **Multer** 1.4.5-lts.1 - File upload middleware
+- **Helmet** 8.1.0 - Security headers
+- **Express Rate Limit** 8.2.1 - DDoS protection
+- **Express Mongo Sanitize** 2.2.0 - NoSQL injection protection
 - **cookie-parser** 1.4.7 - Cookie parsing middleware
 
 ## 📁 Project Structure
@@ -84,11 +116,12 @@ A full-stack restaurant management and food delivery application built with the 
 QuickBite/
 ├── Backend/
 │   ├── config/
-│   │   └── sendgrid.js              # SendGrid email configuration & templates
+│   │   ├── sendgrid.js              # SendGrid email configuration & templates
+│   │   └── cloudinary.js            # Cloudinary image upload configuration
 │   ├── controllers/
 │   │   ├── userAuth.controller.js   # Authentication (register, login, logout, profile)
-│   │   ├── foodItems.controller.js  # Food items CRUD operations
-│   │   └── order.controller.js      # Order management & status updates
+│   │   ├── foodItems.controller.js  # Food items CRUD + image upload
+│   │   └── order.controller.js      # Order management, status updates & cancellation
 │   ├── middleware/
 │   │   ├── auth.js                  # JWT authentication middleware
 │   │   ├── adminAuth.js             # Admin authorization middleware
@@ -96,12 +129,12 @@ QuickBite/
 │   │   └── logger.js                # Request logging
 │   ├── models/
 │   │   ├── userauthentication.model.js  # User schema with role
-│   │   ├── fooditems.model.js           # Food item schema
+│   │   ├── fooditems.model.js           # Food item schema with price
 │   │   └── order.model.js               # Order schema with status
 │   ├── router/
 │   │   ├── userAuth.router.js       # Auth routes
-│   │   ├── foodItems.router.js      # Food routes
-│   │   └── orders.router.js         # Order routes
+│   │   ├── foodItems.router.js      # Food routes + admin CRUD
+│   │   └── orders.router.js         # Order routes + cancellation
 │   ├── db/
 │   │   └── db.js                    # MongoDB connection
 │   ├── app.js                       # Express app configuration
@@ -123,8 +156,7 @@ QuickBite/
 │   │   │   ├── animation/
 │   │   │   │   └── CubicGallery.jsx         # 3D rotating gallery
 │   │   │   ├── InfoCard.jsx                 # Food detail card
-│   │   │   ├── cards.jsx                    # Food item cards
-│   │   │   └── PlacedOrder.jsx              # Order success page
+│   │   │   └── cards.jsx                    # Food item cards
 │   │   ├── context/
 │   │   │   └── CartContext.jsx              # Cart state management
 │   │   ├── pages/
@@ -133,6 +165,7 @@ QuickBite/
 │   │   │   ├── Signin.jsx                   # Login page
 │   │   │   ├── Register.jsx                 # Registration page
 │   │   │   ├── Checkout.jsx                 # Checkout flow
+│   │   │   ├── OrderSuccess.jsx             # Order confirmation page
 │   │   │   ├── OrderHistory.jsx             # User's order history
 │   │   │   ├── AdminDashboard.jsx           # Admin order management
 │   │   │   ├── Categories.jsx               # Category filter bar
@@ -149,42 +182,47 @@ QuickBite/
 │   ├── .env.example                         # Environment variables template
 │   └── package.json
 │
-├── ecosystem.config.js              # Process manager configuration
 ├── .gitignore
-├── README.md                        # This file - project overview
-└── SETUP.md                         # Installation & setup guide
+└── README.md                        # This file - complete documentation
 ```
 
 ## 🔌 API Endpoints
 
 ### Authentication (`/api/auth`)
-| Method | Endpoint | Description | Auth Required |
-|--------|----------|-------------|---------------|
-| POST | `/api/auth/register` | Register new user | No |
-| POST | `/api/auth/login` | Login user | No |
-| POST | `/api/auth/logout` | Logout user | Yes |
-| GET | `/api/auth/profile` | Get user profile | Yes |
+| Method | Endpoint | Description | Auth Required | Validation |
+|--------|----------|-------------|---------------|------------|
+| POST | `/api/auth/register` | Register new user | No | ✅ Email, Password, Name |
+| POST | `/api/auth/login` | Login user | No | ✅ Email, Password |
+| POST | `/api/auth/logout` | Logout user | Yes (User) | - |
+| GET | `/api/auth/profile` | Get user profile | Yes (User) | - |
 
 ### Food Items (`/fooditems`)
-| Method | Endpoint | Description | Auth Required |
-|--------|----------|-------------|---------------|
-| POST | `/fooditems/fetch` | Seed database (first time) | No |
-| GET | `/fooditems/get` | Get all food items | No |
-| GET | `/fooditems/meal-type/:mealType` | Get by meal type | No |
-| GET | `/fooditems/food/:id` | Get food item by ID | No |
+| Method | Endpoint | Description | Auth Required | Validation |
+|--------|----------|-------------|---------------|------------|
+| POST | `/fooditems/fetch` | Seed database (one-time setup) | Yes (Admin) | - |
+| GET | `/fooditems/get` | Get all food items (paginated) | No | - |
+| GET | `/fooditems/meal-type/:mealType` | Get items by meal type | No | - |
+| GET | `/fooditems/food/:id` | Get single food item by ID | No | - |
+| **POST** | **`/fooditems/upload-image`** | **Upload image to Cloudinary** | Yes (Admin) | ✅ File type, size |
+| **POST** | **`/fooditems/create`** | **Create new food item** | Yes (Admin) | ✅ All required fields |
+| **PUT** | **`/fooditems/update/:id`** | **Update food item** | Yes (Admin) | ✅ Valid ID |
+| **DELETE** | **`/fooditems/delete/:id`** | **Delete food item** | Yes (Admin) | ✅ Valid ID |
 
 ### Orders (`/success`)
-| Method | Endpoint | Description | Auth Required |
-|--------|----------|-------------|---------------|
-| POST | `/success/order` | Create new order | Yes |
-| GET | `/success/orders` | Get user's orders | Yes |
-| GET | `/success/order/:id` | Get specific order | Yes |
-| PATCH | `/success/order/:id/status` | Update order status (Admin) | Yes (Admin) |
+| Method | Endpoint | Description | Auth Required | Validation |
+|--------|----------|-------------|---------------|------------|
+| POST | `/success/order` | Create new order | Yes (User) | ✅ Items, Total |
+| GET | `/success/orders` | Get user's orders | Yes (User) | - |
+| GET | `/success/order/:id` | Get specific order | Yes (User) | ✅ Valid ID |
+| **PATCH** | **`/success/order/:id/cancel`** | **Cancel order (pending/confirmed only)** | Yes (User/Admin) | ✅ Valid ID |
+| GET | `/success/admin/orders` | Get all orders (all users) | Yes (Admin) | - |
+| PATCH | `/success/order/:id/status` | Update order status | Yes (Admin) | ✅ Valid status |
+| **DELETE** | **`/success/order/:id`** | **Delete order permanently** | Yes (Admin) | ✅ Valid ID |
 
 ### Health Check
 | Method | Endpoint | Description |
 |--------|----------|-------------|
-| GET | `/health` | Server health status |
+| GET | `/health` | Server health status & environment |
 
 ## 🔒 Security Features
 
@@ -194,45 +232,52 @@ QuickBite/
 - ✅ **Password Validation**: Minimum 8 chars, uppercase, lowercase, number
 - ✅ **Rate Limiting**: 100 req/15min (general), 5 req/15min (auth)
 - ✅ **Input Validation**: All inputs validated and sanitized
-- ✅ **NoSQL Injection Protection**: Mongoose schema validation
+- ✅ **NoSQL Injection Protection**: Express-mongo-sanitize
 - ✅ **XSS Protection**: Helmet security headers
 - ✅ **CORS**: Configured for specific origins only
+- ✅ **File Upload Security**: File type and size validation
 - ✅ **Environment Variables**: No hardcoded secrets
 - ✅ **Error Handling**: No sensitive data leakage in responses
+- ✅ **Database Seed Protection**: Admin-only access
 
 ## 📊 Database Schema
 
 ### User Model
-- `name` - User's full name
-- `email` - Unique email (indexed)
+- `name` - User's full name (min 2 chars)
+- `email` - Unique email (indexed, validated)
 - `password` - Hashed password (not returned in responses)
-- `role` - User role (user/admin)
+- `role` - User role: `user` (default) / `admin`
 - `timestamps` - Created and updated timestamps
 
 ### Food Item Model
-- `id` - Unique food item ID
-- `name` - Food name
+- `id` - Unique numeric food item ID
+- `name` - Food name (required)
 - `ingredients` - Array of ingredients
 - `prepTimeMinutes` - Preparation time
 - `cookTimeMinutes` - Cooking time
 - `servings` - Number of servings
 - `difficulty` - Easy/Medium/Hard
-- `cuisine` - Cuisine type
+- `cuisine` - Cuisine type (required)
 - `caloriesPerServing` - Nutritional info
 - `tags` - Search tags
-- `image` - Image URL
-- `rating` - Average rating
-- `mealType` - Category (Breakfast, Lunch, etc.)
-- `customizations` - Available customizations
+- `image` - Image URL (required, from Cloudinary)
+- **`price`** - **Price in dollars (required, min: 0)**
+- `rating` - Average rating (0-5)
+- `reviewCount` - Number of reviews
+- `mealType` - Category array (Breakfast, Lunch, etc.)
+- `customizations` - Available customizations object
+- `timestamps` - Created and updated timestamps
 
 ### Order Model
 - `userId` - Reference to user (indexed)
-- `items` - Array of ordered items with quantities
-- `totalAmount` - Order total
-- `deliveryAddress` - Delivery details
-- `paymentMethod` - Payment type
-- `status` - Order status (indexed)
+- `items` - Array of ordered items with quantities and customizations
+- `totalAmount` - Order total (required)
+- `deliveryAddress` - Delivery details (street, city, state, zipCode, country)
+- `paymentMethod` - Cash/Card/Online/Wallet
+- `paymentStatus` - Pending/Completed/Failed/Refunded
+- `status` - pending/confirmed/preparing/ready/delivered/cancelled (indexed)
 - `orderDate` - Timestamp (indexed)
+- `timestamps` - Created and updated timestamps
 
 ## 👨‍💼 Default Admin Credentials
 
@@ -252,28 +297,189 @@ The application follows a consistent design system:
 - **Spacing**: Consistent 8px grid system
 - **Border Radius**: `rounded-2xl` for cards, `rounded-full` for pills
 - **Shadows**: `shadow-lg` for cards, `shadow-2xl` for modals
+- **Z-Index**: Proper stacking (navbar: 50, modals: 100, dropdowns: 100)
 - **Animations**: Framer Motion with spring physics
 
-## 🚀 Getting Started
+## 🚀 Quick Start
 
-See [SETUP.md](SETUP.md) for detailed installation and configuration instructions.
+### Prerequisites
+- Node.js ≥16.0.0
+- MongoDB (local or Atlas)
+- Cloudinary account (free tier)
+- SendGrid account (optional, for emails)
 
-Quick start:
-1. Clone the repository
-2. Install dependencies for both frontend and backend
-3. Configure environment variables (`.env` files)
-4. Seed the database with admin user and food items
-5. Run backend (`npm run dev` in Backend folder)
-6. Run frontend (`npm run dev` in Frontend folder)
-7. Access application at `http://localhost:5173`
+### Installation
+
+1. **Clone the repository**
+```bash
+git clone <repository-url>
+cd QuickBite
+```
+
+2. **Install dependencies**
+```bash
+# Install root dependencies (for running both servers)
+npm install
+
+# Or install separately
+cd Backend && npm install
+cd ../Frontend && npm install
+```
+
+3. **Configure environment variables**
+
+**Backend** (`Backend/.env`):
+```env
+NODE_ENV=development
+PORT=3000
+MONGO_URI=mongodb://localhost:27017/quickbite
+JWT_SECRET=your_super_secret_jwt_key_change_this_in_production
+JWT_EXPIRES_IN=7d
+
+# Cloudinary (Required for image uploads)
+CLOUDINARY_CLOUD_NAME=your_cloud_name
+CLOUDINARY_API_KEY=your_api_key
+CLOUDINARY_API_SECRET=your_api_secret
+
+# SendGrid (Optional)
+SENDGRID_API_KEY=your_sendgrid_api_key
+SENDGRID_FROM_EMAIL=noreply@quickbite.com
+SENDGRID_FROM_NAME=QuickBite
+
+# CORS
+FRONTEND_URL=http://localhost:5173
+```
+
+**Frontend** (`Frontend/.env`):
+```env
+VITE_API_URL=http://localhost:3000
+```
+
+4. **Setup Cloudinary** (Free Tier - 25GB storage)
+   - Sign up: https://cloudinary.com/users/register/free
+   - Get credentials from: https://console.cloudinary.com/settings
+   - Add to Backend/.env
+
+5. **Seed the database**
+```bash
+cd Backend
+npm run seed
+```
+
+6. **Run the application**
+
+Using root scripts (recommended):
+```bash
+# From root directory
+npm run dev  # Runs both frontend and backend
+```
+
+Or separately:
+```bash
+# Terminal 1 - Backend
+cd Backend
+npm run dev
+
+# Terminal 2 - Frontend
+cd Frontend
+npm run dev
+```
+
+7. **Access the application**
+- Frontend: http://localhost:5173
+- Backend: http://localhost:3000
+- Health Check: http://localhost:3000/health
+
+## 📸 Image Upload Usage
+
+### Method 1: File Upload (Recommended)
+```javascript
+// Upload image first
+const formData = new FormData();
+formData.append('image', imageFile);
+
+const uploadRes = await axios.post(
+  'http://localhost:3000/fooditems/upload-image',
+  formData,
+  {
+    withCredentials: true,
+    headers: { 'Content-Type': 'multipart/form-data' }
+  }
+);
+
+const imageUrl = uploadRes.data.data.url;
+
+// Then create food item with the URL
+const foodItem = {
+  name: "Pizza",
+  image: imageUrl,
+  price: 12.99,
+  // ... other fields
+};
+```
+
+### Method 2: Direct URL
+```javascript
+// Provide image URL directly
+const foodItem = {
+  name: "Pizza",
+  image: "https://res.cloudinary.com/your-cloud/image/upload/v123/pizza.jpg",
+  price: 12.99,
+  // ... other fields
+};
+```
+
+## 🎯 Available Scripts
+
+### Root Directory
+```bash
+npm run dev              # Run both frontend and backend concurrently
+npm run dev:backend      # Run backend only
+npm run dev:frontend     # Run frontend only
+npm run install:all      # Install all dependencies (root, backend, frontend)
+```
+
+### Backend
+```bash
+npm run dev              # Start development server with nodemon
+npm start                # Start production server
+npm run seed             # Seed database with admin and food items
+```
+
+### Frontend
+```bash
+npm run dev              # Start Vite dev server
+npm run build            # Build for production
+npm run preview          # Preview production build
+```
+
+## 🌐 Production Deployment
+
+### Backend (Render/Railway/Heroku)
+1. Set environment variables:
+   - `NODE_ENV=production`
+   - `MONGO_URI=<your-mongodb-atlas-uri>`
+   - `JWT_SECRET=<random-64-char-string>`
+   - `FRONTEND_URL=<your-frontend-url>`
+   - `CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_API_KEY`, `CLOUDINARY_API_SECRET`
+
+2. Ensure HTTPS is enabled (required for cookies)
+
+### Frontend (Vercel/Netlify)
+1. Set environment variable:
+   - `VITE_API_URL=<your-backend-url>`
+
+2. Build command: `npm run build`
+3. Output directory: `dist`
 
 ## 📝 License
 
-This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
+This project is licensed under the MIT License.
 
 ## 🙏 Acknowledgments
 
 - **SendGrid** - Email delivery service
+- **Cloudinary** - Image hosting and optimization
 - **MongoDB** - Database
 - **Tailwind CSS** - Styling framework
 - **Framer Motion** - Animation library
@@ -283,4 +489,15 @@ This project is licensed under the MIT License. See the [LICENSE](LICENSE) file 
 
 **Built with ❤️ using the MERN Stack**
 
-This is a production-ready application with enterprise-grade security, error handling, and best practices.
+This is a **production-ready** application with:
+- ✅ Enterprise-grade security
+- ✅ Complete CRUD operations
+- ✅ Cloud image storage
+- ✅ Order management system
+- ✅ Admin dashboard
+- ✅ Email notifications
+- ✅ Modern UI/UX
+- ✅ Comprehensive error handling
+- ✅ Best practices throughout
+
+**QuickBite - Where Great Food Meets Modern Technology** 🍕🚀

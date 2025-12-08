@@ -7,6 +7,7 @@ import CartSidebar from './components/Cart/CartSidebar';
 import ErrorBoundary from './components/common/ErrorBoundary';
 
 import Home from './pages/Home';
+import Menu from './pages/Menu';
 import InfoCard from './components/InfoCard';
 import ServicesSection from './pages/Services';
 import OrderSuccess from './pages/OrderSuccess';
@@ -31,6 +32,7 @@ const App = () => {
                         <Route path="/contact" element={<Contact />} />
                         <Route path="/about" element={<About />} />
                         <Route path="/home" element={<Home />} />
+                        <Route path="/menu" element={<Menu />} />
                         <Route path="/food/:id" element={<InfoCard />} />
                         <Route path="/checkout" element={<Checkout />} />
                         <Route path="/order-success" element={<OrderSuccess />} />

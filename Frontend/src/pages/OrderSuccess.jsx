@@ -66,6 +66,8 @@ const OrderSuccess = () => {
         <div className="min-h-screen bg-gradient-to-br from-orange-50 via-pink-50 to-purple-50">
             <Navbar />
 
+            {/* Add padding-top to account for fixed navbar height */}
+            <div className="pt-16 md:pt-20">
             <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
                 {/* Success Animation */}
                 <motion.div
@@ -169,7 +171,12 @@ const OrderSuccess = () => {
                             {latestOrder.deliveryAddress && (
                                 <div className="p-4 bg-blue-50 rounded-xl border border-blue-100 mb-6">
                                     <h4 className="text-sm font-semibold text-gray-700 mb-2">Delivery Address</h4>
-                                    <p className="text-gray-700">{latestOrder.deliveryAddress}</p>
+                                    <p className="text-gray-700">
+                                        {typeof latestOrder.deliveryAddress === 'string'
+                                            ? latestOrder.deliveryAddress
+                                            : `${latestOrder.deliveryAddress.street || ''}, ${latestOrder.deliveryAddress.city || ''}, ${latestOrder.deliveryAddress.state || ''} ${latestOrder.deliveryAddress.zipCode || ''}, ${latestOrder.deliveryAddress.country || ''}`
+                                        }
+                                    </p>
                                 </div>
                             )}
 
@@ -237,6 +244,7 @@ const OrderSuccess = () => {
                         Need help? Contact our support team anytime.
                     </p>
                 </motion.div>
+            </div>
             </div>
         </div>
     );

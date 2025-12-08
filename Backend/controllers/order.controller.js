@@ -202,5 +202,90 @@ module.exports.updateOrderStatus = async (req, res) => {
     }
 };
 
+/**
+ * Cancel an order (User can cancel their own pending orders, Admin can cancel any)
+ */
+module.exports.cancelOrder = async (req, res) => {
+    try {
+        const orderId = req.params.id;
+        const userId = req.user?.id;
+        const userRole = req.user?.role;
+
+        // Find the order
+        const query = userRole === 'admin'
+            ? { _id: orderId }
+            : { _id: orderId, userId: userId };
+
+        const order = await Order.findOne(query);
+
+        if (!order) {
+            return res.status(404).json({
+                success: false,
+                message: 'Order not found'
+            });
+        }
+
+        // Only pending and confirmed orders can be cancelled
+        if (!['pending', 'confirmed'].includes(order.status)) {
+            return res.status(400).json({
+                success: false,
+                message: `Cannot cancel order with status: ${order.status}. Only pending and confirmed orders can be cancelled.`
+            });
+        }
+
+        // Update order status to cancelled
+        order.status = 'cancelled';
+        await order.save();
+
+        console.log(`✅ Order ${orderId} cancelled by ${userRole === 'admin' ? 'admin' : 'user'}`);
+
+        res.status(200).json({
+            success: true,
+            message: 'Order cancelled successfully',
+            order: order
+        });
+    } catch (error) {
+        console.error('❌ Error cancelling order:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Failed to cancel order',
+            error: error.message
+        });
+    }
+};
+
+/**
+ * Delete an order (Admin only - for cleanup/testing)
+ */
+module.exports.deleteOrder = async (req, res) => {
+    try {
+        const orderId = req.params.id;
+
+        const deletedOrder = await Order.findByIdAndDelete(orderId);
+
+        if (!deletedOrder) {
+            return res.status(404).json({
+                success: false,
+                message: 'Order not found'
+            });
+        }
+
+        console.log(`✅ Order ${orderId} deleted by admin`);
+
+        res.status(200).json({
+            success: true,
+            message: 'Order deleted successfully',
+            order: deletedOrder
+        });
+    } catch (error) {
+        console.error('❌ Error deleting order:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Failed to delete order',
+            error: error.message
+        });
+    }
+};
+
 // Backward compatibility
 module.exports.Order = module.exports.createOrder;

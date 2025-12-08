@@ -95,16 +95,18 @@ const Home = () => {
     }
 
     return (
-        <div className="min-h-screen bg-white  ">
+        <div className="min-h-screen bg-white">
             <Navbar user={user} />
 
-            <motion.div
-                initial={{ opacity: 0, y: 40 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.6, ease: 'easeOut' }}
-            >
-                <HeroSection />
-            </motion.div>
+            {/* Add padding-top to account for fixed navbar height */}
+            <div className="pt-16 md:pt-20">
+                <motion.div
+                    initial={{ opacity: 0, y: 40 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.6, ease: 'easeOut' }}
+                >
+                    <HeroSection />
+                </motion.div>
             <ItemsSection />
 
             <motion.div
@@ -159,7 +161,7 @@ const Home = () => {
             </motion.div>
             <Animate/>
             <Footer />
-
+            </div>
         </div>
     );
 };
