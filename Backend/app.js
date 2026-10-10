@@ -11,6 +11,7 @@ const { requestLogger, errorLogger } = require('./middleware/logger');
 const router = require('./router/foodItems.router');
 const orderrouter = require('./router/orders.router');
 const authRouter = require('./router/userAuth.router');
+const posRouter = require('./router/pos.router');
 
 const app = express();
 
@@ -84,6 +85,7 @@ app.use(cookieParser());
 app.use('/api/auth', authLimiter, authRouter); // Apply stricter rate limiting to auth routes
 app.use('/fooditems', router);
 app.use('/success', orderrouter);
+app.use('/pos', posRouter); // Counter billing, kitchen screens & token display (polled - kept off the /api limiter)
 
 // Health check endpoint
 app.get('/health', (req, res) => {

@@ -32,8 +32,10 @@ export default function Signin() {
 
             if (res.data.success) {
                 // Success animation before navigation
+                // Counter staff go straight to the billing counter
+                const destination = res.data.user?.role === 'staff' ? '/pos' : '/home';
                 setTimeout(() => {
-                    navigate('/home');
+                    navigate(destination);
                 }, 500);
             } else {
                 setError(res.data.message);

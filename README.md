@@ -219,6 +219,23 @@ QuickBite/
 | PATCH | `/success/order/:id/status` | Update order status | Yes (Admin) | ✅ Valid status |
 | **DELETE** | **`/success/order/:id`** | **Delete order permanently** | Yes (Admin) | ✅ Valid ID |
 
+### Counter Billing / POS (`/pos`)
+| Method | Endpoint | Description | Auth Required |
+|--------|----------|-------------|---------------|
+| GET | `/pos/settings` | Hotel, GST, UPI & counter settings | Yes (Staff/Admin) |
+| GET | `/pos/menu` | Full menu incl. sold-out items | Yes (Staff/Admin) |
+| PATCH | `/pos/menu/:id/availability` | Mark item sold out / available | Yes (Staff/Admin) |
+| POST | `/pos/bills` | Create bill → token number (+ WhatsApp receipt) | Yes (Staff/Admin) |
+| GET | `/pos/bills?date=YYYY-MM-DD` | Bills for a day | Yes (Staff/Admin) |
+| PATCH | `/pos/bills/:id/stations` | Counter status: preparing / ready / served | Yes (Staff/Admin) |
+| POST | `/pos/serve` | Serve by scanned coupon QR or token number (once per counter) | Yes (Staff/Admin) |
+| POST | `/pos/bills/:id/whatsapp` | Send / resend WhatsApp receipt | Yes (Staff/Admin) |
+| GET | `/pos/kitchen?counter=` | Open tickets for a kitchen counter | Yes (Staff/Admin) |
+| GET | `/pos/reports/summary?date=` | Daily sales, cash vs UPI, GST, items | Yes (Staff/Admin) |
+| PATCH | `/pos/bills/:id/cancel` | Cancel a bill (reason required) | Yes (Admin) |
+| GET | `/pos/display` | Token TV board (token numbers only) | No |
+| GET | `/pos/receipt/:publicId` | E-receipt opened from WhatsApp / QR | No |
+
 ### Health Check
 | Method | Endpoint | Description |
 |--------|----------|-------------|
@@ -389,6 +406,42 @@ npm run dev
 - Frontend: http://localhost:5173
 - Backend: http://localhost:3000
 - Health Check: http://localhost:3000/health
+
+## 🧾 Counter Billing (Token System)
+
+Rameshwaram Cafe-style counter billing for walk-in customers: pay at the counter (cash / UPI / card),
+get a token, and collect food at each food counter.
+
+**Flow:** Cashier bills on `/pos` → bill + token prints (with one coupon per food counter) and/or the
+receipt goes on WhatsApp → each counter sees its items on `/pos/kitchen` and taps **Ready** →
+the token TV (`/pos/display`) shows "Ready – collect at Dosa Counter" → staff scan the coupon QR
+(or type the token number) to mark it **Served**. A coupon can't be served twice.
+
+| Screen | URL | Who |
+|--------|-----|-----|
+| Billing counter | `/pos` | Staff / Admin |
+| Kitchen / counter screen | `/pos/kitchen` | Staff / Admin |
+| Today's bills, cash check & reports | `/pos/bills` | Staff / Admin (only admin can cancel) |
+| Token TV | `/pos/display` | Public (no prices or customer details) |
+| E-receipt | `/receipt/:id` | Public link (sent on WhatsApp / QR on bill) |
+
+**Staff login (after seeding):** `counter@quickbite.com` / `Counter1234` → opens `/pos` directly.
+
+**Setup notes**
+- **Hotel details, GST & UPI:** set `HOTEL_*`, `GST_SCHEME`, `GST_RATE`, `PRICES_INCLUDE_GST` and `UPI_VPA` in `Backend/.env`
+  (see `.env.example`). Prices always come from the database; bills are numbered per financial year
+  (`QB/2026-27/000123`) and tokens reset daily.
+- **Food counters:** each menu item has a `counter` field (e.g. `Dosa Counter`, `Coffee Counter`) – set it via the
+  food item update API. Coupons and kitchen screens are grouped by it.
+- **Printing:** receipts print from the browser on 80mm or 58mm thermal rolls (`RECEIPT_PAPER_WIDTH`). For one-tap
+  printing without the dialog, start Chrome on the counter PC with `--kiosk-printing` and set the thermal printer as default.
+  Print bill / counter coupons / WhatsApp can each be switched on or off at the counter.
+- **WhatsApp receipts:** works out of the box via a free "Send on WhatsApp" link (wa.me). For fully automatic sending,
+  create a *Utility* template in Meta WhatsApp Manager and set `WHATSAPP_TOKEN`, `WHATSAPP_PHONE_NUMBER_ID` and
+  `WHATSAPP_TEMPLATE_NAME` (template text is in `.env.example`). Receipt links need the frontend hosted publicly
+  (`PUBLIC_RECEIPT_BASE_URL`).
+- **UPI:** the counter shows a QR with the exact bill amount, paid straight to the hotel's UPI ID (no gateway fee).
+  The cashier taps **Payment received** after the soundbox confirms.
 
 ## 📸 Image Upload Usage
 

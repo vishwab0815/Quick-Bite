@@ -19,6 +19,11 @@ import Checkout from './pages/Checkout';
 import About from './pages/About';
 import OrderHistory from './pages/OrderHistory';
 import AdminDashboard from './pages/AdminDashboard';
+import PosCounter from './pages/pos/PosCounter';
+import KitchenScreen from './pages/pos/KitchenScreen';
+import PosBills from './pages/pos/PosBills';
+import TokenDisplay from './pages/pos/TokenDisplay';
+import ReceiptPage from './pages/pos/ReceiptPage';
 
 const App = () => {
     return (
@@ -39,6 +44,14 @@ const App = () => {
                         <Route path="/orders" element={<OrderHistory />} />
                         <Route path="/admin" element={<AdminDashboard />} />
                         <Route path="/services" element={<ServicesSection />} />
+
+                        {/* Counter billing (staff / admin) */}
+                        <Route path="/pos" element={<PosCounter />} />
+                        <Route path="/pos/kitchen" element={<KitchenScreen />} />
+                        <Route path="/pos/bills" element={<PosBills />} />
+                        {/* Public: token TV & e-receipt link */}
+                        <Route path="/pos/display" element={<TokenDisplay />} />
+                        <Route path="/receipt/:publicId" element={<ReceiptPage />} />
                     </Routes>
 
                     {/* Global Cart Sidebar */}

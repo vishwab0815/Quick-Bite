@@ -9,6 +9,8 @@ const bcrypt = require('bcryptjs');
 const User = require('./models/userauthentication.model');
 const Order = require('./models/order.model');
 const Recipe = require('./models/fooditems.model');
+const Bill = require('./models/bill.model');
+const Sequence = require('./models/sequence.model');
 const foodData = require('./food.json');
 
 const seedDatabase = async () => {
@@ -26,6 +28,9 @@ const seedDatabase = async () => {
         console.log('   ✓ Orders cleared');
         await Recipe.deleteMany({});
         console.log('   ✓ Food items cleared');
+        await Bill.deleteMany({});
+        await Sequence.deleteMany({});
+        console.log('   ✓ Counter bills & token numbers cleared');
         console.log('✅ All data cleared\n');
 
         // Step 2: Create Admin User
@@ -43,6 +48,21 @@ const seedDatabase = async () => {
         console.log('   🔑 Password: Admin1234');
         console.log('   👤 Role: admin\n');
 
+        // Step 2b: Create Counter Staff User (billing counter & kitchen screens)
+        console.log('🧑‍🍳 Creating counter staff user...');
+        const staffPassword = await bcrypt.hash('Counter1234', 12);
+        const staffUser = new User({
+            name: 'Counter Staff',
+            email: 'counter@quickbite.com',
+            password: staffPassword,
+            role: 'staff'
+        });
+        await staffUser.save();
+        console.log('✅ Counter staff user created');
+        console.log('   📧 Email: counter@quickbite.com');
+        console.log('   🔑 Password: Counter1234');
+        console.log('   👤 Role: staff\n');
+
         // Step 3: Seed Food Items
         console.log('🍕 Seeding food items...');
         const recipes = foodData.recipes || foodData;
@@ -59,6 +79,9 @@ const seedDatabase = async () => {
             tags: item.tags || [],
             userId: item.userId || 1,
             image: item.image,
+            price: item.price || 0,
+            counter: item.counter || 'Main Kitchen',
+            isAvailable: true,
             rating: item.rating || 4.5,
             reviewCount: item.reviewCount || 0,
             mealType: item.mealType || ['Lunch']
@@ -72,7 +95,7 @@ const seedDatabase = async () => {
         console.log('🎉 Database seeded successfully!');
         console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
         console.log('\n📊 Summary:');
-        console.log(`   • Users: 1 (Admin)`);
+        console.log(`   • Users: 2 (Admin, Counter Staff)`);
         console.log(`   • Orders: 0`);
         console.log(`   • Food Items: ${foodItems.length}`);
         console.log('\n🔐 Admin Credentials:');
@@ -83,6 +106,7 @@ const seedDatabase = async () => {
         console.log('   2. Start frontend: npm run dev');
         console.log('   3. Login with admin credentials');
         console.log('   4. Access admin dashboard from profile menu');
+        console.log('   5. Counter billing: login as counter staff, open /pos');
         console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n');
 
         process.exit(0);

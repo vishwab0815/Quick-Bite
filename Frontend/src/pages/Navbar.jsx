@@ -1,6 +1,6 @@
 import { Link, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { FiMenu, FiX, FiUser, FiLogOut, FiShoppingCart, FiPackage, FiSettings } from 'react-icons/fi';
+import { FiMenu, FiX, FiUser, FiLogOut, FiShoppingCart, FiPackage, FiSettings, FiMonitor } from 'react-icons/fi';
 import { RiRestaurantFill } from 'react-icons/ri';
 import { useEffect, useState, useRef } from 'react';
 import { createPortal } from 'react-dom';
@@ -223,6 +223,16 @@ const Navbar = ({ user: userProp }) => {
                                                 >
                                                     <FiSettings className="mr-3 text-base" />
                                                     Admin Dashboard
+                                                </Link>
+                                            )}
+                                            {['admin', 'staff'].includes(user?.role) && (
+                                                <Link
+                                                    to="/pos"
+                                                    className="flex items-center w-full px-4 py-2.5 text-sm text-gray-700 hover:bg-gradient-to-r hover:from-orange-50 hover:to-pink-50 hover:text-orange-600 transition-all font-medium"
+                                                    onClick={() => setShowDropdown(false)}
+                                                >
+                                                    <FiMonitor className="mr-3 text-base" />
+                                                    Billing Counter
                                                 </Link>
                                             )}
                                             <div className="my-1 border-t border-gray-100"></div>
