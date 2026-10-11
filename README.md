@@ -1,14 +1,14 @@
 # 🍽️ QuickBite - Restaurant Billing & Token System
 
 Built for **Sri Ganesh Restaurant**: a MERN-stack counter billing system with Rameshwaram-style tokens,
-kitchen screens, a live token TV, WhatsApp bills, thermal-printer receipts, an owner dashboard and a public
-landing page with the live menu. (The original QuickBite online-ordering website is still included.)
+kitchen screens, a live token TV, WhatsApp bills, thermal-printer receipts, an owner dashboard and a QuickBite
+product landing page that shows the restaurant's live menu and token board. (The original QuickBite online-ordering website is still included.)
 
 **Main screens**
 
 | Who | Where | What |
 |-----|-------|------|
-| Customers | `/` | Landing page: restaurant info, today's live menu, how the token system works |
+| Everyone | `/` | QuickBite landing page: animated product demo, features, live menu and token counts from the counter, FAQ |
 | Customers | `/pos/display` | Live token TV ("Ready - collect at Dosa Counter") |
 | Cashier | `/pos` | Fast billing: tap or type dishes, cash / UPI / card, automatic printing, WhatsApp bill |
 | Kitchen | `/pos/kitchen` | Per-counter tickets, Ready / Served, coupon QR scanning |
@@ -454,7 +454,7 @@ the token TV (`/pos/display`) shows "Ready – collect at Dosa Counter" → staf
 | Today's bills, cash check & reports | `/pos/bills` | Staff / Admin (only admin can cancel) |
 | Menu: add / edit / remove items, bulk import | `/pos/menu` | Admin |
 | Staff logins: add, reset password, remove | `/pos/staff` | Admin |
-| Landing page | `/` | Public: name, hours, address, phone, today's live menu (sold-out dishes hidden) |
+| Landing page | `/` | Public QuickBite product page with live data: restaurant name, hours, address, today's menu (sold-out dishes hidden), tokens preparing / ready |
 | Token TV | `/pos/display` | Public (no prices or customer details) |
 | E-receipt | `/receipt/:id` | Public link (sent on WhatsApp / QR on bill) |
 
