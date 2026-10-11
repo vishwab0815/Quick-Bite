@@ -2,12 +2,21 @@ import { useState } from 'react';
 import PropTypes from 'prop-types';
 import { FiCheck } from 'react-icons/fi';
 import { Card } from '../../components/pos/DashboardCharts';
-import { Button, EmptyState, ErrorNote, Field, Table, inputClass } from '../../components/console/ui';
+import { Button, DataTable, EmptyState, ErrorNote, Field, inputClass } from '../../components/console/ui';
 import { consoleApi, apiError, daysLeftLabel, formatDate, PLAN_LABELS } from '../../utils/console';
 import { formatINR } from '../../utils/pos';
 import { showToast } from '../../utils/toast';
 
 const METHODS = { upi: 'UPI', bank: 'Bank transfer', cash: 'Cash', card: 'Card', other: 'Other' };
+
+const PAYMENT_COLUMNS = [
+    { label: 'Paid on', className: 'whitespace-nowrap', render: (entry) => <span className="font-medium">{formatDate(entry.paidOn)}</span> },
+    { label: 'Amount', card: 'aside', render: (entry) => <span className="font-semibold tabular-nums">{formatINR(entry.amount)}</span> },
+    { label: 'Months', render: (entry) => entry.months },
+    { label: 'Paid by', render: (entry) => METHODS[entry.method] || entry.method },
+    { label: 'Covers until', className: 'whitespace-nowrap', render: (entry) => formatDate(entry.periodEnd) },
+    { label: 'Reference', className: 'text-stone-600', render: (entry) => entry.reference || entry.note || '—' },
+];
 
 const toDateInput = (date) => new Date(date).toISOString().slice(0, 10);
 
@@ -138,18 +147,7 @@ export default function HotelSubscription({ hotel, onChanged }) {
 
             <Card title="Payment history">
                 {hotel.payments.length === 0 ? <EmptyState>No payments recorded yet.</EmptyState> : (
-                    <Table head={['Paid on', 'Amount', 'Months', 'Paid by', 'Reference', 'Covers until']}>
-                        {hotel.payments.map((entry) => (
-                            <tr key={entry._id}>
-                                <td className="whitespace-nowrap px-4 py-3">{formatDate(entry.paidOn)}</td>
-                                <td className="px-4 py-3 font-semibold tabular-nums">{formatINR(entry.amount)}</td>
-                                <td className="px-4 py-3">{entry.months}</td>
-                                <td className="px-4 py-3">{METHODS[entry.method] || entry.method}</td>
-                                <td className="px-4 py-3 text-stone-600">{entry.reference || entry.note || '—'}</td>
-                                <td className="whitespace-nowrap px-4 py-3">{formatDate(entry.periodEnd)}</td>
-                            </tr>
-                        ))}
-                    </Table>
+                    <DataTable columns={PAYMENT_COLUMNS} rows={hotel.payments} rowKey={(entry) => entry._id} />
                 )}
             </Card>
         </div>

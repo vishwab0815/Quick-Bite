@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import PropTypes from 'prop-types';
 import { FiPlus, FiSearch } from 'react-icons/fi';
 import Skeleton from '../../components/pos/Skeleton';
-import { PageHeader, StatusBadge, Button, Modal, Field, inputClass, ErrorNote, EmptyState, Table } from '../../components/console/ui';
+import { PageHeader, StatusBadge, Button, Modal, Field, inputClass, ErrorNote, EmptyState, DataTable } from '../../components/console/ui';
 import { consoleApi, apiError, compactINR, daysLeftLabel, formatDate, timeAgo, PLAN_LABELS } from '../../utils/console';
 import { formatINR } from '../../utils/pos';
 import { showToast } from '../../utils/toast';
@@ -18,6 +18,60 @@ const FILTERS = [
     { key: 'expired', label: 'Expired', match: (hotel) => hotel.subscription.state === 'expired' },
     { key: 'disabled', label: 'Disabled', match: (hotel) => hotel.subscription.state === 'disabled' },
     { key: 'trial', label: 'Free trial', match: (hotel) => hotel.subscription.plan === 'trial' },
+];
+
+const HOTEL_COLUMNS = [
+    {
+        label: 'Hotel',
+        render: (hotel) => (
+            <>
+                <p className="font-semibold text-stone-900">{hotel.name}</p>
+                <p className="text-xs text-stone-500">{hotel.city || `/${hotel.slug}`}</p>
+            </>
+        ),
+    },
+    { label: 'Status', card: 'aside', render: (hotel) => <StatusBadge state={hotel.subscription.state} /> },
+    {
+        label: 'Plan',
+        className: 'whitespace-nowrap',
+        render: (hotel) => (
+            <>
+                <p className="font-medium">{PLAN_LABELS[hotel.subscription.plan]}</p>
+                <p className="text-xs text-stone-500">{hotel.subscription.monthlyFee ? `${formatINR(hotel.subscription.monthlyFee)}/mo` : '—'}</p>
+            </>
+        ),
+    },
+    {
+        label: 'Paid until',
+        className: 'whitespace-nowrap',
+        render: (hotel) => (
+            <>
+                <p>{formatDate(hotel.subscription.paidUntil)}</p>
+                <p className={`text-xs ${hotel.subscription.daysLeft < 0 ? 'text-rose-700' : 'text-stone-500'}`}>{daysLeftLabel(hotel.subscription.daysLeft)}</p>
+            </>
+        ),
+    },
+    {
+        label: 'Today',
+        className: 'whitespace-nowrap tabular-nums',
+        render: (hotel) => (
+            <>
+                <p className="font-semibold">{formatINR(hotel.stats.salesToday)}</p>
+                <p className="text-xs text-stone-500">{hotel.stats.ordersToday} orders</p>
+            </>
+        ),
+    },
+    {
+        label: 'Last 30 days',
+        className: 'whitespace-nowrap tabular-nums',
+        render: (hotel) => (
+            <>
+                <p className="font-semibold">{compactINR(hotel.stats.sales30)}</p>
+                <p className="text-xs text-stone-500">{hotel.stats.orders30.toLocaleString('en-IN')} orders</p>
+            </>
+        ),
+    },
+    { label: 'Last order', className: 'whitespace-nowrap text-stone-600', render: (hotel) => timeAgo(hotel.stats.lastOrderAt) },
 ];
 
 const slugify = (text) => text.toLowerCase().normalize('NFKD').replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 50);
@@ -157,40 +211,12 @@ export default function Hotels() {
             ) : visible.length === 0 ? (
                 <EmptyState>{hotels.length === 0 ? 'No hotels yet - add your first one.' : 'No hotels match.'}</EmptyState>
             ) : (
-                <Table head={['Hotel', 'Status', 'Plan', 'Paid until', 'Today', 'Last 30 days', 'Last order']}>
-                    {visible.map((hotel) => (
-                        <tr
-                            key={hotel._id}
-                            onClick={() => navigate(`/console/hotels/${hotel._id}`)}
-                            onKeyDown={(event) => { if (event.key === 'Enter') navigate(`/console/hotels/${hotel._id}`); }}
-                            tabIndex={0}
-                            className="cursor-pointer transition-colors hover:bg-stone-50 focus:bg-stone-50 focus:outline-none"
-                        >
-                            <td className="px-4 py-3.5">
-                                <p className="font-semibold text-stone-900">{hotel.name}</p>
-                                <p className="text-xs text-stone-500">{hotel.city || `/${hotel.slug}`}</p>
-                            </td>
-                            <td className="px-4 py-3.5"><StatusBadge state={hotel.subscription.state} /></td>
-                            <td className="whitespace-nowrap px-4 py-3.5">
-                                <p className="font-medium">{PLAN_LABELS[hotel.subscription.plan]}</p>
-                                <p className="text-xs text-stone-500">{hotel.subscription.monthlyFee ? `${formatINR(hotel.subscription.monthlyFee)}/mo` : '—'}</p>
-                            </td>
-                            <td className="whitespace-nowrap px-4 py-3.5">
-                                <p>{formatDate(hotel.subscription.paidUntil)}</p>
-                                <p className={`text-xs ${hotel.subscription.daysLeft < 0 ? 'text-rose-700' : 'text-stone-500'}`}>{daysLeftLabel(hotel.subscription.daysLeft)}</p>
-                            </td>
-                            <td className="whitespace-nowrap px-4 py-3.5 tabular-nums">
-                                <p className="font-semibold">{formatINR(hotel.stats.salesToday)}</p>
-                                <p className="text-xs text-stone-500">{hotel.stats.ordersToday} orders</p>
-                            </td>
-                            <td className="whitespace-nowrap px-4 py-3.5 tabular-nums">
-                                <p className="font-semibold">{compactINR(hotel.stats.sales30)}</p>
-                                <p className="text-xs text-stone-500">{hotel.stats.orders30.toLocaleString('en-IN')} orders</p>
-                            </td>
-                            <td className="whitespace-nowrap px-4 py-3.5 text-stone-600">{timeAgo(hotel.stats.lastOrderAt)}</td>
-                        </tr>
-                    ))}
-                </Table>
+                <DataTable
+                    columns={HOTEL_COLUMNS}
+                    rows={visible}
+                    rowKey={(hotel) => hotel._id}
+                    onRowClick={(hotel) => navigate(`/console/hotels/${hotel._id}`)}
+                />
             )}
 
             {adding && (

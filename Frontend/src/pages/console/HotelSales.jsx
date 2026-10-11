@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import PropTypes from 'prop-types';
 import Skeleton from '../../components/pos/Skeleton';
-import { EmptyState, Kpi, Table, inputClass } from '../../components/console/ui';
+import { DataTable, EmptyState, Kpi, inputClass } from '../../components/console/ui';
 import { consoleApi } from '../../utils/console';
 import { formatINR, formatTime, todayInTimeZone } from '../../utils/pos';
 import { useCachedQuery } from '../../utils/useCachedQuery';
@@ -12,6 +12,34 @@ const STATUS_STYLE = {
     ready: 'bg-emerald-50 text-emerald-700',
     preparing: 'bg-amber-50 text-amber-800',
 };
+
+const billColumns = (timeZone) => [
+    { label: 'Token', className: 'font-bold tabular-nums', render: (bill) => <span className="font-bold tabular-nums">#{bill.tokenNumber}</span> },
+    {
+        label: 'Amount',
+        card: 'aside',
+        className: 'whitespace-nowrap',
+        render: (bill) => <span className={`font-semibold tabular-nums ${bill.status === 'cancelled' ? 'line-through' : ''}`}>{formatINR(bill.total)}</span>,
+    },
+    {
+        label: 'Status',
+        card: 'aside',
+        render: (bill) => (
+            <span className={`rounded-full px-2 py-0.5 text-xs font-semibold capitalize ${STATUS_STYLE[bill.status]}`} title={bill.cancelReason || undefined}>
+                {bill.status}
+            </span>
+        ),
+    },
+    { label: 'Bill no.', className: 'whitespace-nowrap', render: (bill) => <span className="font-mono text-xs">{bill.billNumber}</span> },
+    { label: 'Time', className: 'whitespace-nowrap', render: (bill) => formatTime(bill.createdAt, timeZone) },
+    { label: 'Paid by', render: (bill) => <span className="uppercase">{bill.payment.mode}</span> },
+    {
+        label: 'Items',
+        card: 'full',
+        className: 'max-w-[280px]',
+        render: (bill) => <span className="line-clamp-2">{bill.items.map((item) => `${item.quantity}× ${item.name}`).join(', ')}</span>,
+    },
+];
 
 /**
  * One hotel's bills for any day, with the day's totals
@@ -43,25 +71,12 @@ export default function HotelSales({ hotelId, timeZone }) {
                     </div>
 
                     {data.bills.length === 0 ? <EmptyState>No bills on this day.</EmptyState> : (
-                        <Table head={['Token', 'Bill no.', 'Time', 'Items', 'Paid by', 'Amount', 'Status']}>
-                            {data.bills.map((bill) => (
-                                <tr key={bill._id} className={bill.status === 'cancelled' ? 'text-stone-400' : ''}>
-                                    <td className="px-4 py-3 font-bold tabular-nums">#{bill.tokenNumber}</td>
-                                    <td className="whitespace-nowrap px-4 py-3 font-mono text-xs">{bill.billNumber}</td>
-                                    <td className="whitespace-nowrap px-4 py-3">{formatTime(bill.createdAt, timeZone)}</td>
-                                    <td className="max-w-[280px] px-4 py-3">
-                                        <span className="line-clamp-2">{bill.items.map((item) => `${item.quantity}× ${item.name}`).join(', ')}</span>
-                                    </td>
-                                    <td className="px-4 py-3 uppercase">{bill.payment.mode}</td>
-                                    <td className={`whitespace-nowrap px-4 py-3 font-semibold tabular-nums ${bill.status === 'cancelled' ? 'line-through' : ''}`}>{formatINR(bill.total)}</td>
-                                    <td className="px-4 py-3">
-                                        <span className={`rounded-full px-2 py-0.5 text-xs font-semibold capitalize ${STATUS_STYLE[bill.status]}`} title={bill.cancelReason || undefined}>
-                                            {bill.status}
-                                        </span>
-                                    </td>
-                                </tr>
-                            ))}
-                        </Table>
+                        <DataTable
+                            columns={billColumns(timeZone)}
+                            rows={data.bills}
+                            rowKey={(bill) => bill._id}
+                            rowClassName={(bill) => (bill.status === 'cancelled' ? 'text-stone-400' : '')}
+                        />
                     )}
                 </>
             )}

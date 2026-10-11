@@ -5,7 +5,7 @@ import { FiArrowLeft, FiExternalLink, FiPower, FiKey } from 'react-icons/fi';
 import { Card, DailyColumns, PaymentMix, BarList } from '../../components/pos/DashboardCharts';
 import Skeleton from '../../components/pos/Skeleton';
 import VegDot from '../../components/pos/VegDot';
-import { Button, EmptyState, ErrorNote, Field, Kpi, Modal, StatusBadge, Table, inputClass } from '../../components/console/ui';
+import { Button, DataTable, EmptyState, ErrorNote, Field, Kpi, Modal, StatusBadge, inputClass } from '../../components/console/ui';
 import { consoleApi, apiError, compactINR, daysLeftLabel, formatDate, timeAgo, PLAN_LABELS } from '../../utils/console';
 import { formatINR } from '../../utils/pos';
 import { showToast } from '../../utils/toast';
@@ -122,26 +122,25 @@ const OverviewTab = ({ data }) => {
 
 OverviewTab.propTypes = { data: PropTypes.object.isRequired };
 
+const MENU_COLUMNS = [
+    { label: 'Dish', render: (item) => <span className="flex items-center gap-2.5 font-medium"><VegDot isVeg={item.isVeg !== false} /> {item.name}</span> },
+    { label: 'Price', card: 'aside', render: (item) => <span className="font-semibold tabular-nums">{formatINR(item.price)}</span> },
+    { label: 'Food counter', className: 'text-stone-600', render: (item) => item.counter },
+    { label: 'Category', className: 'text-stone-600', render: (item) => item.category },
+    {
+        label: 'Today',
+        render: (item) => (item.isAvailable === false
+            ? <span className="rounded-full bg-rose-50 px-2 py-0.5 text-xs font-semibold text-rose-700">Sold out</span>
+            : <span className="text-xs text-stone-500">Available</span>),
+    },
+];
+
 const MenuTab = ({ hotelId }) => {
     const { data: items } = useCachedQuery(`console:menu:${hotelId}`, () => consoleApi.get(`/hotels/${hotelId}/menu`).then((res) => res.data.items));
     if (!items) return <Skeleton className="h-72" />;
     if (items.length === 0) return <EmptyState>This hotel has not added a menu yet.</EmptyState>;
     return (
-        <Table head={['Dish', 'Food counter', 'Category', 'Price', 'Today']}>
-            {items.map((item) => (
-                <tr key={item._id}>
-                    <td className="px-4 py-3"><span className="flex items-center gap-2.5 font-medium"><VegDot isVeg={item.isVeg !== false} /> {item.name}</span></td>
-                    <td className="px-4 py-3 text-stone-600">{item.counter}</td>
-                    <td className="px-4 py-3 text-stone-600">{item.category}</td>
-                    <td className="px-4 py-3 font-semibold tabular-nums">{formatINR(item.price)}</td>
-                    <td className="px-4 py-3">
-                        {item.isAvailable === false
-                            ? <span className="rounded-full bg-rose-50 px-2 py-0.5 text-xs font-semibold text-rose-700">Sold out</span>
-                            : <span className="text-xs text-stone-500">Available</span>}
-                    </td>
-                </tr>
-            ))}
-        </Table>
+        <DataTable columns={MENU_COLUMNS} rows={items} rowKey={(item) => item._id} />
     );
 };
 
@@ -189,29 +188,37 @@ ResetPasswordModal.propTypes = {
     onClose: PropTypes.func.isRequired,
 };
 
+const staffColumns = (onReset) => [
+    { label: 'Name', render: (member) => <span className="font-medium">{member.name}</span> },
+    {
+        label: 'Role',
+        card: 'aside',
+        render: (member) => (
+            <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${member.role === 'admin' ? 'bg-orange-50 text-orange-800' : 'bg-stone-100 text-stone-700'}`}>
+                {member.role === 'admin' ? 'Owner' : 'Staff'}
+            </span>
+        ),
+    },
+    { label: 'Login', card: 'full', className: 'text-stone-600', render: (member) => member.email },
+    { label: 'Added', className: 'text-stone-600', render: (member) => formatDate(member.createdAt) },
+    {
+        label: 'Actions',
+        card: 'full',
+        cardLabel: false,
+        className: 'text-right',
+        render: (member) => (
+            <Button variant="secondary" className="w-full px-3 py-1.5 text-xs md:w-auto" onClick={() => onReset(member)}><FiKey /> Reset password</Button>
+        ),
+    },
+];
+
 const StaffTab = ({ hotelId }) => {
     const { data: staff } = useCachedQuery(`console:staff:${hotelId}`, () => consoleApi.get(`/hotels/${hotelId}/staff`).then((res) => res.data.staff));
     const [resetting, setResetting] = useState(null);
     if (!staff) return <Skeleton className="h-48" />;
     return (
         <>
-            <Table head={['Name', 'Login', 'Role', 'Added', '']}>
-                {staff.map((member) => (
-                    <tr key={member._id}>
-                        <td className="px-4 py-3 font-medium">{member.name}</td>
-                        <td className="px-4 py-3 text-stone-600">{member.email}</td>
-                        <td className="px-4 py-3">
-                            <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${member.role === 'admin' ? 'bg-orange-50 text-orange-800' : 'bg-stone-100 text-stone-700'}`}>
-                                {member.role === 'admin' ? 'Owner' : 'Staff'}
-                            </span>
-                        </td>
-                        <td className="px-4 py-3 text-stone-600">{formatDate(member.createdAt)}</td>
-                        <td className="px-4 py-3 text-right">
-                            <Button variant="secondary" className="px-3 py-1.5 text-xs" onClick={() => setResetting(member)}><FiKey /> Reset password</Button>
-                        </td>
-                    </tr>
-                ))}
-            </Table>
+            <DataTable columns={staffColumns(setResetting)} rows={staff} rowKey={(member) => member._id} />
             {resetting && <ResetPasswordModal hotelId={hotelId} member={resetting} onClose={() => setResetting(null)} />}
         </>
     );

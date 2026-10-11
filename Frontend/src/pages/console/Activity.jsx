@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom';
 import Skeleton from '../../components/pos/Skeleton';
-import { EmptyState, PageHeader, Table } from '../../components/console/ui';
+import { DataTable, EmptyState, PageHeader } from '../../components/console/ui';
 import { consoleApi, formatDateTime } from '../../utils/console';
 import { formatINR } from '../../utils/pos';
 import { useCachedQuery } from '../../utils/useCachedQuery';
@@ -27,6 +27,18 @@ const describe = (entry) => {
     }
 };
 
+const COLUMNS = [
+    { label: 'Action', className: 'whitespace-nowrap font-medium', render: (entry) => <span className="font-medium">{ACTIONS[entry.action] || entry.action}</span> },
+    { label: 'When', card: 'aside', className: 'whitespace-nowrap text-stone-600', render: (entry) => <span className="text-xs text-stone-500 md:text-sm md:text-stone-600">{formatDateTime(entry.createdAt)}</span> },
+    {
+        label: 'Hotel',
+        render: (entry) => (entry.hotel ? <Link to={`/console/hotels/${entry.hotel}`} className="font-semibold hover:underline">{entry.hotelName}</Link> : '—'),
+    },
+    { label: 'By', card: 'full', className: 'text-stone-600', render: (entry) => entry.actorEmail || '—' },
+    { label: 'Details', card: 'full', className: 'max-w-[260px] truncate text-stone-600', render: (entry) => describe(entry) || '—' },
+    { label: 'IP address', render: (entry) => <span className="font-mono text-xs text-stone-500">{entry.ip}</span> },
+];
+
 const fetchAudit = () => consoleApi.get('/audit').then((res) => res.data.entries);
 
 export default function Activity() {
@@ -36,20 +48,7 @@ export default function Activity() {
         <>
             <PageHeader title="Activity log" subtitle="Every console sign-in and change - who, what, when and from where" />
             {!entries ? <Skeleton className="h-72" /> : entries.length === 0 ? <EmptyState>Nothing yet.</EmptyState> : (
-                <Table head={['When', 'Action', 'Hotel', 'Details', 'By', 'IP address']}>
-                    {entries.map((entry) => (
-                        <tr key={entry._id}>
-                            <td className="whitespace-nowrap px-4 py-3 text-stone-600">{formatDateTime(entry.createdAt)}</td>
-                            <td className="whitespace-nowrap px-4 py-3 font-medium">{ACTIONS[entry.action] || entry.action}</td>
-                            <td className="px-4 py-3">
-                                {entry.hotel ? <Link to={`/console/hotels/${entry.hotel}`} className="font-semibold hover:underline">{entry.hotelName}</Link> : '—'}
-                            </td>
-                            <td className="max-w-[260px] truncate px-4 py-3 text-stone-600">{describe(entry) || '—'}</td>
-                            <td className="px-4 py-3 text-stone-600">{entry.actorEmail}</td>
-                            <td className="px-4 py-3 font-mono text-xs text-stone-500">{entry.ip}</td>
-                        </tr>
-                    ))}
-                </Table>
+                <DataTable columns={COLUMNS} rows={entries} rowKey={(entry) => entry._id} />
             )}
         </>
     );

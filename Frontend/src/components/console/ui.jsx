@@ -116,21 +116,95 @@ export const ErrorNote = ({ message }) => (message
 
 ErrorNote.propTypes = { message: PropTypes.string };
 
-/** Horizontally scrollable table shell with sticky-looking header styling */
-export const Table = ({ head, children }) => (
-    <div className="overflow-x-auto rounded-2xl border border-stone-200/80 bg-white shadow-[0_1px_2px_rgba(28,25,23,0.05)]">
-        <table className="w-full min-w-[640px] text-left text-sm">
-            <thead className="border-b border-stone-200 bg-stone-50/80 text-xs font-semibold uppercase tracking-wide text-stone-500">
-                <tr>{head.map((cell) => <th key={cell} className="whitespace-nowrap px-4 py-3">{cell}</th>)}</tr>
-            </thead>
-            <tbody className="divide-y divide-stone-100">{children}</tbody>
-        </table>
-    </div>
-);
+/**
+ * Rows of data: a table on wider screens, one card per row on phones.
+ *
+ * Each column: { label, render(row), className?, card? }
+ *   cardLabel: false hides the column name on the card (e.g. action buttons)
+ *   card: 'title' - big text at the top of the card (defaults to the first column)
+ *         'aside' - top-right of the card (status badge, amount)
+ *         'full'  - spans the card's full width (long text, actions)
+ *         'hide'  - table only
+ * Other columns appear in the card as label / value pairs.
+ */
+export const DataTable = ({ columns, rows, rowKey, onRowClick, rowClassName }) => {
+    const titleColumn = columns.find((column) => column.card === 'title') || columns[0];
+    const asideColumns = columns.filter((column) => column.card === 'aside');
+    const detailColumns = columns.filter((column) => column !== titleColumn && !['aside', 'hide'].includes(column.card));
+    const open = (row) => onRowClick?.(row);
+    const keyOpen = (row) => (event) => { if (event.key === 'Enter') open(row); };
 
-Table.propTypes = {
-    head: PropTypes.arrayOf(PropTypes.string).isRequired,
-    children: PropTypes.node,
+    return (
+        <>
+            {/* Phones: cards */}
+            <ul className="space-y-3 md:hidden">
+                {rows.map((row) => (
+                    <li
+                        key={rowKey(row)}
+                        {...(onRowClick && { onClick: () => open(row), onKeyDown: keyOpen(row), tabIndex: 0, role: 'button' })}
+                        className={`rounded-2xl border border-stone-200/80 bg-white p-4 shadow-[0_1px_2px_rgba(28,25,23,0.05)] ${
+                            onRowClick ? 'cursor-pointer transition-colors active:bg-stone-50' : ''
+                        } ${rowClassName?.(row) || ''}`}
+                    >
+                        <div className="flex items-start justify-between gap-3">
+                            <div className="min-w-0 text-[15px]">{titleColumn.render(row)}</div>
+                            {asideColumns.length > 0 && (
+                                <div className="flex shrink-0 flex-col items-end gap-1 text-right">
+                                    {asideColumns.map((column) => <div key={column.label}>{column.render(row)}</div>)}
+                                </div>
+                            )}
+                        </div>
+                        {detailColumns.length > 0 && (
+                            <dl className="mt-3 grid grid-cols-2 gap-x-4 gap-y-3 border-t border-stone-100 pt-3 text-sm">
+                                {detailColumns.map((column) => (
+                                    <div key={column.label} className={column.card === 'full' ? 'col-span-2' : 'min-w-0'}>
+                                        {column.cardLabel !== false && <dt className="text-[11px] font-semibold uppercase tracking-wide text-stone-400">{column.label}</dt>}
+                                        <dd className="mt-0.5 break-words">{column.render(row)}</dd>
+                                    </div>
+                                ))}
+                            </dl>
+                        )}
+                    </li>
+                ))}
+            </ul>
+
+            {/* Tablets and up: table */}
+            <div className="hidden overflow-x-auto rounded-2xl border border-stone-200/80 bg-white shadow-[0_1px_2px_rgba(28,25,23,0.05)] md:block">
+                <table className="w-full text-left text-sm">
+                    <thead className="border-b border-stone-200 bg-stone-50/80 text-xs font-semibold uppercase tracking-wide text-stone-500">
+                        <tr>{columns.map((column) => <th key={column.label} className="whitespace-nowrap px-4 py-3">{column.label}</th>)}</tr>
+                    </thead>
+                    <tbody className="divide-y divide-stone-100">
+                        {rows.map((row) => (
+                            <tr
+                                key={rowKey(row)}
+                                {...(onRowClick && { onClick: () => open(row), onKeyDown: keyOpen(row), tabIndex: 0 })}
+                                className={`${onRowClick ? 'cursor-pointer transition-colors hover:bg-stone-50 focus:bg-stone-50 focus:outline-none' : ''} ${rowClassName?.(row) || ''}`}
+                            >
+                                {columns.map((column) => (
+                                    <td key={column.label} className={`px-4 py-3 ${column.className || ''}`}>{column.render(row)}</td>
+                                ))}
+                            </tr>
+                        ))}
+                    </tbody>
+                </table>
+            </div>
+        </>
+    );
+};
+
+DataTable.propTypes = {
+    columns: PropTypes.arrayOf(PropTypes.shape({
+        label: PropTypes.string.isRequired,
+        render: PropTypes.func.isRequired,
+        className: PropTypes.string,
+        card: PropTypes.oneOf(['title', 'aside', 'full', 'hide']),
+        cardLabel: PropTypes.bool,
+    })).isRequired,
+    rows: PropTypes.array.isRequired,
+    rowKey: PropTypes.func.isRequired,
+    onRowClick: PropTypes.func,
+    rowClassName: PropTypes.func,
 };
 
 /** Key figure: label, big value and a short note underneath */
