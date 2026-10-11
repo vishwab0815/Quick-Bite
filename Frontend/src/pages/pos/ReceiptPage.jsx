@@ -23,8 +23,8 @@ export default function ReceiptPage() {
     const handlePrintDone = useCallback(() => setPrintJob(null), []);
 
     return (
-        <div className="flex min-h-screen flex-col items-center bg-gradient-to-br from-orange-50 via-pink-50 to-purple-50 px-4 py-8 text-gray-900 [color-scheme:light]">
-            {error && <p className="mt-20 rounded-xl bg-white px-6 py-4 font-semibold text-gray-700 shadow">{error}</p>}
+        <div className="flex min-h-screen flex-col items-center pos-app bg-stone-100 px-4 py-8">
+            {error && <p className="mt-20 rounded-xl bg-white px-6 py-4 font-semibold text-stone-700 shadow">{error}</p>}
 
             {!data && !error && (
                 <div className="mt-20 h-12 w-12 animate-spin rounded-full border-4 border-orange-500 border-t-transparent" />
@@ -37,7 +37,7 @@ export default function ReceiptPage() {
                     </div>
                     <button
                         onClick={() => setPrintJob({ bill: data.bill, coupons: false })}
-                        className="mt-4 flex items-center gap-2 rounded-xl bg-gradient-to-r from-orange-500 to-pink-500 px-5 py-3 font-bold text-white shadow-lg"
+                        className="mt-4 flex items-center gap-2 rounded-xl bg-gradient-to-r from-orange-500 to-rose-500 px-5 py-3 font-bold text-white shadow-lg"
                     >
                         <FiPrinter /> Print / Save as PDF
                     </button>

@@ -14,6 +14,7 @@ const User = require('./models/userauthentication.model');
 const Order = require('./models/order.model');
 const Recipe = require('./models/fooditems.model');
 const MenuItem = require('./models/menuItem.model');
+const Customer = require('./models/customer.model');
 const Bill = require('./models/bill.model');
 const Sequence = require('./models/sequence.model');
 const foodData = require('./food.json');
@@ -65,6 +66,7 @@ const seedDatabase = async () => {
         await Recipe.deleteMany({});
         console.log('   ✓ Food items cleared');
         await MenuItem.deleteMany({});
+        await Customer.deleteMany({});
         await Bill.deleteMany({});
         await Sequence.deleteMany({});
         console.log('   ✓ Counter menu, bills & token numbers cleared');

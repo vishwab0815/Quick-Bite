@@ -77,7 +77,7 @@ export default function TokenDisplay() {
         .slice(0, MAX_READY);
 
     return (
-        <div className="flex min-h-screen flex-col bg-gradient-to-br from-gray-950 via-gray-900 to-gray-950 p-6 text-white">
+        <div className="pos-app flex min-h-screen flex-col bg-gradient-to-br from-stone-950 via-stone-900 to-stone-950 p-4 text-white sm:p-6">
             <header className="mb-6 flex items-center justify-between">
                 <h1 className="bg-gradient-to-r from-orange-400 to-pink-400 bg-clip-text text-4xl font-black text-transparent">
                     {board.hotelName || 'QuickBite'}
@@ -95,7 +95,7 @@ export default function TokenDisplay() {
                             <FiVolume2 /> Enable announcements
                         </button>
                     )}
-                    <span className="font-mono text-3xl font-bold text-gray-300">
+                    <span className="font-mono text-3xl font-bold text-stone-300">
                         {clock.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}
                     </span>
                 </div>
@@ -106,11 +106,11 @@ export default function TokenDisplay() {
                     <h2 className="mb-4 text-2xl font-bold uppercase tracking-widest text-amber-400">Preparing</h2>
                     <div className="flex flex-wrap gap-3">
                         {board.preparing.map((token) => (
-                            <span key={token} className="rounded-xl bg-white/10 px-4 py-2 text-4xl font-black text-gray-200">
+                            <span key={token} className="rounded-xl bg-white/10 px-4 py-2 text-4xl font-black text-stone-200">
                                 {token}
                             </span>
                         ))}
-                        {board.preparing.length === 0 && <p className="text-xl text-gray-500">—</p>}
+                        {board.preparing.length === 0 && <p className="text-xl text-stone-500">—</p>}
                     </div>
                 </section>
 
@@ -122,7 +122,7 @@ export default function TokenDisplay() {
                                 key={`${entry.tokenNumber}-${entry.counters.join()}`}
                                 className={`rounded-2xl p-4 text-center transition ${
                                     highlight.has(entry.tokenNumber)
-                                        ? 'animate-pulse bg-green-500 text-gray-950'
+                                        ? 'animate-pulse bg-green-500 text-stone-950'
                                         : 'bg-green-500/20 text-green-100'
                                 }`}
                             >
@@ -130,7 +130,7 @@ export default function TokenDisplay() {
                                 <p className="mt-2 text-lg font-semibold">{entry.counters.join(' · ')}</p>
                             </div>
                         ))}
-                        {ready.length === 0 && <p className="text-xl text-gray-500">—</p>}
+                        {ready.length === 0 && <p className="text-xl text-stone-500">—</p>}
                     </div>
                 </section>
             </div>

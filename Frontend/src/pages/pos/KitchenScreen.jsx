@@ -105,7 +105,7 @@ export default function KitchenScreen() {
 
     if (!user || !settings) {
         return (
-            <div className="flex min-h-screen items-center justify-center bg-gray-100">
+            <div className="pos-app flex min-h-screen items-center justify-center bg-stone-100">
                 <div className="h-12 w-12 animate-spin rounded-full border-4 border-orange-500 border-t-transparent" />
             </div>
         );
@@ -122,18 +122,18 @@ export default function KitchenScreen() {
             : minutes >= LATE_MINUTES
                 ? 'bg-red-600 text-white animate-pulse'
                 : minutes >= WARN_MINUTES
-                    ? 'bg-amber-400 text-gray-900'
-                    : 'bg-gray-100 text-gray-700';
+                    ? 'bg-amber-400 text-stone-900'
+                    : 'bg-stone-100 text-stone-700';
 
         return (
             <div
                 key={ticket._id}
                 className={`flex flex-col rounded-xl border-2 bg-white p-3 shadow-sm ${
-                    status === 'ready' ? 'border-green-400' : minutes >= LATE_MINUTES ? 'border-red-400' : 'border-gray-200'
+                    status === 'ready' ? 'border-green-400' : minutes >= LATE_MINUTES ? 'border-red-400' : 'border-stone-200'
                 }`}
             >
                 <div className="mb-2 flex items-start justify-between">
-                    <span className="text-4xl font-black text-gray-900">#{ticket.tokenNumber}</span>
+                    <span className="text-4xl font-black text-stone-900">#{ticket.tokenNumber}</span>
                     <span className={`rounded-lg px-2 py-1 font-mono text-sm font-bold ${timerColor}`}>
                         {elapsedLabel(ticket.createdAt, now)}
                     </span>
@@ -141,7 +141,7 @@ export default function KitchenScreen() {
 
                 <ul className="mb-3 flex-1 space-y-1">
                     {ticket.items.map((item) => (
-                        <li key={`${item.itemId}-${item.name}`} className="flex justify-between gap-2 text-base font-semibold text-gray-800">
+                        <li key={`${item.itemId}-${item.name}`} className="flex justify-between gap-2 text-base font-semibold text-stone-800">
                             <span>{item.name}</span>
                             <span className="text-orange-600">× {item.quantity}</span>
                         </li>
@@ -155,7 +155,7 @@ export default function KitchenScreen() {
                                 key={station.counter}
                                 className={`rounded px-1.5 py-0.5 text-xs font-semibold ${
                                     station.status === 'ready' ? 'bg-green-100 text-green-700'
-                                        : station.status === 'served' ? 'bg-gray-200 text-gray-500 line-through'
+                                        : station.status === 'served' ? 'bg-stone-200 text-stone-500 line-through'
                                             : 'bg-orange-100 text-orange-700'
                                 }`}
                             >
@@ -169,7 +169,7 @@ export default function KitchenScreen() {
                     <button
                         onClick={() => updateStatus(ticket, 'ready')}
                         disabled={busyId === ticket._id}
-                        className="flex items-center justify-center gap-2 rounded-lg bg-gradient-to-r from-orange-500 to-pink-500 py-3 text-lg font-bold text-white disabled:opacity-50"
+                        className="flex items-center justify-center gap-2 rounded-lg bg-gradient-to-r from-orange-500 to-rose-500 py-3 text-lg font-bold text-white disabled:opacity-50"
                     >
                         <FiCheck /> Ready
                     </button>
@@ -178,7 +178,7 @@ export default function KitchenScreen() {
                         <button
                             onClick={() => updateStatus(ticket, 'preparing')}
                             disabled={busyId === ticket._id}
-                            className="rounded-lg border border-gray-200 px-3 text-gray-500 hover:bg-gray-50 disabled:opacity-50"
+                            className="rounded-lg border border-stone-200 px-3 text-stone-500 hover:bg-stone-50 disabled:opacity-50"
                             title="Back to preparing"
                         >
                             <FiRotateCcw />
@@ -197,17 +197,17 @@ export default function KitchenScreen() {
     };
 
     return (
-        <div className="flex min-h-screen flex-col bg-gray-100 text-gray-900 [color-scheme:light]">
+        <div className="flex min-h-screen flex-col pos-app bg-stone-100">
             <PosHeader user={user} hotelName={settings.name} />
 
-            <div className="flex flex-wrap items-center gap-2 border-b border-gray-200 bg-white px-3 py-2">
+            <div className="flex flex-wrap items-center gap-2 border-b border-stone-200 bg-white px-3 py-2">
                 <div className="flex gap-1.5 overflow-x-auto">
                     {['All', ...settings.counters].map((name) => (
                         <button
                             key={name}
                             onClick={() => setCounter(name)}
                             className={`whitespace-nowrap rounded-full px-4 py-2 text-sm font-semibold ${
-                                counter === name ? 'bg-gray-900 text-white' : 'bg-gray-100 text-gray-700'
+                                counter === name ? 'bg-stone-900 text-white' : 'bg-stone-100 text-stone-700'
                             }`}
                         >
                             {name}
@@ -215,15 +215,15 @@ export default function KitchenScreen() {
                     ))}
                 </div>
 
-                <form onSubmit={handleScan} className="ml-auto flex min-w-[260px] flex-1 items-center gap-2 sm:max-w-md">
+                <form onSubmit={handleScan} className="flex w-full items-center gap-2 sm:ml-auto sm:w-auto sm:min-w-[300px] sm:max-w-md sm:flex-1">
                     <div className="relative flex-1">
-                        <FiCamera className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                        <FiCamera className="absolute left-3 top-1/2 -translate-y-1/2 text-stone-400" />
                         <input
                             ref={scanRef}
                             value={scanCode}
                             onChange={(e) => setScanCode(e.target.value)}
                             placeholder="Scan coupon QR or type token no."
-                            className="w-full rounded-lg border border-gray-200 py-2 pl-9 pr-3 outline-none focus:border-orange-500"
+                            className="w-full rounded-lg border border-stone-200 py-2 pl-9 pr-3 outline-none focus:border-orange-500"
                             autoFocus
                         />
                     </div>
@@ -234,7 +234,7 @@ export default function KitchenScreen() {
 
                 <button
                     onClick={() => setSoundOn((value) => !value)}
-                    className="rounded-lg p-2 text-gray-600 hover:bg-gray-100"
+                    className="rounded-lg p-2 text-stone-600 hover:bg-stone-100"
                     title={soundOn ? 'Mute new-order beep' : 'Unmute new-order beep'}
                 >
                     {soundOn ? <FiVolume2 /> : <FiVolumeX />}
@@ -249,13 +249,13 @@ export default function KitchenScreen() {
 
             <div className="grid flex-1 gap-4 p-3 lg:grid-cols-[2fr_1fr]">
                 <section>
-                    <h2 className="mb-2 text-sm font-bold uppercase tracking-wider text-gray-500">
+                    <h2 className="mb-2 text-sm font-bold uppercase tracking-wider text-stone-500">
                         Preparing ({preparing.length})
                     </h2>
                     <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
                         {preparing.map(renderTicket)}
                     </div>
-                    {preparing.length === 0 && <p className="py-10 text-center text-gray-400">No pending orders 🎉</p>}
+                    {preparing.length === 0 && <p className="py-10 text-center text-stone-400">No pending orders 🎉</p>}
                 </section>
                 <section>
                     <h2 className="mb-2 text-sm font-bold uppercase tracking-wider text-green-700">

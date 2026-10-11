@@ -6,13 +6,19 @@ import { FiShoppingBag, FiMonitor, FiFileText, FiTv, FiLogOut, FiHome, FiList, F
 const links = [
     { to: '/pos', label: 'Counter', icon: FiShoppingBag, end: true },
     { to: '/pos/kitchen', label: 'Kitchen', icon: FiMonitor },
-    { to: '/pos/bills', label: "Today's Bills", icon: FiFileText },
+    { to: '/pos/bills', label: 'Bills', icon: FiFileText },
     { to: '/pos/menu', label: 'Menu', icon: FiList, adminOnly: true },
     { to: '/pos/staff', label: 'Staff', icon: FiUsers, adminOnly: true },
 ];
 
+const navClass = ({ isActive }) =>
+    `flex items-center gap-2 whitespace-nowrap rounded-full px-3 py-2 text-sm font-semibold transition-colors md:px-4 ${
+        isActive ? 'bg-stone-900 text-white shadow-sm' : 'text-stone-500 hover:bg-stone-100 hover:text-stone-900'
+    }`;
+
 const PosHeader = ({ user, hotelName }) => {
     const navigate = useNavigate();
+    const name = hotelName || 'QuickBite';
 
     const handleLogout = async () => {
         try {
@@ -23,28 +29,25 @@ const PosHeader = ({ user, hotelName }) => {
     };
 
     return (
-        <header className="sticky top-0 z-40 bg-gray-900 text-white shadow-lg">
-            <div className="flex items-center gap-2 px-3 py-2 sm:px-4">
-                <div className="mr-2 flex items-center gap-2">
-                    <span className="rounded-lg bg-gradient-to-r from-orange-500 to-pink-500 px-2 py-1 text-sm font-black">QB</span>
-                    <span className="hidden font-bold sm:inline">{hotelName || 'QuickBite'}</span>
+        <header className="sticky top-0 z-40 border-b border-stone-200/80 bg-white/85 backdrop-blur-md">
+            <div className="flex items-center gap-2 px-3 py-2.5 sm:gap-3 sm:px-5">
+                <div className="flex min-w-0 items-center gap-2.5">
+                    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-orange-500 to-rose-500 text-sm font-extrabold text-white shadow-sm">
+                        {name.trim().charAt(0).toUpperCase()}
+                    </span>
+                    <div className="hidden min-w-0 leading-tight lg:block">
+                        <p className="max-w-[220px] truncate text-sm font-bold">{name}</p>
+                        <p className="text-xs font-medium text-stone-400">Billing counter</p>
+                    </div>
                 </div>
 
-                <nav className="flex flex-1 items-center gap-1 overflow-x-auto">
+                <nav className="flex flex-1 items-center gap-1 overflow-x-auto [scrollbar-width:none]">
                     {links.filter((link) => !link.adminOnly || user?.role === 'admin').map((link) => {
                         const Icon = link.icon;
                         return (
-                            <NavLink
-                                key={link.to}
-                                to={link.to}
-                                end={link.end}
-                                className={({ isActive }) =>
-                                    `flex items-center gap-1.5 whitespace-nowrap rounded-lg px-3 py-2 text-sm font-semibold transition-colors ${
-                                        isActive ? 'bg-gradient-to-r from-orange-500 to-pink-500' : 'text-gray-300 hover:bg-gray-800'
-                                    }`
-                                }
-                            >
-                                <Icon /> {link.label}
+                            <NavLink key={link.to} to={link.to} end={link.end} className={navClass} title={link.label}>
+                                <Icon className="text-base" />
+                                <span className="hidden sm:inline">{link.label}</span>
                             </NavLink>
                         );
                     })}
@@ -52,9 +55,11 @@ const PosHeader = ({ user, hotelName }) => {
                         href="/pos/display"
                         target="_blank"
                         rel="noreferrer"
-                        className="flex items-center gap-1.5 whitespace-nowrap rounded-lg px-3 py-2 text-sm font-semibold text-gray-300 hover:bg-gray-800"
+                        title="Token TV"
+                        className="flex items-center gap-2 whitespace-nowrap rounded-full px-3 py-2 text-sm font-semibold text-stone-500 hover:bg-stone-100 hover:text-stone-900 md:px-4"
                     >
-                        <FiTv /> Token TV
+                        <FiTv className="text-base" />
+                        <span className="hidden sm:inline">Token TV</span>
                     </a>
                 </nav>
 
@@ -62,16 +67,21 @@ const PosHeader = ({ user, hotelName }) => {
                     {user?.role === 'admin' && (
                         <button
                             onClick={() => navigate('/home')}
-                            className="rounded-lg p-2 text-gray-300 hover:bg-gray-800"
+                            className="hidden rounded-full p-2.5 text-stone-500 hover:bg-stone-100 hover:text-stone-900 sm:block"
                             title="Back to website"
                         >
                             <FiHome />
                         </button>
                     )}
-                    <span className="hidden text-sm text-gray-300 md:inline">{user?.name}</span>
+                    <span
+                        className="hidden h-8 w-8 items-center justify-center rounded-full bg-stone-100 text-xs font-bold text-stone-600 md:flex"
+                        title={user?.name}
+                    >
+                        {user?.name?.charAt(0).toUpperCase()}
+                    </span>
                     <button
                         onClick={handleLogout}
-                        className="rounded-lg p-2 text-gray-300 hover:bg-gray-800"
+                        className="rounded-full p-2.5 text-stone-500 hover:bg-stone-100 hover:text-stone-900"
                         title="Sign out"
                     >
                         <FiLogOut />

@@ -424,8 +424,9 @@ npm run dev
 Rameshwaram Cafe-style counter billing for walk-in customers: pay at the counter (cash / UPI / card),
 get a token, and collect food at each food counter.
 
-**Flow:** Cashier bills on `/pos` → bill + token prints (with one coupon per food counter) and/or the
-receipt goes on WhatsApp → each counter sees its items on `/pos/kitchen` and taps **Ready** →
+**Flow:** Cashier taps dishes on `/pos` and confirms → printing starts automatically (no options to pick):
+with a mobile number the bill goes on WhatsApp and only the token slips print; without one, the full bill and
+token slips print → each counter sees its items on `/pos/kitchen` and taps **Ready** →
 the token TV (`/pos/display`) shows "Ready – collect at Dosa Counter" → staff scan the coupon QR
 (or type the token number) to mark it **Served**. A coupon can't be served twice.
 
@@ -445,14 +446,18 @@ counter request, so removing a staff login signs them out immediately.
 **Setup notes**
 - **Hotel details, GST & UPI:** set `HOTEL_*`, `GST_SCHEME`, `GST_RATE`, `PRICES_INCLUDE_GST` and `UPI_VPA` in `Backend/.env`
   (see `.env.example`). Prices always come from the database; bills are numbered per financial year
-  (`QB/2026-27/000123`) and tokens reset daily.
+  (`QB/2026-27/000123`) and tokens reset daily. By default the menu price is the final price: GST is shown as
+  included on the bill and nothing is added on top (`PRICES_INCLUDE_GST=false` adds GST instead).
+- **Regular customers:** every number billed is remembered. Typing the first few digits suggests the customer,
+  fills their name and offers **Repeat last order**, so regulars don't have to repeat themselves.
 - **Menu & food counters:** the counter menu is separate from the website's recipes. Each item has a price, a food
   counter (e.g. `Dosa Counter`, `Beverages`), a category and a veg / non-veg mark. Coupons and kitchen screens are
   grouped by counter. Seeding loads a sample South Indian menu (`Backend/menu.json`); replace it from `/pos/menu`,
   where **Bulk import** accepts lines like `Masala Dosa, 80, Dosa Counter, Dosa, veg` or rows pasted from Excel.
-- **Printing:** receipts print from the browser on 80mm or 58mm thermal rolls (`RECEIPT_PAPER_WIDTH`). For one-tap
-  printing without the dialog, start Chrome on the counter PC with `--kiosk-printing` and set the thermal printer as default.
-  Print bill / counter coupons / WhatsApp can each be switched on or off at the counter.
+- **Printing:** receipts print automatically from the browser on 80mm or 58mm thermal rolls (`RECEIPT_PAPER_WIDTH`).
+  For silent one-click printing (no print dialog), set the thermal printer as the Windows default and open the counter
+  with `tools/start-counter.bat [counter URL]` - it starts Chrome with `--kiosk-printing`. Set
+  `PRINT_COUNTER_COUPONS=false` to print a single bill instead of per-counter token slips.
 - **WhatsApp receipts:** works out of the box via a free "Send on WhatsApp" link (wa.me). For fully automatic sending,
   create a *Utility* template in Meta WhatsApp Manager and set `WHATSAPP_TOKEN`, `WHATSAPP_PHONE_NUMBER_ID` and
   `WHATSAPP_TEMPLATE_NAME` (template text is in `.env.example`). Receipt links need the frontend hosted publicly

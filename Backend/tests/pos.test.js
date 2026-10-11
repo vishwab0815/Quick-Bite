@@ -125,6 +125,23 @@ describe('counter billing', () => {
         assert.ok(decodeURIComponent(res.body.whatsapp.link).includes(`/receipt/${bill2.publicId}`));
     });
 
+    it('remembers customers so the counter can find them by the first digits', async () => {
+        // The visit is recorded in the background - give it a moment
+        let customers = [];
+        for (let attempt = 0; attempt < 20 && customers.length === 0; attempt++) {
+            customers = (await cashier.get('/pos/customers').query({ phone: '98765' })).body.customers;
+            if (customers.length === 0) await new Promise((resolve) => setTimeout(resolve, 50));
+        }
+        assert.equal(customers.length, 1);
+        assert.equal(customers[0].phone, '9876543210');
+        assert.equal(customers[0].name, 'Ravi');
+        assert.equal(customers[0].visits, 1);
+        assert.deepEqual(customers[0].lastItems.map((item) => item.name), ['Masala Dosa']);
+
+        assert.deepEqual((await cashier.get('/pos/customers').query({ phone: '98' })).body.customers, []);
+        assert.deepEqual((await cashier.get('/pos/customers').query({ phone: '70000' })).body.customers, []);
+    });
+
     it('shows each counter only its own items and tracks ready / served', async () => {
         const kitchen = await cashier.get('/pos/kitchen').query({ counter: 'Beverages' });
         assert.equal(kitchen.body.tickets.length, 1);

@@ -2,6 +2,7 @@ const express = require('express');
 const PosController = require('../controllers/pos.controller');
 const MenuController = require('../controllers/menu.controller');
 const StaffController = require('../controllers/staff.controller');
+const CustomerController = require('../controllers/customer.controller');
 const { authenticateToken, requireActiveRole } = require('../middleware/auth');
 const posRouter = express.Router();
 
@@ -17,6 +18,7 @@ posRouter.get('/receipt/:publicId', PosController.getPublicReceipt);
 posRouter.get('/settings', isStaff, PosController.getSettings);
 posRouter.get('/menu', isStaff, MenuController.getMenu);
 posRouter.patch('/menu/:id/availability', isStaff, MenuController.setItemAvailability);
+posRouter.get('/customers', isStaff, CustomerController.searchCustomers);
 
 posRouter.post('/bills', isStaff, PosController.createBill);
 posRouter.get('/bills', isStaff, PosController.listBills);

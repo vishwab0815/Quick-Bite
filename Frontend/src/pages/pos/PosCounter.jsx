@@ -1,16 +1,15 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { QRCodeSVG } from 'qrcode.react';
 import {
-    FiSearch, FiMinus, FiPlus, FiTrash2, FiPrinter, FiMessageCircle, FiTag,
-    FiCheckCircle, FiX, FiSlash, FiExternalLink,
+    FiSearch, FiMinus, FiPlus, FiTrash2, FiMessageCircle, FiCheck, FiX, FiSlash,
+    FiPhone, FiUser, FiRepeat, FiChevronUp, FiPrinter, FiShoppingBag,
 } from 'react-icons/fi';
 import PosHeader from '../../components/pos/PosHeader';
 import PrintArea from '../../components/pos/PrintArea';
 import VegDot from '../../components/pos/VegDot';
 import { showToast } from '../../utils/toast';
 import {
-    posApi, formatINR, computeTotals, buildUpiLink, isValidIndianMobile,
-    loadPref, savePref, useStaffUser, usePosSettings,
+    posApi, formatINR, computeTotals, buildUpiLink, isValidIndianMobile, useStaffUser, usePosSettings,
 } from '../../utils/pos';
 
 const PAYMENT_MODES = [
@@ -19,15 +18,15 @@ const PAYMENT_MODES = [
     { id: 'card', label: 'Card' },
 ];
 
-const DEFAULT_OPTIONS = { print: true, coupons: true, whatsapp: false };
+const LOOKUP_DELAY_MS = 250;
 
 const quickCashAmounts = (total) => {
     const amounts = new Set([total]);
-    [50, 100, 200, 500, 2000].forEach((note) => {
-        amounts.add(Math.ceil(total / note) * note);
-    });
+    [50, 100, 200, 500, 2000].forEach((note) => amounts.add(Math.ceil(total / note) * note));
     return [...amounts].filter((amount) => amount >= total).sort((a, b) => a - b).slice(0, 5);
 };
+
+const phoneDigits = (value) => String(value || '').replace(/\D/g, '').replace(/^91(?=\d{10}$)/, '');
 
 export default function PosCounter() {
     const user = useStaffUser();
@@ -39,11 +38,14 @@ export default function PosCounter() {
     const [editAvailability, setEditAvailability] = useState(false);
 
     const [cart, setCart] = useState([]);
-    const [customer, setCustomer] = useState({ name: '', phone: '' });
+    const [phone, setPhone] = useState('');
+    const [customerName, setCustomerName] = useState('');
+    const [regular, setRegular] = useState(null);
+    const [suggestions, setSuggestions] = useState([]);
     const [paymentMode, setPaymentMode] = useState('cash');
     const [cashReceived, setCashReceived] = useState('');
-    const [options, setOptions] = useState(() => ({ ...DEFAULT_OPTIONS, ...loadPref('qb_pos_options', {}) }));
 
+    const [billOpen, setBillOpen] = useState(false);
     const [submitting, setSubmitting] = useState(false);
     const [upiDialog, setUpiDialog] = useState(false);
     const [upiReference, setUpiReference] = useState('');
@@ -65,12 +67,36 @@ export default function PosCounter() {
         if (user) loadMenu();
     }, [user, loadMenu]);
 
+    // Find regulars as the cashier types the first digits of their number
     useEffect(() => {
-        savePref('qb_pos_options', options);
-    }, [options]);
+        const digits = phoneDigits(phone);
+        if (digits.length < 3 || digits === regular?.phone) {
+            setSuggestions([]);
+            return undefined;
+        }
+
+        const timer = setTimeout(async () => {
+            try {
+                const res = await posApi.get('/customers', { params: { phone: digits } });
+                const found = res.data.customers;
+                const exact = found.find((customer) => customer.phone === digits);
+                if (exact) {
+                    setRegular(exact);
+                    setCustomerName((current) => current || exact.name || '');
+                    setSuggestions([]);
+                } else {
+                    setSuggestions(found);
+                }
+            } catch {
+                setSuggestions([]);
+            }
+        }, LOOKUP_DELAY_MS);
+
+        return () => clearTimeout(timer);
+    }, [phone, regular]);
 
     const counters = useMemo(
-        () => ['All', ...new Set(menu.map((item) => item.counter || 'Main Kitchen'))],
+        () => ['All', ...new Set(menu.map((item) => item.counter))],
         [menu]
     );
 
@@ -84,26 +110,26 @@ export default function PosCounter() {
 
     const totals = useMemo(() => {
         if (!settings) return null;
-        return computeTotals(
-            cart.map((line) => ({ price: line.item.price, quantity: line.quantity })),
-            settings
-        );
+        return computeTotals(cart.map((line) => ({ price: line.item.price, quantity: line.quantity })), settings);
     }, [cart, settings]);
 
     const total = totals?.total || 0;
+    const itemCount = cart.reduce((sum, line) => sum + line.quantity, 0);
     const cashValue = cashReceived === '' ? total : Number(cashReceived);
     const change = paymentMode === 'cash' ? cashValue - total : 0;
+    const digits = phoneDigits(phone);
+    const hasPhone = digits.length > 0;
 
-    // Cart actions
-    const addItem = (item) => {
+    // ---- Cart ----
+    const addItem = (item, quantity = 1) => {
         setCart((prev) => {
             const existing = prev.find((line) => line.item._id === item._id);
             if (existing) {
-                return prev.map((line) =>
-                    line.item._id === item._id ? { ...line, quantity: Math.min(line.quantity + 1, 99) } : line
-                );
+                return prev.map((line) => (
+                    line.item._id === item._id ? { ...line, quantity: Math.min(line.quantity + quantity, 99) } : line
+                ));
             }
-            return [...prev, { item, quantity: 1 }];
+            return [...prev, { item, quantity: Math.min(quantity, 99) }];
         });
     };
 
@@ -115,10 +141,32 @@ export default function PosCounter() {
 
     const resetOrder = () => {
         setCart([]);
-        setCustomer({ name: '', phone: '' });
+        setPhone('');
+        setCustomerName('');
+        setRegular(null);
+        setSuggestions([]);
         setCashReceived('');
         setUpiReference('');
         setPaymentMode('cash');
+        setBillOpen(false);
+    };
+
+    const selectRegular = (customer) => {
+        setRegular(customer);
+        setPhone(customer.phone);
+        setCustomerName(customer.name || '');
+        setSuggestions([]);
+    };
+
+    const repeatLastOrder = () => {
+        const skipped = [];
+        regular.lastItems.forEach((last) => {
+            const item = menu.find((menuItem) => menuItem._id === last.itemId) ||
+                menu.find((menuItem) => menuItem.name === last.name);
+            if (item && item.isAvailable !== false) addItem(item, last.quantity);
+            else skipped.push(last.name);
+        });
+        if (skipped.length) showToast.warning(`Not available now: ${skipped.join(', ')}`);
     };
 
     const toggleAvailability = async (item) => {
@@ -128,34 +176,26 @@ export default function PosCounter() {
             if (res.data.item.isAvailable === false) {
                 setCart((prev) => prev.filter((line) => line.item._id !== item._id));
             }
-            showToast.info(`${item.name} marked ${res.data.item.isAvailable ? 'available' : 'sold out'}`);
+            showToast.info(`${item.name} is ${res.data.item.isAvailable ? 'available' : 'sold out'}`);
         } catch (error) {
             showToast.error(error.response?.data?.message || 'Failed to update item');
         }
     };
 
     const handleTileClick = (item) => {
-        if (editAvailability) {
-            toggleAvailability(item);
-        } else if (item.isAvailable === false) {
-            showToast.warning(`${item.name} is sold out`);
-        } else {
-            addItem(item);
-        }
+        if (editAvailability) toggleAvailability(item);
+        else if (item.isAvailable === false) showToast.warning(`${item.name} is sold out`);
+        else addItem(item);
     };
 
-    // Billing
+    // ---- Billing ----
     const validate = () => {
         if (cart.length === 0) {
-            showToast.error('Add items to the bill');
+            showToast.error('Add items to the order');
             return false;
         }
-        if (customer.phone && !isValidIndianMobile(customer.phone)) {
-            showToast.error('Enter a valid 10-digit mobile number');
-            return false;
-        }
-        if (options.whatsapp && !customer.phone) {
-            showToast.error('Enter the customer mobile number for the WhatsApp receipt');
+        if (hasPhone && !isValidIndianMobile(digits)) {
+            showToast.error('Enter a valid 10-digit mobile number, or clear it');
             return false;
         }
         if (paymentMode === 'cash' && (!Number.isFinite(cashValue) || cashValue < total)) {
@@ -175,8 +215,8 @@ export default function PosCounter() {
                     cashReceived: paymentMode === 'cash' ? cashValue : undefined,
                     reference: paymentMode !== 'cash' ? upiReference || undefined : undefined,
                 },
-                customer: { name: customer.name || undefined, phone: customer.phone || undefined },
-                sendWhatsapp: Boolean(options.whatsapp && customer.phone),
+                customer: { name: customerName || undefined, phone: digits || undefined },
+                sendWhatsapp: hasPhone,
             });
 
             const { bill, whatsapp } = res.data;
@@ -184,20 +224,21 @@ export default function PosCounter() {
             setUpiDialog(false);
             resetOrder();
 
-            if (options.print) {
-                setPrintJob({ bill, coupons: options.coupons });
-                posApi.post(`/bills/${bill._id}/printed`).catch(() => {});
-            }
+            // Automatic printing: token slips always; the full bill only when it isn't going on WhatsApp
+            const coupons = settings.printCounterCoupons !== false;
+            const receiptOnWhatsapp = Boolean(whatsapp) && whatsapp.status !== 'failed';
+            const includeReceipt = !receiptOnWhatsapp || !coupons;
+            setPrintJob({ bill, coupons, includeReceipt });
+            posApi.post(`/bills/${bill._id}/printed`).catch(() => {});
         } catch (error) {
             showToast.error(error.response?.data?.message || 'Failed to create bill');
-            // Prices / availability may have changed
             loadMenu();
         } finally {
             setSubmitting(false);
         }
     };
 
-    const handleCharge = () => {
+    const handleConfirm = () => {
         if (submitting || !validate()) return;
         if (paymentMode === 'upi') {
             setUpiDialog(true);
@@ -224,58 +265,60 @@ export default function PosCounter() {
 
     if (!user || !settings) {
         return (
-            <div className="flex min-h-screen items-center justify-center bg-gray-100">
-                <div className="h-12 w-12 animate-spin rounded-full border-4 border-orange-500 border-t-transparent" />
+            <div className="pos-app flex min-h-screen items-center justify-center bg-stone-100">
+                <div className="h-10 w-10 animate-spin rounded-full border-4 border-orange-500 border-t-transparent" />
             </div>
         );
     }
 
     const upiConfigured = Boolean(settings.upiVpa);
+    const gstIncluded = settings.gstScheme === 'regular' && settings.pricesIncludeGst;
+    const gstAdded = settings.gstScheme === 'regular' && !settings.pricesIncludeGst;
 
     return (
-        <div className="flex h-screen flex-col bg-gray-100 text-gray-900 [color-scheme:light]">
+        <div className="pos-app flex h-[100dvh] flex-col bg-stone-100">
             <PosHeader user={user} hotelName={settings.name} />
 
-            <div className="flex min-h-0 flex-1 flex-col lg:flex-row">
-                {/* Menu */}
-                <section className="flex min-h-0 flex-1 flex-col p-3">
-                    <div className="mb-3 flex flex-wrap items-center gap-2">
-                        <div className="relative min-w-[200px] flex-1">
-                            <FiSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+            <div className="flex min-h-0 flex-1">
+                {/* ---------- Menu ---------- */}
+                <section className="flex min-h-0 min-w-0 flex-1 flex-col px-3 pt-3 sm:px-5 sm:pt-4">
+                    <div className="mb-3 flex items-center gap-2">
+                        <div className="relative flex-1">
+                            <FiSearch className="absolute left-4 top-1/2 -translate-y-1/2 text-stone-400" />
                             <input
                                 ref={searchRef}
                                 value={search}
                                 onChange={(e) => setSearch(e.target.value)}
-                                placeholder="Search menu..."
-                                className="w-full rounded-xl border border-gray-200 bg-white py-2.5 pl-10 pr-3 outline-none focus:border-orange-500"
+                                placeholder="Search dishes"
+                                className="w-full rounded-2xl border border-stone-200 bg-white py-3 pl-11 pr-4 text-[15px] shadow-sm outline-none transition placeholder:text-stone-400 focus:border-orange-400 focus:ring-4 focus:ring-orange-100"
                                 autoFocus
                             />
                         </div>
                         <button
                             onClick={() => setEditAvailability((value) => !value)}
-                            className={`flex items-center gap-1.5 rounded-xl px-3 py-2.5 text-sm font-semibold ${
-                                editAvailability ? 'bg-red-500 text-white' : 'bg-white text-gray-700 border border-gray-200'
+                            className={`flex shrink-0 items-center gap-2 rounded-2xl px-4 py-3 text-sm font-semibold shadow-sm transition ${
+                                editAvailability ? 'bg-rose-600 text-white' : 'border border-stone-200 bg-white text-stone-600 hover:text-stone-900'
                             }`}
                         >
-                            <FiSlash /> {editAvailability ? 'Done' : 'Sold out'}
+                            <FiSlash /> <span className="hidden sm:inline">{editAvailability ? 'Done' : 'Sold out'}</span>
                         </button>
                     </div>
 
                     {editAvailability && (
-                        <p className="mb-2 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">
-                            Tap an item to mark it sold out / available. Tap Done when finished.
+                        <p className="mb-3 rounded-xl bg-rose-50 px-4 py-2.5 text-sm font-medium text-rose-700">
+                            Tap a dish to mark it sold out or available again. Tap Done when finished.
                         </p>
                     )}
 
-                    <div className="mb-3 flex gap-2 overflow-x-auto pb-1">
+                    <div className="-mx-3 mb-3 flex gap-2 overflow-x-auto px-3 pb-1 [scrollbar-width:none] sm:mx-0 sm:px-0">
                         {counters.map((counter) => (
                             <button
                                 key={counter}
                                 onClick={() => setActiveCounter(counter)}
-                                className={`whitespace-nowrap rounded-full px-4 py-2 text-sm font-semibold ${
+                                className={`whitespace-nowrap rounded-full px-4 py-2 text-sm font-semibold transition ${
                                     activeCounter === counter
-                                        ? 'bg-gradient-to-r from-orange-500 to-pink-500 text-white'
-                                        : 'bg-white text-gray-700 border border-gray-200'
+                                        ? 'bg-stone-900 text-white shadow-sm'
+                                        : 'bg-white text-stone-600 ring-1 ring-stone-200 hover:text-stone-900'
                                 }`}
                             >
                                 {counter}
@@ -283,7 +326,7 @@ export default function PosCounter() {
                         ))}
                     </div>
 
-                    <div className="grid min-h-0 flex-1 auto-rows-min grid-cols-2 gap-2 overflow-y-auto sm:grid-cols-3 xl:grid-cols-4">
+                    <div className="grid min-h-0 flex-1 auto-rows-min grid-cols-2 gap-2.5 overflow-y-auto pb-28 sm:grid-cols-3 sm:gap-3 lg:pb-5 xl:grid-cols-4 2xl:grid-cols-5">
                         {visibleMenu.map((item) => {
                             const soldOut = item.isAvailable === false;
                             const inCart = cart.find((line) => line.item._id === item._id);
@@ -291,22 +334,24 @@ export default function PosCounter() {
                                 <button
                                     key={item._id}
                                     onClick={() => handleTileClick(item)}
-                                    className={`relative flex min-h-[84px] flex-col justify-between rounded-xl border p-3 text-left transition active:scale-95 ${
-                                        soldOut
-                                            ? 'border-gray-200 bg-gray-100 text-gray-400'
-                                            : 'border-gray-200 bg-white hover:border-orange-400 hover:shadow-md'
-                                    } ${editAvailability ? 'ring-2 ring-red-200' : ''}`}
+                                    className={`relative flex min-h-[96px] flex-col justify-between rounded-2xl border bg-white p-3.5 text-left shadow-[0_1px_2px_rgba(28,25,23,0.05)] transition active:scale-[0.97] ${
+                                        soldOut ? 'border-stone-200 opacity-55' : 'border-stone-200/80 hover:border-orange-300 hover:shadow-md'
+                                    } ${inCart ? 'border-orange-400 ring-2 ring-orange-100' : ''} ${editAvailability ? 'ring-2 ring-rose-200' : ''}`}
                                 >
-                                    <span className="flex items-start gap-1.5 text-sm font-semibold leading-tight">
+                                    <span className="flex items-start gap-2">
                                         <span className="mt-0.5"><VegDot isVeg={item.isVeg !== false} /></span>
-                                        {item.name}
+                                        <span className="text-[15px] font-semibold leading-snug text-stone-800">{item.name}</span>
                                     </span>
-                                    <span className="mt-2 flex items-center justify-between">
-                                        <span className={`font-bold ${soldOut ? '' : 'text-orange-600'}`}>{formatINR(item.price)}</span>
-                                        {soldOut && <span className="rounded bg-red-100 px-1.5 py-0.5 text-xs font-bold text-red-600">SOLD OUT</span>}
+                                    <span className="mt-3 flex items-center justify-between gap-2">
+                                        <span className="text-base font-bold tabular-nums text-stone-900">{formatINR(item.price)}</span>
+                                        {soldOut && (
+                                            <span className="rounded-full bg-rose-100 px-2 py-0.5 text-[11px] font-bold uppercase tracking-wide text-rose-700">
+                                                Sold out
+                                            </span>
+                                        )}
                                     </span>
                                     {inCart && (
-                                        <span className="absolute -right-1.5 -top-1.5 flex h-6 min-w-6 items-center justify-center rounded-full bg-pink-500 px-1.5 text-xs font-bold text-white">
+                                        <span className="absolute -right-1.5 -top-1.5 flex h-6 min-w-6 items-center justify-center rounded-full bg-orange-600 px-1.5 text-xs font-bold text-white shadow">
                                             {inCart.quantity}
                                         </span>
                                     )}
@@ -314,93 +359,166 @@ export default function PosCounter() {
                             );
                         })}
                         {visibleMenu.length === 0 && (
-                            <p className="col-span-full py-10 text-center text-gray-500">No items found</p>
+                            <p className="col-span-full py-16 text-center text-stone-400">No dishes found</p>
                         )}
                     </div>
                 </section>
 
-                {/* Bill */}
-                <aside className="flex min-h-0 w-full flex-col border-t border-gray-200 bg-white lg:w-[400px] lg:border-l lg:border-t-0">
-                    <div className="flex items-center justify-between border-b border-gray-100 px-4 py-3">
-                        <h2 className="text-lg font-bold text-gray-800">Current Bill</h2>
-                        {cart.length > 0 && (
-                            <button onClick={resetOrder} className="flex items-center gap-1 text-sm font-semibold text-red-500">
-                                <FiTrash2 /> Clear
+                {/* ---------- Mobile: sticky bill bar ---------- */}
+                {cart.length > 0 && !billOpen && (
+                    <button
+                        onClick={() => setBillOpen(true)}
+                        className="fixed inset-x-3 bottom-3 z-30 flex items-center justify-between rounded-2xl bg-stone-900 px-5 py-4 text-white shadow-xl lg:hidden"
+                    >
+                        <span className="flex items-center gap-2 text-sm font-semibold">
+                            <FiShoppingBag /> {itemCount} item{itemCount === 1 ? '' : 's'} · View order <FiChevronUp />
+                        </span>
+                        <span className="text-lg font-bold tabular-nums">{formatINR(total)}</span>
+                    </button>
+                )}
+                {billOpen && <div className="fixed inset-0 z-40 bg-stone-900/40 lg:hidden" onClick={() => setBillOpen(false)} />}
+
+                {/* ---------- Order panel (side panel on desktop, bottom sheet on mobile) ---------- */}
+                <aside
+                    className={`${
+                        billOpen ? 'fixed inset-x-0 bottom-0 top-[6vh] z-50 flex rounded-t-3xl shadow-2xl' : 'hidden'
+                    } flex-col bg-white lg:static lg:z-auto lg:flex lg:w-[400px] lg:rounded-none lg:border-l lg:border-stone-200 lg:shadow-none xl:w-[430px]`}
+                >
+                    <div className="flex items-center justify-between px-5 pb-2 pt-4">
+                        <div>
+                            <h2 className="text-lg font-bold">Current order</h2>
+                            <p className="text-xs font-medium text-stone-400">{itemCount ? `${itemCount} item${itemCount === 1 ? '' : 's'}` : 'No items yet'}</p>
+                        </div>
+                        <div className="flex items-center gap-1">
+                            {cart.length > 0 && (
+                                <button onClick={resetOrder} className="flex items-center gap-1.5 rounded-full px-3 py-1.5 text-sm font-semibold text-rose-600 hover:bg-rose-50">
+                                    <FiTrash2 /> Clear
+                                </button>
+                            )}
+                            <button onClick={() => setBillOpen(false)} className="rounded-full p-2 text-stone-500 hover:bg-stone-100 lg:hidden" aria-label="Close order">
+                                <FiX />
                             </button>
+                        </div>
+                    </div>
+
+                    {/* Customer */}
+                    <div className="relative px-5 pb-3">
+                        <div className="flex gap-2">
+                            <div className="relative flex-1">
+                                <FiPhone className="absolute left-3.5 top-1/2 -translate-y-1/2 text-stone-400" />
+                                <input
+                                    value={phone}
+                                    onChange={(e) => {
+                                        const value = e.target.value.replace(/[^\d+ ]/g, '');
+                                        setPhone(value);
+                                        if (regular && phoneDigits(value) !== regular.phone) setRegular(null);
+                                    }}
+                                    placeholder="Mobile number"
+                                    inputMode="tel"
+                                    maxLength={15}
+                                    className="w-full rounded-xl border border-stone-200 bg-stone-50 py-2.5 pl-10 pr-3 text-sm outline-none transition focus:border-orange-400 focus:bg-white focus:ring-4 focus:ring-orange-100"
+                                />
+                            </div>
+                            <div className="relative w-[42%]">
+                                <FiUser className="absolute left-3.5 top-1/2 -translate-y-1/2 text-stone-400" />
+                                <input
+                                    value={customerName}
+                                    onChange={(e) => setCustomerName(e.target.value)}
+                                    placeholder="Name"
+                                    maxLength={60}
+                                    className="w-full rounded-xl border border-stone-200 bg-stone-50 py-2.5 pl-10 pr-3 text-sm outline-none transition focus:border-orange-400 focus:bg-white focus:ring-4 focus:ring-orange-100"
+                                />
+                            </div>
+                        </div>
+
+                        {suggestions.length > 0 && (
+                            <div className="absolute inset-x-5 top-full z-20 -mt-1 overflow-hidden rounded-xl border border-stone-200 bg-white shadow-xl">
+                                {suggestions.map((customer) => (
+                                    <button
+                                        key={customer.phone}
+                                        onClick={() => selectRegular(customer)}
+                                        className="flex w-full items-center justify-between gap-3 px-4 py-2.5 text-left hover:bg-orange-50"
+                                    >
+                                        <span>
+                                            <span className="block text-sm font-semibold tabular-nums">{customer.phone.replace(/(\d{5})(\d{5})/, '$1 $2')}</span>
+                                            <span className="block text-xs text-stone-500">{customer.name || 'Customer'}</span>
+                                        </span>
+                                        <span className="rounded-full bg-stone-100 px-2 py-0.5 text-xs font-semibold text-stone-600">
+                                            {customer.visits} visit{customer.visits === 1 ? '' : 's'}
+                                        </span>
+                                    </button>
+                                ))}
+                            </div>
+                        )}
+
+                        {regular && (
+                            <div className="mt-2 flex items-center justify-between gap-2 rounded-xl bg-orange-50 px-3 py-2">
+                                <p className="min-w-0 truncate text-sm">
+                                    <span className="font-semibold text-orange-800">{regular.name || 'Regular'}</span>
+                                    <span className="text-orange-700/80"> · {regular.visits} visit{regular.visits === 1 ? '' : 's'}</span>
+                                </p>
+                                {regular.lastItems?.length > 0 && (
+                                    <button
+                                        onClick={repeatLastOrder}
+                                        className="flex shrink-0 items-center gap-1.5 rounded-full bg-white px-3 py-1.5 text-xs font-bold text-orange-700 shadow-sm ring-1 ring-orange-200 hover:bg-orange-100"
+                                        title={regular.lastItems.map((item) => `${item.name} ×${item.quantity}`).join(', ')}
+                                    >
+                                        <FiRepeat /> Repeat last order
+                                    </button>
+                                )}
+                            </div>
                         )}
                     </div>
 
-                    <div className="min-h-[120px] flex-1 overflow-y-auto px-4 py-2">
+                    {/* Lines */}
+                    <div className="min-h-[100px] flex-1 overflow-y-auto border-t border-stone-100 px-5 py-2">
                         {cart.length === 0 && (
-                            <p className="py-8 text-center text-gray-400">Tap items to add them to the bill</p>
+                            <p className="py-10 text-center text-sm text-stone-400">Tap dishes to add them</p>
                         )}
                         {cart.map((line) => (
-                            <div key={line.item._id} className="flex items-center gap-2 border-b border-gray-50 py-2">
+                            <div key={line.item._id} className="flex items-center gap-3 border-b border-stone-100 py-3 last:border-0">
                                 <div className="min-w-0 flex-1">
-                                    <p className="truncate text-sm font-semibold text-gray-800">{line.item.name}</p>
-                                    <p className="text-xs text-gray-500">{formatINR(line.item.price)} each</p>
+                                    <p className="truncate text-[15px] font-semibold">{line.item.name}</p>
+                                    <p className="text-xs tabular-nums text-stone-400">{formatINR(line.item.price)}</p>
                                 </div>
-                                <div className="flex items-center gap-1">
-                                    <button onClick={() => changeQuantity(line.item._id, -1)} className="rounded-lg bg-gray-100 p-2 hover:bg-gray-200" aria-label="Decrease">
+                                <div className="flex items-center rounded-full bg-stone-100 p-1">
+                                    <button onClick={() => changeQuantity(line.item._id, -1)} className="rounded-full p-1.5 text-stone-600 hover:bg-white" aria-label="Decrease">
                                         <FiMinus />
                                     </button>
-                                    <span className="w-7 text-center font-bold">{line.quantity}</span>
-                                    <button onClick={() => changeQuantity(line.item._id, 1)} className="rounded-lg bg-gray-100 p-2 hover:bg-gray-200" aria-label="Increase">
+                                    <span className="w-7 text-center text-sm font-bold tabular-nums">{line.quantity}</span>
+                                    <button onClick={() => changeQuantity(line.item._id, 1)} className="rounded-full p-1.5 text-stone-600 hover:bg-white" aria-label="Increase">
                                         <FiPlus />
                                     </button>
                                 </div>
-                                <span className="w-20 text-right text-sm font-bold">{formatINR(line.item.price * line.quantity)}</span>
+                                <span className="w-20 text-right text-[15px] font-bold tabular-nums">{formatINR(line.item.price * line.quantity)}</span>
                             </div>
                         ))}
                     </div>
 
-                    <div className="space-y-3 border-t border-gray-100 px-4 py-3">
-                        {/* Totals */}
-                        {totals && cart.length > 0 && (
-                            <div className="space-y-0.5 text-sm text-gray-600">
-                                {settings.gstScheme === 'regular' ? (
-                                    <>
-                                        <div className="flex justify-between"><span>Taxable value</span><span>{formatINR(totals.taxableAmount)}</span></div>
-                                        <div className="flex justify-between"><span>CGST {settings.gstRate / 2}% + SGST {settings.gstRate / 2}%</span><span>{formatINR(totals.cgst + totals.sgst)}</span></div>
-                                    </>
-                                ) : (
-                                    <div className="flex justify-between"><span>Subtotal</span><span>{formatINR(totals.subtotal)}</span></div>
+                    {/* Payment */}
+                    <div className="space-y-3 border-t border-stone-100 bg-stone-50/60 px-5 pb-5 pt-4">
+                        <div className="flex items-end justify-between">
+                            <div>
+                                <p className="text-xs font-semibold uppercase tracking-wider text-stone-400">Total</p>
+                                {gstIncluded && totals && cart.length > 0 && (
+                                    <p className="text-xs text-stone-400">Includes {formatINR(totals.cgst + totals.sgst)} GST</p>
                                 )}
-                                {totals.roundOff !== 0 && (
-                                    <div className="flex justify-between"><span>Round off</span><span>{formatINR(totals.roundOff)}</span></div>
+                                {gstAdded && totals && cart.length > 0 && (
+                                    <p className="text-xs text-stone-400">
+                                        {formatINR(totals.taxableAmount)} + {formatINR(totals.cgst + totals.sgst)} GST
+                                    </p>
                                 )}
                             </div>
-                        )}
-
-                        {/* Customer */}
-                        <div className="grid grid-cols-2 gap-2">
-                            <input
-                                value={customer.phone}
-                                onChange={(e) => setCustomer({ ...customer, phone: e.target.value.replace(/[^\d+ ]/g, '') })}
-                                placeholder="Mobile (WhatsApp)"
-                                inputMode="tel"
-                                maxLength={15}
-                                className="rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none focus:border-orange-500"
-                            />
-                            <input
-                                value={customer.name}
-                                onChange={(e) => setCustomer({ ...customer, name: e.target.value })}
-                                placeholder="Name (optional)"
-                                maxLength={60}
-                                className="rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none focus:border-orange-500"
-                            />
+                            <p className="text-3xl font-extrabold tracking-tight tabular-nums">{formatINR(total)}</p>
                         </div>
 
-                        {/* Payment */}
-                        <div className="grid grid-cols-3 gap-2">
+                        <div className="grid grid-cols-3 gap-1 rounded-2xl bg-stone-200/60 p-1">
                             {PAYMENT_MODES.map((mode) => (
                                 <button
                                     key={mode.id}
                                     onClick={() => setPaymentMode(mode.id)}
-                                    className={`rounded-lg py-2 text-sm font-bold ${
-                                        paymentMode === mode.id
-                                            ? 'bg-gray-900 text-white'
-                                            : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                                    className={`rounded-xl py-2.5 text-sm font-bold transition ${
+                                        paymentMode === mode.id ? 'bg-white text-stone-900 shadow-sm' : 'text-stone-500 hover:text-stone-800'
                                     }`}
                                 >
                                     {mode.label}
@@ -415,174 +533,140 @@ export default function PosCounter() {
                                         <button
                                             key={amount}
                                             onClick={() => setCashReceived(String(amount))}
-                                            className={`rounded-lg border px-2.5 py-1.5 text-sm font-semibold ${
-                                                cashValue === amount ? 'border-orange-500 bg-orange-50 text-orange-700' : 'border-gray-200'
+                                            className={`rounded-full px-3 py-1.5 text-sm font-semibold tabular-nums ring-1 transition ${
+                                                cashValue === amount ? 'bg-orange-50 text-orange-700 ring-orange-300' : 'bg-white text-stone-600 ring-stone-200'
                                             }`}
                                         >
                                             ₹{amount}
                                         </button>
                                     ))}
                                 </div>
-                                <div className="flex items-center gap-2">
+                                <div className="flex items-center gap-3">
                                     <input
                                         value={cashReceived}
                                         onChange={(e) => setCashReceived(e.target.value.replace(/[^\d.]/g, ''))}
                                         placeholder={`Cash received (₹${total})`}
                                         inputMode="decimal"
-                                        className="flex-1 rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none focus:border-orange-500"
+                                        className="min-w-0 flex-1 rounded-xl border border-stone-200 bg-white px-3 py-2.5 text-sm outline-none focus:border-orange-400 focus:ring-4 focus:ring-orange-100"
                                     />
-                                    <span className={`text-sm font-bold ${change < 0 ? 'text-red-600' : 'text-green-700'}`}>
+                                    <span className={`whitespace-nowrap text-sm font-bold tabular-nums ${change < 0 ? 'text-rose-600' : 'text-emerald-700'}`}>
                                         Change {formatINR(Math.max(change, 0))}
                                     </span>
                                 </div>
                             </div>
                         )}
 
-                        {paymentMode === 'upi' && !upiConfigured && (
-                            <p className="rounded-lg bg-yellow-50 px-3 py-2 text-xs text-yellow-800">
-                                UPI ID not set (UPI_VPA). Use the hotel&apos;s printed QR and confirm the payment on the soundbox.
-                            </p>
-                        )}
-
-                        {/* Receipt options */}
-                        <div className="flex flex-wrap gap-1.5">
-                            {[
-                                { key: 'print', label: 'Print bill', icon: FiPrinter },
-                                { key: 'coupons', label: 'Counter coupons', icon: FiTag, disabled: !options.print },
-                                { key: 'whatsapp', label: 'WhatsApp', icon: FiMessageCircle },
-                            ].map((option) => {
-                                const Icon = option.icon;
-                                const { key, disabled } = option;
-                                return (
-                                    <button
-                                        key={key}
-                                        disabled={disabled}
-                                        onClick={() => setOptions((prev) => ({ ...prev, [key]: !prev[key] }))}
-                                        className={`flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-semibold disabled:opacity-40 ${
-                                            options[key] && !disabled
-                                                ? key === 'whatsapp'
-                                                    ? 'border-green-500 bg-green-50 text-green-700'
-                                                    : 'border-orange-500 bg-orange-50 text-orange-700'
-                                                : 'border-gray-200 text-gray-500'
-                                        }`}
-                                    >
-                                        <Icon /> {option.label}
-                                    </button>
-                                );
-                            })}
-                        </div>
-
                         <button
-                            onClick={handleCharge}
+                            onClick={handleConfirm}
                             disabled={cart.length === 0 || submitting}
-                            className="flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-orange-500 to-pink-500 py-4 text-lg font-black text-white shadow-lg disabled:opacity-50"
+                            className="flex w-full items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-orange-500 to-rose-500 py-4 text-lg font-bold text-white shadow-lg shadow-orange-500/25 transition hover:brightness-105 active:scale-[0.99] disabled:opacity-40 disabled:shadow-none"
                         >
-                            {submitting ? 'Creating bill...' : `Charge ${formatINR(total)}`}
+                            {submitting ? 'Saving…' : <>Confirm order · <span className="tabular-nums">{formatINR(total)}</span></>}
                         </button>
+                        <p className="flex items-center justify-center gap-1.5 text-xs text-stone-400">
+                            {hasPhone ? <><FiMessageCircle /> Bill on WhatsApp · token slips print automatically</> : <><FiPrinter /> Bill and token slips print automatically</>}
+                        </p>
                     </div>
                 </aside>
             </div>
 
-            {/* UPI payment dialog */}
+            {/* ---------- UPI ---------- */}
             {upiDialog && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
-                    <div className="w-full max-w-sm rounded-2xl bg-white p-6 text-center shadow-2xl">
-                        <div className="mb-2 flex items-center justify-between">
-                            <h3 className="text-lg font-bold">Scan & pay with any UPI app</h3>
-                            <button onClick={() => setUpiDialog(false)} className="rounded-lg p-1 hover:bg-gray-100" aria-label="Close">
+                <div className="fixed inset-0 z-[60] flex items-end justify-center bg-stone-900/50 p-0 backdrop-blur-sm sm:items-center sm:p-4">
+                    <div className="w-full max-w-sm rounded-t-3xl bg-white p-6 text-center shadow-2xl sm:rounded-3xl">
+                        <div className="mb-1 flex items-center justify-between">
+                            <h3 className="text-base font-bold">Scan & pay with any UPI app</h3>
+                            <button onClick={() => setUpiDialog(false)} className="rounded-full p-1.5 text-stone-500 hover:bg-stone-100" aria-label="Close">
                                 <FiX />
                             </button>
                         </div>
-                        <p className="mb-4 text-4xl font-black text-gray-900">{formatINR(total)}</p>
+                        <p className="mb-4 text-4xl font-extrabold tracking-tight tabular-nums">{formatINR(total)}</p>
                         {upiConfigured ? (
-                            <div className="mb-3 flex flex-col items-center">
-                                <QRCodeSVG
-                                    value={buildUpiLink({
-                                        vpa: settings.upiVpa,
-                                        payeeName: settings.upiPayeeName,
-                                        amount: total,
-                                        note: `${settings.name} bill`,
-                                    })}
-                                    size={220}
-                                    level="M"
-                                />
-                                <p className="mt-2 text-sm text-gray-500">{settings.upiVpa}</p>
+                            <div className="mb-4 flex flex-col items-center">
+                                <div className="rounded-2xl border border-stone-200 p-3">
+                                    <QRCodeSVG
+                                        value={buildUpiLink({ vpa: settings.upiVpa, payeeName: settings.upiPayeeName, amount: total, note: `${settings.name} bill` })}
+                                        size={208}
+                                        level="M"
+                                    />
+                                </div>
+                                <p className="mt-2 text-sm text-stone-500">{settings.upiVpa}</p>
                             </div>
                         ) : (
-                            <p className="mb-3 text-sm text-gray-500">Ask the customer to scan the hotel&apos;s UPI QR.</p>
+                            <p className="mb-4 text-sm text-stone-500">Ask the customer to scan the hotel&apos;s UPI QR.</p>
                         )}
                         <input
                             value={upiReference}
                             onChange={(e) => setUpiReference(e.target.value)}
                             placeholder="UPI ref / last 4 digits (optional)"
                             maxLength={64}
-                            className="mb-3 w-full rounded-lg border border-gray-200 px-3 py-2 text-sm outline-none focus:border-orange-500"
+                            className="mb-3 w-full rounded-xl border border-stone-200 bg-stone-50 px-3 py-2.5 text-sm outline-none focus:border-orange-400 focus:bg-white"
                         />
                         <button
                             onClick={submitBill}
                             disabled={submitting}
-                            className="flex w-full items-center justify-center gap-2 rounded-xl bg-green-600 py-3 text-lg font-bold text-white hover:bg-green-700 disabled:opacity-50"
+                            className="flex w-full items-center justify-center gap-2 rounded-2xl bg-emerald-600 py-3.5 text-base font-bold text-white hover:bg-emerald-700 disabled:opacity-50"
                         >
-                            <FiCheckCircle /> {submitting ? 'Creating bill...' : 'Payment received'}
+                            <FiCheck /> {submitting ? 'Saving…' : 'Payment received'}
                         </button>
-                        <p className="mt-2 text-xs text-gray-500">Confirm only after the soundbox / app shows the payment.</p>
+                        <p className="mt-2 text-xs text-stone-400">Confirm only after the soundbox announces the payment.</p>
                     </div>
                 </div>
             )}
 
-            {/* Token created */}
+            {/* ---------- Token created ---------- */}
             {result && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
-                    <div className="w-full max-w-sm rounded-2xl bg-white p-6 text-center shadow-2xl">
-                        <FiCheckCircle className="mx-auto mb-2 text-4xl text-green-500" />
-                        <p className="text-sm font-semibold uppercase tracking-widest text-gray-500">Token</p>
-                        <p className="text-7xl font-black text-gray-900">#{result.bill.tokenNumber}</p>
-                        <p className="mt-1 text-sm text-gray-500">{result.bill.billNumber}</p>
-                        <p className="mt-3 text-2xl font-bold">{formatINR(result.bill.total)} · {result.bill.payment.mode.toUpperCase()}</p>
+                <div className="fixed inset-0 z-[60] flex items-end justify-center bg-stone-900/50 p-0 backdrop-blur-sm sm:items-center sm:p-4" onClick={closeResult}>
+                    <div className="w-full max-w-sm rounded-t-3xl bg-white p-7 text-center shadow-2xl sm:rounded-3xl" onClick={(e) => e.stopPropagation()}>
+                        <span className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-emerald-100 text-2xl text-emerald-600">
+                            <FiCheck />
+                        </span>
+                        <p className="mt-3 text-xs font-bold uppercase tracking-[0.2em] text-stone-400">Token</p>
+                        <p className="text-7xl font-extrabold tracking-tight tabular-nums">{result.bill.tokenNumber}</p>
+                        <p className="mt-1 text-xs text-stone-400">{result.bill.billNumber}</p>
+                        <p className="mt-3 text-xl font-bold tabular-nums">
+                            {formatINR(result.bill.total)} <span className="text-sm font-semibold text-stone-400">· {result.bill.payment.mode.toUpperCase()}</span>
+                        </p>
+
                         {result.bill.payment.mode === 'cash' && result.bill.payment.changeReturned > 0 && (
-                            <p className="mt-2 rounded-lg bg-green-50 py-2 text-xl font-black text-green-700">
-                                Return change: {formatINR(result.bill.payment.changeReturned)}
+                            <p className="mt-3 rounded-2xl bg-emerald-50 py-3 text-lg font-bold text-emerald-700">
+                                Return {formatINR(result.bill.payment.changeReturned)}
                             </p>
                         )}
 
                         {result.whatsapp && (
                             <div className="mt-3">
-                                {result.whatsapp.status === 'sent' ? (
-                                    <p className="text-sm font-semibold text-green-700">✓ Receipt sent on WhatsApp</p>
-                                ) : (
-                                    <>
-                                        {result.whatsapp.status === 'failed' && (
-                                            <p className="mb-1 text-xs text-red-600">Auto-send failed: {result.whatsapp.error}</p>
-                                        )}
-                                        {result.whatsapp.link && (
-                                            <a
-                                                href={result.whatsapp.link}
-                                                target="_blank"
-                                                rel="noreferrer"
-                                                className="inline-flex items-center gap-2 rounded-xl bg-green-600 px-4 py-2.5 font-bold text-white hover:bg-green-700"
-                                            >
-                                                <FiMessageCircle /> Send on WhatsApp <FiExternalLink />
-                                            </a>
-                                        )}
-                                    </>
+                                {result.whatsapp.status === 'sent' && (
+                                    <p className="text-sm font-semibold text-emerald-700">✓ Bill sent on WhatsApp</p>
+                                )}
+                                {result.whatsapp.status === 'failed' && (
+                                    <p className="mb-2 text-xs text-rose-600">WhatsApp failed: {result.whatsapp.error}</p>
+                                )}
+                                {result.whatsapp.status !== 'sent' && result.whatsapp.link && (
+                                    <a
+                                        href={result.whatsapp.link}
+                                        target="_blank"
+                                        rel="noreferrer"
+                                        className="inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-[#25D366] py-3 font-bold text-white hover:brightness-95"
+                                    >
+                                        <FiMessageCircle /> Send bill on WhatsApp
+                                    </a>
                                 )}
                             </div>
                         )}
 
-                        <div className="mt-5 grid grid-cols-2 gap-2">
-                            <button
-                                onClick={() => setPrintJob({ bill: result.bill, coupons: options.coupons })}
-                                className="flex items-center justify-center gap-2 rounded-xl border border-gray-200 py-3 font-semibold hover:bg-gray-50"
-                            >
-                                <FiPrinter /> Reprint
-                            </button>
-                            <button
-                                onClick={closeResult}
-                                className="rounded-xl bg-gray-900 py-3 font-bold text-white hover:bg-gray-800"
-                            >
-                                Next order ↵
-                            </button>
-                        </div>
+                        <button
+                            onClick={closeResult}
+                            className="mt-4 w-full rounded-2xl bg-stone-900 py-3.5 font-bold text-white hover:bg-stone-800"
+                        >
+                            Next order <span className="text-stone-400">↵</span>
+                        </button>
+                        <button
+                            onClick={() => setPrintJob({ bill: result.bill, coupons: settings.printCounterCoupons !== false, includeReceipt: true })}
+                            className="mt-2 text-xs font-semibold text-stone-400 hover:text-stone-700"
+                        >
+                            Printer jammed? Print again
+                        </button>
                     </div>
                 </div>
             )}

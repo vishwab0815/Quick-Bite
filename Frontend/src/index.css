@@ -1,5 +1,21 @@
 @import "tailwindcss";
 
+@theme {
+  --font-pos: "Plus Jakarta Sans", ui-sans-serif, system-ui, sans-serif;
+}
+
+/* Counter billing screens - premium font, always light, independent of the website's global styles.
+   In the base layer so utility classes (e.g. text-white on the token TV) still win. */
+@layer base {
+  .pos-app {
+    font-family: var(--font-pos);
+    color: var(--color-stone-900);
+    color-scheme: light;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+}
+
 /* Counter receipts & coupons - only visible when printing */
 .print-area {
   display: none;

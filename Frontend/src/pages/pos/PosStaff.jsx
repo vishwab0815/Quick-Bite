@@ -77,28 +77,28 @@ export default function PosStaff() {
 
     if (!user) {
         return (
-            <div className="flex min-h-screen items-center justify-center bg-gray-100">
+            <div className="pos-app flex min-h-screen items-center justify-center bg-stone-100">
                 <div className="h-12 w-12 animate-spin rounded-full border-4 border-orange-500 border-t-transparent" />
             </div>
         );
     }
 
     return (
-        <div className="min-h-screen bg-gray-100 text-gray-900 [color-scheme:light]">
+        <div className="min-h-screen pos-app bg-stone-100">
             <PosHeader user={user} hotelName={settings?.name} />
 
             <div className="mx-auto grid max-w-5xl gap-4 p-4 lg:grid-cols-[1fr_320px]">
-                <section className="overflow-hidden rounded-xl border border-gray-200 bg-white">
-                    <h1 className="border-b border-gray-100 px-4 py-3 text-xl font-black">Staff logins</h1>
+                <section className="overflow-hidden rounded-2xl border border-stone-200/80 bg-white shadow-[0_1px_2px_rgba(28,25,23,0.05)]">
+                    <h1 className="border-b border-stone-100 px-4 py-3 text-xl font-black">Staff logins</h1>
                     {staff.map((member) => (
-                        <div key={member._id} className="flex items-center gap-3 border-b border-gray-50 px-4 py-3 last:border-0">
+                        <div key={member._id} className="flex items-center gap-3 border-b border-stone-50 px-4 py-3 last:border-0">
                             <div className="min-w-0 flex-1">
                                 <p className="font-semibold">
                                     {member.name}
-                                    {member._id === user._id && <span className="ml-1 text-xs text-gray-400">(you)</span>}
+                                    {member._id === user._id && <span className="ml-1 text-xs text-stone-400">(you)</span>}
                                 </p>
-                                <p className="truncate text-sm text-gray-500">{member.email}</p>
-                                <p className="text-xs text-gray-400">Added {formatDateTime(member.createdAt)}</p>
+                                <p className="truncate text-sm text-stone-500">{member.email}</p>
+                                <p className="text-xs text-stone-400">Added {formatDateTime(member.createdAt)}</p>
                             </div>
                             <span
                                 className={`rounded-full px-2 py-0.5 text-xs font-bold ${
@@ -109,7 +109,7 @@ export default function PosStaff() {
                             </span>
                             <button
                                 onClick={() => resetPassword(member)}
-                                className="rounded-lg p-2 text-gray-600 hover:bg-gray-100"
+                                className="rounded-lg p-2 text-stone-600 hover:bg-stone-100"
                                 title="Reset password"
                             >
                                 <FiKey />
@@ -127,7 +127,7 @@ export default function PosStaff() {
                     ))}
                 </section>
 
-                <form onSubmit={addStaff} className="h-fit space-y-3 rounded-xl border border-gray-200 bg-white p-4">
+                <form onSubmit={addStaff} className="h-fit space-y-3 rounded-2xl border border-stone-200/80 bg-white shadow-[0_1px_2px_rgba(28,25,23,0.05)] p-4">
                     <h2 className="flex items-center gap-2 font-bold"><FiUserPlus /> Add counter staff</h2>
                     <input
                         value={form.name}
@@ -136,7 +136,7 @@ export default function PosStaff() {
                         minLength={2}
                         maxLength={60}
                         placeholder="Name"
-                        className="w-full rounded-lg border border-gray-200 px-3 py-2 outline-none focus:border-orange-500"
+                        className="w-full rounded-lg border border-stone-200 px-3 py-2 outline-none focus:border-orange-500"
                     />
                     <input
                         type="email"
@@ -144,7 +144,7 @@ export default function PosStaff() {
                         onChange={(e) => setForm({ ...form, email: e.target.value })}
                         required
                         placeholder="Login email (e.g. counter2@hotel.com)"
-                        className="w-full rounded-lg border border-gray-200 px-3 py-2 outline-none focus:border-orange-500"
+                        className="w-full rounded-lg border border-stone-200 px-3 py-2 outline-none focus:border-orange-500"
                     />
                     <input
                         type="text"
@@ -153,13 +153,13 @@ export default function PosStaff() {
                         required
                         autoComplete="new-password"
                         placeholder="Password"
-                        className="w-full rounded-lg border border-gray-200 px-3 py-2 outline-none focus:border-orange-500"
+                        className="w-full rounded-lg border border-stone-200 px-3 py-2 outline-none focus:border-orange-500"
                     />
-                    <p className="text-xs text-gray-500">{PASSWORD_HINT}. Staff can bill, run kitchen screens and see today&apos;s bills; only you can change the menu, staff or cancel bills.</p>
+                    <p className="text-xs text-stone-500">{PASSWORD_HINT}. Staff can bill, run kitchen screens and see today&apos;s bills; only you can change the menu, staff or cancel bills.</p>
                     <button
                         type="submit"
                         disabled={saving}
-                        className="w-full rounded-xl bg-gradient-to-r from-orange-500 to-pink-500 py-2.5 font-bold text-white disabled:opacity-50"
+                        className="w-full rounded-xl bg-gradient-to-r from-orange-500 to-rose-500 py-2.5 font-bold text-white disabled:opacity-50"
                     >
                         {saving ? 'Adding...' : 'Add staff login'}
                     </button>

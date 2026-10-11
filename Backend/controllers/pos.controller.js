@@ -2,6 +2,7 @@ const crypto = require('crypto');
 const Bill = require('../models/bill.model');
 const Sequence = require('../models/sequence.model');
 const MenuItem = require('../models/menuItem.model');
+const Customer = require('../models/customer.model');
 const { isValidObjectId } = require('../middleware/validation');
 const { sendBillReceipt, getWhatsappMode, getReceiptBaseUrl } = require('../config/whatsapp');
 const {
@@ -173,6 +174,13 @@ module.exports.createBill = async (req, res) => {
         await bill.save();
 
         console.log(`✅ Bill ${billNumber} created - token #${tokenNumber}, ₹${totals.total} (${payment.mode})`);
+
+        // Remember the customer for next time (never blocks the bill)
+        if (billCustomer.phone) {
+            Customer.recordVisit(bill).catch((error) => {
+                console.error('❌ Error recording customer visit:', error.message);
+            });
+        }
 
         // Send after saving so the receipt link in the message always works
         let whatsapp = null;

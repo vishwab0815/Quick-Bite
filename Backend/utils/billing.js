@@ -21,7 +21,10 @@ const getBusinessSettings = () => {
         gstin: process.env.HOTEL_GSTIN || '',
         gstScheme: process.env.GST_SCHEME === 'composition' ? 'composition' : 'regular',
         gstRate: Number.isFinite(gstRate) && gstRate >= 0 ? gstRate : 5,
-        pricesIncludeGst: process.env.PRICES_INCLUDE_GST === 'true',
+        // Menu prices are final by default - GST is shown on the bill but never added on top
+        pricesIncludeGst: process.env.PRICES_INCLUDE_GST !== 'false',
+        // Print one token slip per food counter with every bill
+        printCounterCoupons: process.env.PRINT_COUNTER_COUPONS !== 'false',
         sacCode: process.env.HOTEL_SAC_CODE || '996331',
         upiVpa: process.env.UPI_VPA || '',
         upiPayeeName: process.env.UPI_PAYEE_NAME || name,
