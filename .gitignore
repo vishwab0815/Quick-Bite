@@ -11,6 +11,9 @@ package-lock.json
 .env.test
 **/.env
 **/.env.local
+# Any other env file (e.g. .env.render for hosting) - only the templates are committed
+**/.env.*
+!**/.env.example
 
 # Build outputs
 dist/
