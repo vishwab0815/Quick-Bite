@@ -11,13 +11,14 @@ const round2 = (n) => Math.round((n + Number.EPSILON) * 100) / 100;
  * Hotel / business settings, read from environment variables
  */
 const getBusinessSettings = () => {
-    const name = process.env.HOTEL_NAME || 'QuickBite';
+    const name = process.env.HOTEL_NAME || 'Sri Ganesh Restaurant';
     const gstRate = Number(process.env.GST_RATE ?? 5);
 
     return {
         name,
         address: process.env.HOTEL_ADDRESS || '',
         phone: process.env.HOTEL_PHONE || '',
+        hours: process.env.HOTEL_HOURS || '',
         gstin: process.env.HOTEL_GSTIN || '',
         gstScheme: process.env.GST_SCHEME === 'composition' ? 'composition' : 'regular',
         gstRate: Number.isFinite(gstRate) && gstRate >= 0 ? gstRate : 5,

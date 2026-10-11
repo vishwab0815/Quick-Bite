@@ -16,6 +16,11 @@ const posRouter = require('./router/pos.router');
 
 const app = express();
 
+// Behind a hosting proxy (Render, Nginx) trust its forwarded client IP, so rate limits apply
+// per customer instead of one shared limit for everybody. TRUST_PROXY = number of proxy hops.
+const trustProxyHops = Number(process.env.TRUST_PROXY ?? (process.env.NODE_ENV === 'production' ? 1 : 0));
+if (trustProxyHops > 0) app.set('trust proxy', trustProxyHops);
+
 // Security middleware - Helmet helps secure Express apps by setting HTTP headers
 app.use(helmet({
     contentSecurityPolicy: process.env.NODE_ENV === 'production' ? undefined : false,

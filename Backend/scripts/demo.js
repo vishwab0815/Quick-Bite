@@ -16,11 +16,12 @@ const BACKEND_DIR = path.join(__dirname, '..');
 const DEMO_ENV = {
     NODE_ENV: 'development',
     JWT_SECRET: 'demo-only-secret-do-not-use-in-production',
-    HOTEL_NAME: 'Sri Ganesh Tiffin Hotel (Demo)',
+    HOTEL_NAME: 'Sri Ganesh Restaurant',
     HOTEL_ADDRESS: '12, MG Road, Bengaluru 560001',
     HOTEL_PHONE: '9876500000',
     UPI_VPA: 'demo-hotel@okaxis',
-    UPI_PAYEE_NAME: 'Sri Ganesh Tiffin Hotel',
+    UPI_PAYEE_NAME: 'Sri Ganesh Restaurant',
+    HOTEL_HOURS: '6:30 AM – 10:30 PM',
 };
 
 (async () => {

@@ -1,6 +1,21 @@
-# 🍕 QuickBite - Modern Food Delivery Platform
+# 🍽️ QuickBite - Restaurant Billing & Token System
 
-A full-stack restaurant management and food delivery application built with the MERN stack. Features a beautiful gradient-themed UI, secure authentication, real-time order management, admin dashboard, cloud image storage, and automated email notifications.
+Built for **Sri Ganesh Restaurant**: a MERN-stack counter billing system with Rameshwaram-style tokens,
+kitchen screens, a live token TV, WhatsApp bills, thermal-printer receipts, an owner dashboard and a public
+landing page with the live menu. (The original QuickBite online-ordering website is still included.)
+
+**Main screens**
+
+| Who | Where | What |
+|-----|-------|------|
+| Customers | `/` | Landing page: restaurant info, today's live menu, how the token system works |
+| Customers | `/pos/display` | Live token TV ("Ready - collect at Dosa Counter") |
+| Cashier | `/pos` | Fast billing: tap or type dishes, cash / UPI / card, automatic printing, WhatsApp bill |
+| Kitchen | `/pos/kitchen` | Per-counter tickets, Ready / Served, coupon QR scanning |
+| Owner | `/pos/bills` | Live dashboard: sales vs last week, payment mix, counter speed, bills, cash check |
+| Owner | `/pos/menu`, `/pos/staff` | Menu (with bulk import) and staff logins |
+
+See **[🧾 Counter Billing](#-counter-billing-token-system)** for details and **[🌐 Production Deployment](#-production-deployment)** for Render.
 
 ## ✨ Key Features
 
@@ -241,6 +256,7 @@ QuickBite/
 | GET | `/pos/reports/summary?date=` | Daily sales, cash vs UPI, GST, items, counter speed | Yes (Staff/Admin) |
 | GET | `/pos/reports/dashboard?date=` | Owner dashboard in one request: bills + summary + same weekday last week | Yes (Staff/Admin) |
 | PATCH | `/pos/bills/:id/cancel` | Cancel a bill (reason required) | Yes (Admin) |
+| GET | `/pos/public/info` | Landing page: restaurant name, hours, address, phone and today's available menu | No |
 | GET | `/pos/display` | Token TV board (token numbers only) | No |
 | GET | `/pos/receipt/:publicId` | E-receipt opened from WhatsApp / QR | No |
 
@@ -438,6 +454,7 @@ the token TV (`/pos/display`) shows "Ready – collect at Dosa Counter" → staf
 | Today's bills, cash check & reports | `/pos/bills` | Staff / Admin (only admin can cancel) |
 | Menu: add / edit / remove items, bulk import | `/pos/menu` | Admin |
 | Staff logins: add, reset password, remove | `/pos/staff` | Admin |
+| Landing page | `/` | Public: name, hours, address, phone, today's live menu (sold-out dishes hidden) |
 | Token TV | `/pos/display` | Public (no prices or customer details) |
 | E-receipt | `/receipt/:id` | Public link (sent on WhatsApp / QR on bill) |
 
@@ -539,22 +556,25 @@ npm run preview          # Preview production build
 
 ## 🌐 Production Deployment
 
-### Backend (Render/Railway/Heroku)
-1. Set environment variables:
-   - `NODE_ENV=production`
-   - `MONGO_URI=<your-mongodb-atlas-uri>`
-   - `JWT_SECRET=<random-64-char-string>`
-   - `FRONTEND_URL=<your-frontend-url>`
-   - `CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_API_KEY`, `CLOUDINARY_API_SECRET`
+Deployed on **Render** (backend Web Service + frontend Static Site). Pushing to `main` redeploys both when
+Render auto-deploy is on; otherwise use **Manual Deploy → Deploy latest commit** on each service.
+Full step-by-step guide: [SETUP.md](SETUP.md).
 
-2. Ensure HTTPS is enabled (required for cookies)
+### Backend (Render Web Service, root `Backend`, start `npm start`)
+Required: `NODE_ENV=production`, `MONGO_URI`, `JWT_SECRET` (64+ random chars), `FRONTEND_URL` (frontend URL),
+`CLOUDINARY_*`. Restaurant details: `HOTEL_NAME`, `HOTEL_ADDRESS`, `HOTEL_PHONE`, `HOTEL_HOURS`, `HOTEL_GSTIN`,
+`GST_SCHEME`, `GST_RATE`, `PRICES_INCLUDE_GST`, `UPI_VPA`, `UPI_PAYEE_NAME`, `PUBLIC_RECEIPT_BASE_URL` (frontend URL).
+Optional: `TRUST_PROXY` (defaults to 1 in production - right for Render), `JWT_EXPIRES_IN` (24h), `WHATSAPP_*`,
+`PRINT_COUNTER_COUPONS`, `RECEIPT_PAPER_WIDTH`. HTTPS is required for the login cookie.
 
-### Frontend (Vercel/Netlify)
-1. Set environment variable:
-   - `VITE_API_URL=<your-backend-url>`
+### Frontend (Render Static Site, root `Frontend`)
+- Build: `npm install && npm run build` · Publish directory: `dist` · Env: `VITE_API_URL=<backend URL>`
+- **Rewrite rule (required):** Redirects/Rewrites → Source `/*`, Destination `/index.html`, Action **Rewrite**,
+  so links like `/pos/kitchen` and `/receipt/...` work on refresh.
 
-2. Build command: `npm run build`
-3. Output directory: `dist`
+### After deploying to an existing database
+- **Do not run the seed script** - it deletes all users, bills and menus.
+- Sign in as the admin, add the menu at `/pos/menu` (Bulk import), add cashier logins at `/pos/staff`.
 
 ## 📝 License
 

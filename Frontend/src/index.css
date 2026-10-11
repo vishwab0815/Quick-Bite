@@ -97,3 +97,10 @@
   transform-origin: left;
   animation: pos-countdown linear forwards;
 }
+
+/* Smooth in-page scrolling (landing page sections) unless the user prefers less motion */
+@media (prefers-reduced-motion: no-preference) {
+  html {
+    scroll-behavior: smooth;
+  }
+}

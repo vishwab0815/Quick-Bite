@@ -95,6 +95,8 @@ STEP 4: Deploy Frontend to Render
      - Build Command: npm install && npm run build
      - Publish Directory: dist
    • Add Environment Variables (see Frontend ENV table below)
+   • Redirects/Rewrites → add: Source /*  →  Destination /index.html  (Action: Rewrite)
+     (required so /pos, /pos/kitchen and /receipt/... links work on refresh)
    • Deploy
 
 STEP 5: Update CORS
@@ -104,18 +106,26 @@ STEP 5: Update CORS
    • Set to: https://your-frontend.onrender.com
    • Backend will auto-redeploy
 
-STEP 6: Seed Production Database (first deploy only - it wipes ALL data)
+STEP 6: Seed Production Database - ONLY for a brand-new, empty database
    ↓
+   ⚠️  Seeding DELETES all users, bills and menus. Never run it on a live database.
    • Set SEED_ADMIN_PASSWORD and SEED_STAFF_PASSWORD (required in production)
    • Backend service → Shell tab
    • Run: node seedDatabase.js --force
    • Creates admin + counter staff logins, food items and the sample counter menu
+   Existing database instead: sign in as admin → add the menu at /pos/menu (Bulk import)
+   and cashier logins at /pos/staff.
 
 STEP 7: Test Deployment
    ↓
-   • Visit your frontend URL
-   • Test registration, login, ordering
-   • Login as admin to test dashboard
+   • Visit your frontend URL - the landing page shows the name, hours and live menu
+   • Sign in as admin → /pos: bill a dish, check Kitchen, Dashboard and /pos/display
+   • Refresh on /pos/kitchen - if you see "Not Found", the rewrite rule (STEP 4) is missing
+
+REDEPLOYING after code changes
+   ↓
+   • Push to main → Render auto-deploys both services (if Auto-Deploy is on)
+   • Otherwise: each service → Manual Deploy → Deploy latest commit
 
 ✅ DEPLOYMENT COMPLETE
 ```
@@ -153,6 +163,14 @@ FRONTEND_URL=http://localhost:5173
 | `SENDGRID_FROM_EMAIL` | `your@email.com` | ❌ | Must be verified in SendGrid |
 | `SENDGRID_FROM_NAME` | `QuickBite` | ❌ | Sender name |
 | `FRONTEND_URL` | `https://your-app.onrender.com` | ✅ | Your frontend URL |
+| `HOTEL_NAME` | `Sri Ganesh Restaurant` | ✅ | Shown on bills, screens and the landing page |
+| `HOTEL_ADDRESS` / `HOTEL_PHONE` / `HOTEL_HOURS` | your details | ✅ | Landing page + receipts |
+| `HOTEL_GSTIN` | `29ABCDE1234F1Z5` | ⚠️ | Printed on GST bills (empty if not registered) |
+| `GST_SCHEME` / `GST_RATE` / `PRICES_INCLUDE_GST` | `regular` / `5` / `true` | ✅ | `true` = menu price is final |
+| `UPI_VPA` / `UPI_PAYEE_NAME` | business UPI ID / name | ✅ | Exact-amount UPI QR at the counter |
+| `PUBLIC_RECEIPT_BASE_URL` | `https://your-app.onrender.com` | ✅ | Links in WhatsApp bills |
+| `TRUST_PROXY` | `1` | ❌ | Defaults to 1 in production (correct for Render) |
+| `WHATSAPP_TOKEN` / `WHATSAPP_PHONE_NUMBER_ID` / `WHATSAPP_TEMPLATE_NAME` | from Meta | ❌ | Automatic WhatsApp bills |
 
 **Generate JWT_SECRET:**
 ```bash

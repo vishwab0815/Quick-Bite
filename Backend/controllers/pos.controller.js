@@ -642,6 +642,36 @@ module.exports.getDashboard = async (req, res) => {
 };
 
 /**
+ * Public: restaurant details + today's available menu for the website landing page
+ */
+module.exports.getPublicInfo = async (req, res) => {
+    try {
+        const settings = getBusinessSettings();
+        const menu = await MenuItem.find({ isAvailable: { $ne: false } })
+            .select('name price category isVeg -_id')
+            .sort({ sortOrder: 1, name: 1 })
+            .lean();
+
+        // Customers may cache this briefly - the menu rarely changes minute to minute
+        res.set('Cache-Control', 'public, max-age=60');
+        res.status(200).json({
+            success: true,
+            restaurant: {
+                name: settings.name,
+                address: settings.address,
+                phone: settings.phone,
+                hours: settings.hours,
+                pricesIncludeGst: settings.gstScheme === 'composition' || settings.pricesIncludeGst
+            },
+            menu
+        });
+    } catch (error) {
+        console.error('❌ Error fetching public info:', error);
+        res.status(500).json({ success: false, message: 'Failed to load restaurant details' });
+    }
+};
+
+/**
  * Public: token display board (no money or personal data)
  */
 module.exports.getDisplayBoard = async (req, res) => {

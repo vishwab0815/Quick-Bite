@@ -17,7 +17,7 @@ const OrderSuccess = lazy(() => import('./pages/OrderSuccess'));
 const Signin = lazy(() => import('./pages/Signin'));
 const Register = lazy(() => import('./pages/Register'));
 const Contact = lazy(() => import('./pages/Contact'));
-const GetStarted = lazy(() => import('./pages/GetStarted'));
+const Landing = lazy(() => import('./pages/Landing'));
 const Checkout = lazy(() => import('./pages/Checkout'));
 const About = lazy(() => import('./pages/About'));
 const OrderHistory = lazy(() => import('./pages/OrderHistory'));
@@ -42,7 +42,7 @@ const App = () => {
                 <div className="relative">
                     <Suspense fallback={<PageLoader />}>
                         <Routes>
-                            <Route path="/" element={<GetStarted />} />
+                            <Route path="/" element={<Landing />} />
                             <Route path="/signin" element={<Signin />} />
                             <Route path="/register" element={<Register />} />
                             <Route path="/contact" element={<Contact />} />

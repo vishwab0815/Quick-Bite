@@ -201,6 +201,19 @@ describe('counter billing', () => {
         assert.equal(again.status, 304);
     });
 
+    it('public landing info shows the restaurant and available dishes only, no private data', async () => {
+        await cashier.patch(`/pos/menu/${coffee._id}/availability`).send({ isAvailable: false });
+        const res = await request(app).get('/pos/public/info');
+        assert.equal(res.status, 200);
+        assert.equal(res.headers['cache-control'], 'public, max-age=60');
+        assert.equal(res.body.restaurant.name, 'Test Hotel');
+        assert.deepEqual(res.body.menu.map((item) => item.name), ['Masala Dosa']);
+        assert.deepEqual(Object.keys(res.body.menu[0]).sort(), ['category', 'isVeg', 'name', 'price']);
+        const body = JSON.stringify(res.body);
+        assert.ok(!body.includes('okaxis') && !body.includes('gstin'), 'no UPI ID or GSTIN on the public page');
+        await cashier.patch(`/pos/menu/${coffee._id}/availability`).send({ isAvailable: true });
+    });
+
     it('rejects sold-out items', async () => {
         assert.equal((await cashier.patch(`/pos/menu/${coffee._id}/availability`).send({ isAvailable: false })).status, 200);
         const res = await cashier.post('/pos/bills').send({ items: [{ itemId: coffee._id, quantity: 1 }], payment: { mode: 'upi' } });

@@ -16,7 +16,8 @@ posRouter.use((req, res, next) => {
     next();
 });
 
-// Public routes - token display TV and receipt link (no money / personal data on display)
+// Public routes - landing page info, token display TV and receipt link (no money / personal data on display)
+posRouter.get('/public/info', PosController.getPublicInfo);
 posRouter.get('/display', PosController.getDisplayBoard);
 posRouter.get('/receipt/:publicId', PosController.getPublicReceipt);
 
