@@ -9,6 +9,17 @@ export const posApi = axios.create({
     withCredentials: true,
 });
 
+// Session ended (24h login expired or staff removed) - send the screen back to sign in once
+let redirectingToSignin = false;
+posApi.interceptors.response.use(undefined, (error) => {
+    if (error.response?.status === 401 && !redirectingToSignin && window.location.pathname !== '/signin') {
+        redirectingToSignin = true;
+        showToast.error('Session expired - please sign in again');
+        window.location.assign('/signin');
+    }
+    return Promise.reject(error);
+});
+
 export const STAFF_ROLES = ['admin', 'staff'];
 
 export const formatINR = (amount) =>

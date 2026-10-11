@@ -133,7 +133,7 @@ NODE_ENV=development
 PORT=3000
 MONGO_URI=mongodb://localhost:27017/quickbite
 JWT_SECRET=generate_using_crypto_randomBytes
-JWT_EXPIRES_IN=7d
+JWT_EXPIRES_IN=24h
 SENDGRID_API_KEY=SG.your_key_here (optional)
 SENDGRID_FROM_EMAIL=your@email.com (optional)
 SENDGRID_FROM_NAME=QuickBite
@@ -148,7 +148,7 @@ FRONTEND_URL=http://localhost:5173
 | `PORT` | `10000` | ✅ | Auto-set by Render |
 | `MONGO_URI` | `mongodb+srv://...` | ✅ | From MongoDB Atlas |
 | `JWT_SECRET` | Generate new | ✅ | Use crypto.randomBytes(64) |
-| `JWT_EXPIRES_IN` | `7d` | ✅ | Token expiration |
+| `JWT_EXPIRES_IN` | `24h` | ✅ | Login session length |
 | `SENDGRID_API_KEY` | `SG.xxxxx` | ❌ | Optional - for emails |
 | `SENDGRID_FROM_EMAIL` | `your@email.com` | ❌ | Must be verified in SendGrid |
 | `SENDGRID_FROM_NAME` | `QuickBite` | ❌ | Sender name |

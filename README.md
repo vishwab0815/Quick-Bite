@@ -363,7 +363,7 @@ NODE_ENV=development
 PORT=3000
 MONGO_URI=mongodb://localhost:27017/quickbite
 JWT_SECRET=your_super_secret_jwt_key_change_this_in_production
-JWT_EXPIRES_IN=7d
+JWT_EXPIRES_IN=24h
 
 # Cloudinary (Required for image uploads)
 CLOUDINARY_CLOUD_NAME=your_cloud_name

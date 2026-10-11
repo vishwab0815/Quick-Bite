@@ -326,7 +326,7 @@ export default function PosCounter() {
                         ))}
                     </div>
 
-                    <div className="grid min-h-0 flex-1 auto-rows-min grid-cols-2 gap-2.5 overflow-y-auto pb-28 sm:grid-cols-3 sm:gap-3 lg:pb-5 xl:grid-cols-4 2xl:grid-cols-5">
+                    <div className="grid min-h-0 flex-1 auto-rows-min grid-cols-2 gap-2.5 overflow-y-auto overflow-x-hidden pb-28 sm:grid-cols-3 sm:gap-3 lg:pb-5 xl:grid-cols-4 2xl:grid-cols-5">
                         {visibleMenu.map((item) => {
                             const soldOut = item.isAvailable === false;
                             const inCart = cart.find((line) => line.item._id === item._id);
@@ -338,7 +338,7 @@ export default function PosCounter() {
                                         soldOut ? 'border-stone-200 opacity-55' : 'border-stone-200/80 hover:border-orange-300 hover:shadow-md'
                                     } ${inCart ? 'border-orange-400 ring-2 ring-orange-100' : ''} ${editAvailability ? 'ring-2 ring-rose-200' : ''}`}
                                 >
-                                    <span className="flex items-start gap-2">
+                                    <span className="flex items-start gap-2 pr-7">
                                         <span className="mt-0.5"><VegDot isVeg={item.isVeg !== false} /></span>
                                         <span className="text-[15px] font-semibold leading-snug text-stone-800">{item.name}</span>
                                     </span>
@@ -351,7 +351,7 @@ export default function PosCounter() {
                                         )}
                                     </span>
                                     {inCart && (
-                                        <span className="absolute -right-1.5 -top-1.5 flex h-6 min-w-6 items-center justify-center rounded-full bg-orange-600 px-1.5 text-xs font-bold text-white shadow">
+                                        <span className="absolute right-2.5 top-2.5 flex h-6 min-w-6 items-center justify-center rounded-full bg-orange-600 px-1.5 text-xs font-bold tabular-nums text-white shadow">
                                             {inCart.quantity}
                                         </span>
                                     )}

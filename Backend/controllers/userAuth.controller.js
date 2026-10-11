@@ -3,6 +3,30 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const { sendWelcomeEmail } = require('../config/sendgrid');
 
+// Sessions last 24 hours by default (one working day at the counter)
+const DEFAULT_SESSION_LENGTH = '24h';
+
+/**
+ * Sign a JWT and set it as an httpOnly cookie that expires exactly when the token does
+ * Production: secure=true (HTTPS), sameSite='none' (cross-origin)
+ * Development: secure=false (HTTP), sameSite='lax' (more permissive)
+ */
+const startSession = (res, user) => {
+    const token = jwt.sign(
+        { id: user._id, name: user.name, email: user.email, role: user.role },
+        process.env.JWT_SECRET,
+        { expiresIn: process.env.JWT_EXPIRES_IN || DEFAULT_SESSION_LENGTH }
+    );
+    const { exp } = jwt.decode(token);
+
+    res.cookie('token', token, {
+        httpOnly: true,  // Prevents XSS attacks
+        secure: process.env.NODE_ENV === 'production',  // HTTPS only in production
+        sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',  // Cross-origin support
+        maxAge: exp * 1000 - Date.now(),
+        path: '/'  // Available across all routes
+    });
+};
 
 const register = async (req, res) => {
     const { name, email, password } = req.body;
@@ -26,22 +50,7 @@ const register = async (req, res) => {
         });
         await user.save();
 
-        const token = jwt.sign(
-            { id: user._id, name: user.name, email: user.email, role: user.role },
-            process.env.JWT_SECRET,
-            { expiresIn: process.env.JWT_EXPIRES_IN || '7d' }
-        );
-
-        // Cookie configuration for JWT token
-        // Production: secure=true (HTTPS), sameSite='none' (cross-origin)
-        // Development: secure=false (HTTP), sameSite='lax' (more permissive)
-        res.cookie('token', token, {
-            httpOnly: true,  // Prevents XSS attacks
-            secure: process.env.NODE_ENV === 'production',  // HTTPS only in production
-            sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',  // Cross-origin support
-            maxAge: 7 * 24 * 60 * 60 * 1000,  // 7 days
-            path: '/'  // Available across all routes
-        });
+        startSession(res, user);
 
         // Send welcome email using SendGrid (non-blocking)
         sendWelcomeEmail(email, name).catch(error => {
@@ -87,22 +96,7 @@ const login = async (req, res) => {
             return res.status(401).json({ success: false, message: 'Invalid credentials' });
         }
 
-        const token = jwt.sign(
-            { id: user._id, name: user.name, email: user.email, role: user.role },
-            process.env.JWT_SECRET,
-            { expiresIn: process.env.JWT_EXPIRES_IN || '7d' }
-        );
-
-        // Cookie configuration for JWT token
-        // Production: secure=true (HTTPS), sameSite='none' (cross-origin)
-        // Development: secure=false (HTTP), sameSite='lax' (more permissive)
-        res.cookie('token', token, {
-            httpOnly: true,  // Prevents XSS attacks
-            secure: process.env.NODE_ENV === 'production',  // HTTPS only in production
-            sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',  // Cross-origin support
-            maxAge: 7 * 24 * 60 * 60 * 1000,  // 7 days
-            path: '/'  // Available across all routes
-        });
+        startSession(res, user);
 
         return res.status(200).json({
             success: true,

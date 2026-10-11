@@ -282,6 +282,18 @@ describe('staff management', () => {
 });
 
 describe('security', () => {
+    it('login sessions last 24 hours (cookie and token expire together)', async () => {
+        const res = await request(app).post('/api/auth/login').send({ email: 'cashier@test.com', password: PASSWORD });
+        assert.equal(res.status, 200);
+        const cookie = res.headers['set-cookie'].find((value) => value.startsWith('token='));
+        const maxAge = Number(cookie.match(/Max-Age=(\d+)/)[1]);
+        assert.ok(maxAge > 86390 && maxAge <= 86400, `cookie Max-Age was ${maxAge}`);
+
+        const token = cookie.split(';')[0].slice('token='.length);
+        const { iat, exp } = require('jsonwebtoken').decode(token);
+        assert.equal(exp - iat, 24 * 60 * 60);
+    });
+
     it('failed profile checks do not count towards the login rate limit', async () => {
         for (let i = 0; i < 8; i++) {
             assert.equal((await request(app).get('/api/auth/profile')).status, 401);

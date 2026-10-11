@@ -40,8 +40,8 @@ export default function KitchenScreen() {
             }
             knownIds.current = ids;
             setTickets(next);
-        } catch (error) {
-            if (error.response?.status === 401) showToast.error('Session expired - please sign in again');
+        } catch {
+            // Polling retries every few seconds; an expired session is handled by posApi
         }
     }, [counterParam, soundOn]);
 
@@ -201,7 +201,7 @@ export default function KitchenScreen() {
             <PosHeader user={user} hotelName={settings.name} />
 
             <div className="flex flex-wrap items-center gap-2 border-b border-stone-200 bg-white px-3 py-2">
-                <div className="flex gap-1.5 overflow-x-auto">
+                <div className="flex w-full gap-1.5 overflow-x-auto [scrollbar-width:none] sm:w-auto">
                     {['All', ...settings.counters].map((name) => (
                         <button
                             key={name}
