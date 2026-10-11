@@ -1,7 +1,7 @@
 require('dotenv').config();
 const express = require('express');
-const mongoose = require('mongoose');
 const connectToDB = require('./db/db');
+const { getDbStatus } = connectToDB;
 const cors = require('cors');
 const cookieParser = require('cookie-parser');
 const helmet = require('helmet');
@@ -91,6 +91,32 @@ app.use(express.json({ limit: '10mb' })); // Limit body size
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 app.use(cookieParser());
 
+// Health check endpoint
+// Also used by the keep-alive ping (.github/workflows/keep-alive.yml).
+// Open it in a browser to see why the database is not connecting.
+app.get('/health', (req, res) => {
+    const { connected, problem } = getDbStatus();
+    res.set('Cache-Control', 'no-store');
+    res.status(200).json({
+        status: 'ok',
+        db: connected ? 'connected' : 'disconnected',
+        ...(problem && { dbProblem: problem }),
+        environment: process.env.NODE_ENV,
+        timestamp: new Date().toISOString()
+    });
+});
+
+// Answer at once with a clear message while the database is unreachable,
+// instead of every request hanging and failing with a generic error
+app.use((req, res, next) => {
+    const { connected, problem } = getDbStatus();
+    if (connected || !problem) return next();
+    res.status(503).json({
+        success: false,
+        message: 'The server cannot reach the database right now. Please try again in a minute.'
+    });
+});
+
 // Routes
 // Stricter rate limiting only on login/register - profile checks on every page load
 // must not count towards the 5 failed attempts (that locked staff out of shared counter PCs)
@@ -99,18 +125,6 @@ app.use('/api/auth', authRouter);
 app.use('/fooditems', router);
 app.use('/success', orderrouter);
 app.use('/pos', posRouter); // Counter billing, kitchen screens & token display (polled - kept off the /api limiter)
-
-// Health check endpoint
-// Also used by the keep-alive ping (.github/workflows/keep-alive.yml)
-app.get('/health', (req, res) => {
-    res.set('Cache-Control', 'no-store');
-    res.status(200).json({
-        status: 'ok',
-        db: mongoose.connection.readyState === 1 ? 'connected' : 'disconnected',
-        environment: process.env.NODE_ENV,
-        timestamp: new Date().toISOString()
-    });
-});
 
 
 // 404 handler - must be after all routes

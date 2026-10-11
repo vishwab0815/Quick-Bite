@@ -8,6 +8,7 @@
     "dev": "nodemon server.js",
     "start:prod": "NODE_ENV=production node server.js",
     "demo": "node scripts/demo.js",
+    "create-admin": "node scripts/create-admin.js",
     "test": "node --test"
   },
   "keywords": [

@@ -46,8 +46,8 @@ npm run dev       # Start frontend on http://localhost:5173
 
 ### Logins
 - **Demo mode** (`npm run demo`): `admin@gmail.com` / `Admin1234`, `counter@quickbite.com` / `Counter1234`
-- **Your own empty database:** register at `/register`, then set that user's `role` to `admin` in
-  MongoDB Atlas (Browse Collections → `users`). Add the menu at `/pos/menu` and cashiers at `/pos/staff`.
+- **Your own empty database:** run `npm run create-admin` in `Backend` (uses `MONGO_URI` from `.env`) to create
+  the owner login. Then sign in, add the menu at `/pos/menu` and cashiers at `/pos/staff`.
 
 ---
 
@@ -109,8 +109,8 @@ STEP 5: Update CORS
 STEP 6: First admin & menu
    ↓
    • Existing database: sign in as the admin you already have
-   • Brand-new database: register at /register, then in MongoDB Atlas
-     (Browse Collections → users) set that user's role to "admin"
+   • Brand-new database: on your computer, put the production MONGO_URI in Backend/.env
+     and run: npm run create-admin   (creates the owner login; never deletes anything)
    • Add the menu at /pos/menu (Bulk import) and cashier logins at /pos/staff
 
 STEP 7: Test Deployment
@@ -283,6 +283,17 @@ Solution:
 - Note: Email functionality is optional
 ```
 
+**❌ Login fails / "cannot reach the database"**
+```
+Open <backend URL>/health in a browser. If "db" is "disconnected", "dbProblem" says why:
+  • Wrong database username or password  → fix MONGO_URI on Render (Environment tab)
+  • Cannot reach the database            → MongoDB Atlas → Network Access → allow 0.0.0.0/0
+  • Database host not found              → check the cluster address in MONGO_URI
+  • MONGO_URI is not set                 → add it on Render
+The server keeps retrying by itself; once fixed it connects within a minute (no redeploy needed
+for Atlas changes; Render redeploys automatically when you save environment variables).
+```
+
 **❌ Render Free Tier Slow Start**
 ```
 Info: Free tier services spin down after 15 mins of inactivity
@@ -313,6 +324,7 @@ npm run dev          # Development mode with auto-reload
 npm start            # Production mode
 npm run demo         # In-memory database with sample data (no MongoDB needed)
 npm test             # API tests
+npm run create-admin # Create the owner (admin) login
 
 # Frontend
 npm run dev          # Development server

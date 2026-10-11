@@ -334,8 +334,9 @@ These passwords exist only inside demo mode - they never touch a real database.
 
 **Production:** the live database already has the owner and counter logins (strong passwords, shared privately).
 The owner adds or removes cashier logins and resets passwords from `/pos/staff`.
-On a brand-new empty database: register at `/register`, then set that user's `role` to `admin` in MongoDB Atlas
-(Browse Collections → `users`). Everything else - menu, staff - is then managed from the app.
+On a brand-new empty database, create the owner login once from your computer: put the database's `MONGO_URI`
+in `Backend/.env` and run `cd Backend && npm run create-admin` (asks for email and password; never deletes
+anything). Everything else - menu, cashier logins - is then managed from the app.
 
 ## 🎨 Design System
 
@@ -545,6 +546,7 @@ npm run dev              # Start development server with nodemon
 npm start                # Start production server
 npm test                 # API tests against an in-memory MongoDB
 npm run demo             # Try the app without MongoDB: in-memory DB + dummy data (wiped on stop)
+npm run create-admin     # Create the owner login, or make an existing login admin (uses MONGO_URI)
 ```
 
 ### Frontend
