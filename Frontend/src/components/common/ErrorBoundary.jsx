@@ -1,5 +1,4 @@
 import React from 'react';
-import { motion } from 'framer-motion';
 import { FiAlertTriangle, FiRefreshCw, FiHome } from 'react-icons/fi';
 import { useNavigate } from 'react-router-dom';
 import Button from './Button';
@@ -74,12 +73,7 @@ const ErrorFallback = ({ error, errorInfo, onReload, onReset }) => {
 
     return (
         <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-orange-50 via-pink-50 to-purple-50 p-4">
-            <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.5 }}
-                className="max-w-2xl w-full bg-white rounded-2xl shadow-2xl p-8 md:p-12"
-            >
+            <div className="max-w-2xl w-full bg-white rounded-2xl shadow-2xl p-8 md:p-12">
                 {/* Error Icon */}
                 <div className="flex justify-center mb-6">
                     <div className="w-20 h-20 rounded-full bg-red-100 flex items-center justify-center">
@@ -160,7 +154,7 @@ const ErrorFallback = ({ error, errorInfo, onReload, onReset }) => {
                         </a>
                     </p>
                 </div>
-            </motion.div>
+            </div>
         </div>
     );
 };

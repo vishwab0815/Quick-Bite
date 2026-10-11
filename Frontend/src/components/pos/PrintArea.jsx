@@ -25,19 +25,21 @@ const PrintArea = ({ job, settings, onDone }) => {
 
     if (!job || !settings) return null;
 
+    // Thermal rolls: 80mm paper prints a 72mm strip, 58mm paper a 48mm strip.
+    // Zero page margins (no browser header/footer), side padding keeps text inside the printable strip.
     const width = settings.receiptPaperWidth === 58 ? 58 : 80;
-    const contentWidth = width === 58 ? 48 : 72;
+    const sidePadding = width === 58 ? 6 : 5;
     const includeReceipt = job.includeReceipt !== false;
     const counters = job.coupons ? job.bill.stations.map((station) => station.counter) : [];
 
     return createPortal(
-        <div className="print-area" style={{ width: `${contentWidth}mm`, padding: '0 2mm', boxSizing: 'border-box' }}>
-            <style>{`@page { size: ${width}mm auto; margin: 0 4mm; }`}</style>
-            {includeReceipt && <Receipt bill={job.bill} settings={settings} />}
+        <div className="print-area" style={{ width: `${width}mm`, padding: `0 ${sidePadding}mm`, boxSizing: 'border-box' }}>
+            <style>{`@page { size: ${width}mm auto; margin: 0; }`}</style>
+            {includeReceipt && <div className="print-slip"><Receipt bill={job.bill} settings={settings} /></div>}
             {counters.map((counter, index) => (
                 <div
                     key={counter}
-                    className={includeReceipt || index > 0 ? 'break-before-page pt-2' : ''}
+                    className={`print-slip ${includeReceipt || index > 0 ? 'break-before-page' : ''}`}
                 >
                     <CounterCoupon bill={job.bill} settings={settings} counter={counter} />
                 </div>

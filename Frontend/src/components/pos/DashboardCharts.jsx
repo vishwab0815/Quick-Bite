@@ -24,11 +24,11 @@ const hourLabel = (hour) => {
 };
 
 export const Card = ({ title, subtitle, children, className = '' }) => (
-    <section className={`rounded-3xl border border-stone-200/80 bg-white p-5 shadow-[0_1px_2px_rgba(28,25,23,0.05)] ${className}`}>
+    <section className={`rounded-2xl border border-stone-200/80 bg-white p-4 shadow-[0_1px_2px_rgba(28,25,23,0.05)] sm:p-5 ${className}`}>
         {(title || subtitle) && (
             <header className="mb-4">
-                {title && <h2 className="text-[15px] font-bold text-stone-900">{title}</h2>}
-                {subtitle && <p className="text-xs text-stone-500">{subtitle}</p>}
+                {title && <h2 className="text-sm font-semibold text-stone-900">{title}</h2>}
+                {subtitle && <p className="mt-0.5 text-xs text-stone-500">{subtitle}</p>}
             </header>
         )}
         {children}
@@ -45,20 +45,20 @@ Card.propTypes = {
 /**
  * Stat tile: label · value · delta vs a named period (up/down colored by whether up is good)
  */
-export const StatTile = ({ label, value, delta, deltaLabel, upIsGood = true, hero = false }) => {
+export const StatTile = ({ label, value, delta, deltaLabel, upIsGood = true }) => {
     const hasDelta = Number.isFinite(delta);
     const good = hasDelta && (delta === 0 || (delta > 0) === upIsGood);
     return (
-        <div className={`rounded-3xl border border-stone-200/80 bg-white p-5 shadow-[0_1px_2px_rgba(28,25,23,0.05)] ${hero ? 'col-span-2' : ''}`}>
-            <p className="text-sm font-medium text-stone-500">{label}</p>
-            <p className={`mt-1 font-bold tracking-tight text-stone-900 ${hero ? 'text-5xl' : 'text-2xl sm:text-3xl'}`}>{value}</p>
+        <div className="rounded-2xl border border-stone-200/80 bg-white p-4 shadow-[0_1px_2px_rgba(28,25,23,0.05)]">
+            <p className="text-xs font-medium text-stone-500">{label}</p>
+            <p className="mt-1.5 text-xl font-semibold tracking-tight text-stone-900 sm:text-2xl">{value}</p>
             {hasDelta ? (
-                <p className={`mt-2 flex items-center gap-1 text-xs font-semibold ${good ? 'text-emerald-700' : 'text-rose-700'}`}>
+                <p className={`mt-1.5 flex items-center gap-1 text-xs font-medium ${good ? 'text-emerald-700' : 'text-rose-700'}`}>
                     {delta >= 0 ? <FiArrowUpRight /> : <FiArrowDownRight />}
                     {delta >= 0 ? '+' : ''}{delta}% <span className="font-medium text-stone-500">{deltaLabel}</span>
                 </p>
             ) : (
-                <p className="mt-2 text-xs text-stone-400">{deltaLabel ? `No data ${deltaLabel}` : ' '}</p>
+                <p className="mt-1.5 text-xs text-stone-400">{deltaLabel ? `No data ${deltaLabel}` : ' '}</p>
             )}
         </div>
     );
@@ -70,7 +70,6 @@ StatTile.propTypes = {
     delta: PropTypes.number,
     deltaLabel: PropTypes.string,
     upIsGood: PropTypes.bool,
-    hero: PropTypes.bool,
 };
 
 /**
@@ -204,7 +203,7 @@ export const PaymentMix = ({ byMode }) => {
                     >
                         {active === segment.key && (
                             <span className="pointer-events-none absolute bottom-full left-1/2 z-10 mb-2 -translate-x-1/2 whitespace-nowrap rounded-lg bg-stone-900 px-2.5 py-1.5 text-xs text-white shadow-lg">
-                                <span className="font-semibold">{segment.label}</span> · {formatINR(segment.total)} · {segment.count} bills
+                                <span className="font-semibold">{segment.label}</span> · {formatINR(segment.total)} · {segment.count} bill{segment.count === 1 ? '' : 's'}
                             </span>
                         )}
                     </div>
@@ -222,7 +221,7 @@ export const PaymentMix = ({ byMode }) => {
                         <span className="flex items-center gap-2 text-stone-600">
                             <span className="h-2.5 w-2.5 rounded-full" style={{ background: segment.color }} />
                             {segment.label}
-                            <span className="text-xs text-stone-400">{segment.count} bills</span>
+                            <span className="text-xs text-stone-400">{segment.count} bill{segment.count === 1 ? '' : 's'}</span>
                         </span>
                         <span className="tabular-nums">
                             <span className="font-semibold text-stone-900">{formatINR(segment.total)}</span>

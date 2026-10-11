@@ -90,6 +90,15 @@ const getFinancialYear = (businessDate) => {
 };
 
 /**
+ * Move a business date (YYYY-MM-DD) by a number of days, e.g. -7 for the same weekday last week
+ */
+const shiftBusinessDate = (businessDate, days) => {
+    const date = new Date(`${businessDate}T00:00:00Z`);
+    date.setUTCDate(date.getUTCDate() + days);
+    return date.toISOString().slice(0, 10);
+};
+
+/**
  * Normalize an Indian mobile number to WhatsApp format (91XXXXXXXXXX)
  * Returns null when the number is not valid
  */
@@ -110,5 +119,6 @@ module.exports = {
     computeTotals,
     getBusinessDate,
     getFinancialYear,
+    shiftBusinessDate,
     normalizeIndianPhone,
 };

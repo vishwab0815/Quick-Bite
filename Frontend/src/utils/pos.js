@@ -131,25 +131,22 @@ export const playBeep = (frequency = 880, duration = 0.15) => {
 };
 
 /**
- * Ensures the current user has one of the allowed roles (default: counter staff or admin);
+ * Ensures the current user is counter staff or admin (owner-only pages are guarded by the POS routes);
  * redirects otherwise
  */
-export const useStaffUser = (allowedRoles = STAFF_ROLES) => {
+export const useStaffUser = () => {
     const navigate = useNavigate();
     const [user, setUser] = useState(null);
-    const rolesKey = allowedRoles.join(',');
 
     useEffect(() => {
         let active = true;
-        const roles = rolesKey.split(',');
 
         axios.get(`${import.meta.env.VITE_API_URL}/api/auth/profile`, { withCredentials: true })
             .then((res) => {
                 if (!active) return;
-                const role = res.data.user?.role;
-                if (!roles.includes(role)) {
-                    showToast.error(roles.includes('staff') ? 'Counter access is for staff only' : 'Only the owner (admin) can open this page');
-                    navigate(STAFF_ROLES.includes(role) ? '/pos' : '/home');
+                if (!STAFF_ROLES.includes(res.data.user?.role)) {
+                    showToast.error('Counter access is for staff only');
+                    navigate('/home');
                     return;
                 }
                 setUser(res.data.user);
@@ -161,23 +158,7 @@ export const useStaffUser = (allowedRoles = STAFF_ROLES) => {
             });
 
         return () => { active = false; };
-    }, [navigate, rolesKey]);
+    }, [navigate]);
 
     return user;
-};
-
-/**
- * Loads POS settings (hotel details, GST, UPI, counters)
- */
-export const usePosSettings = (enabled = true) => {
-    const [settings, setSettings] = useState(null);
-
-    useEffect(() => {
-        if (!enabled) return;
-        posApi.get('/settings')
-            .then((res) => setSettings(res.data.settings))
-            .catch(() => showToast.error('Failed to load counter settings'));
-    }, [enabled]);
-
-    return settings;
 };

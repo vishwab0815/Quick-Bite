@@ -187,6 +187,20 @@ describe('counter billing', () => {
         assert.ok(summary.counterSpeed.every((entry) => entry.tokens === 1 && entry.avgMinutes >= 0));
     });
 
+    it('serves the whole dashboard in one gzip-compressed request, revalidated with 304s', async () => {
+        const res = await cashier.get('/pos/reports/dashboard').set('Accept-Encoding', 'gzip');
+        assert.equal(res.status, 200);
+        assert.equal(res.headers['content-encoding'], 'gzip');
+        assert.equal(res.headers['cache-control'], 'private, no-cache');
+        assert.equal(res.body.bills.length, 2);
+        assert.equal(res.body.summary.total, 835);
+        assert.equal(res.body.compare.billCount, 0);
+        assert.equal(res.body.compare.date, require('../utils/billing').shiftBusinessDate(res.body.date, -7));
+
+        const again = await cashier.get('/pos/reports/dashboard').set('If-None-Match', res.headers.etag);
+        assert.equal(again.status, 304);
+    });
+
     it('rejects sold-out items', async () => {
         assert.equal((await cashier.patch(`/pos/menu/${coffee._id}/availability`).send({ isAvailable: false })).status, 200);
         const res = await cashier.post('/pos/bills').send({ items: [{ itemId: coffee._id, quantity: 1 }], payment: { mode: 'upi' } });

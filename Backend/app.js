@@ -4,6 +4,7 @@ const connectToDB = require('./db/db');
 const cors = require('cors');
 const cookieParser = require('cookie-parser');
 const helmet = require('helmet');
+const compression = require('compression');
 const rateLimit = require('express-rate-limit');
 const mongoSanitize = require('@exortek/express-mongo-sanitize');
 const { requestLogger, errorLogger } = require('./middleware/logger');
@@ -20,6 +21,9 @@ app.use(helmet({
     contentSecurityPolicy: process.env.NODE_ENV === 'production' ? undefined : false,
     crossOriginEmbedderPolicy: false,
 }));
+
+// Gzip responses - bill lists and reports shrink to a fraction of their size
+app.use(compression());
 
 // Rate limiting - Prevent brute force attacks
 const limiter = rateLimit({

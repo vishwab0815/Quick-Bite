@@ -238,7 +238,8 @@ QuickBite/
 | POST | `/pos/serve` | Serve by scanned coupon QR or token number (once per counter) | Yes (Staff/Admin) |
 | POST | `/pos/bills/:id/whatsapp` | Send / resend WhatsApp receipt | Yes (Staff/Admin) |
 | GET | `/pos/kitchen?counter=` | Open tickets for a kitchen counter | Yes (Staff/Admin) |
-| GET | `/pos/reports/summary?date=` | Daily sales, cash vs UPI, GST, items | Yes (Staff/Admin) |
+| GET | `/pos/reports/summary?date=` | Daily sales, cash vs UPI, GST, items, counter speed | Yes (Staff/Admin) |
+| GET | `/pos/reports/dashboard?date=` | Owner dashboard in one request: bills + summary + same weekday last week | Yes (Staff/Admin) |
 | PATCH | `/pos/bills/:id/cancel` | Cancel a bill (reason required) | Yes (Admin) |
 | GET | `/pos/display` | Token TV board (token numbers only) | No |
 | GET | `/pos/receipt/:publicId` | E-receipt opened from WhatsApp / QR | No |
@@ -464,6 +465,12 @@ counter request, so removing a staff login signs them out immediately.
   (`PUBLIC_RECEIPT_BASE_URL`).
 - **UPI:** the counter shows a QR with the exact bill amount, paid straight to the hotel's UPI ID (no gateway fee).
   The cashier taps **Payment received** after the soundbox confirms.
+- **Speed:** all counter screens share one persistent layout (header, sign-in and settings load once) and a
+  stale-while-revalidate cache, so switching Counter / Kitchen / Dashboard is instant and polling pauses in hidden tabs.
+  The counter bundle loads separately from the website (no animation library). The API gzips responses, revalidates
+  reads with ETags (unchanged polls return `304`), caches staff roles for 15 seconds and serves the dashboard in one request.
+- **Thermal printing only:** receipts are laid out for 80mm / 58mm thermal rolls with zero page margins (no browser
+  header/footer), text kept inside the printable strip, pure black ink and space for the auto-cutter.
 
 ## 📸 Image Upload Usage
 

@@ -10,6 +10,12 @@ const posRouter = express.Router();
 const isStaff = [authenticateToken, requireActiveRole('admin', 'staff')];
 const isAdmin = [authenticateToken, requireActiveRole('admin')];
 
+// Reads are always revalidated: unchanged polls get a tiny "304 Not Modified" instead of the full list
+posRouter.use((req, res, next) => {
+    if (req.method === 'GET') res.set('Cache-Control', 'private, no-cache');
+    next();
+});
+
 // Public routes - token display TV and receipt link (no money / personal data on display)
 posRouter.get('/display', PosController.getDisplayBoard);
 posRouter.get('/receipt/:publicId', PosController.getPublicReceipt);
@@ -30,6 +36,7 @@ posRouter.post('/serve', isStaff, PosController.serveByCode);
 
 posRouter.get('/kitchen', isStaff, PosController.getKitchenTickets);
 posRouter.get('/reports/summary', isStaff, PosController.getDailySummary);
+posRouter.get('/reports/dashboard', isStaff, PosController.getDashboard);
 
 // Admin-only - menu management
 posRouter.post('/menu', isAdmin, MenuController.createMenuItem);

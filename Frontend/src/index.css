@@ -43,6 +43,44 @@
   .print-area {
     display: block !important;
   }
+
+  /* Thermal printers have no grey - everything prints solid black */
+  .print-area,
+  .print-area * {
+    color: #000 !important;
+    background: transparent !important;
+    border-color: #000 !important;
+    box-shadow: none !important;
+  }
+
+  /* Each slip: a little paper at the top and room at the end so the cutter misses the last line */
+  .print-slip {
+    padding: 2mm 0 6mm;
+    break-inside: avoid;
+  }
+}
+
+/* Counter screens fade in softly when switching tabs */
+@keyframes pos-page-enter {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.pos-page {
+  animation: pos-page-enter 180ms cubic-bezier(0.2, 0, 0, 1);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pos-page,
+  .pos-countdown {
+    animation: none;
+  }
 }
 
 /* Token screen auto-close countdown */

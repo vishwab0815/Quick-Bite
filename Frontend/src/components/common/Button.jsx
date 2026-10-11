@@ -1,4 +1,3 @@
-import { motion } from 'framer-motion';
 import PropTypes from 'prop-types';
 
 const Button = ({
@@ -66,21 +65,19 @@ const Button = ({
     );
 
     return (
-        <motion.button
+        <button
             type={type}
             onClick={onClick}
             disabled={disabled || loading}
-            className={buttonClasses}
-            whileHover={!disabled && !loading ? { scale: 1.02 } : {}}
-            whileTap={!disabled && !loading ? { scale: 0.98 } : {}}
-            transition={{ duration: 0.2 }}
+            // Same subtle grow / press as before, in CSS (no animation library needed)
+            className={`${buttonClasses} transform-gpu enabled:hover:scale-[1.02] enabled:active:scale-[0.98]`}
             {...props}
         >
             {loading && <LoadingSpinner />}
             {!loading && icon && iconPosition === 'left' && icon}
             {loading ? 'Loading...' : children}
             {!loading && icon && iconPosition === 'right' && icon}
-        </motion.button>
+        </button>
     );
 };
 

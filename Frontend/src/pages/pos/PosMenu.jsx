@@ -1,11 +1,14 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { FiPlus, FiSearch, FiEdit2, FiTrash2, FiUpload, FiX } from 'react-icons/fi';
-import PosHeader from '../../components/pos/PosHeader';
+import Skeleton from '../../components/pos/Skeleton';
 import VegDot from '../../components/pos/VegDot';
 import { showToast } from '../../utils/toast';
-import { posApi, formatINR, useStaffUser, usePosSettings } from '../../utils/pos';
+import { posApi, formatINR } from '../../utils/pos';
+import { useCachedQuery } from '../../utils/useCachedQuery';
 
-const ADMIN_ONLY = ['admin'];
+const NO_ITEMS = [];
+// Same cache key as the billing counter - edits show up there instantly
+const fetchMenu = () => posApi.get('/menu').then((res) => res.data.items);
 const EMPTY_FORM = { name: '', price: '', counter: '', category: '', isVeg: true, isAvailable: true };
 
 /**
@@ -30,10 +33,8 @@ const parseImportText = (text) => text
     });
 
 export default function PosMenu() {
-    const user = useStaffUser(ADMIN_ONLY);
-    const settings = usePosSettings(Boolean(user));
-
-    const [items, setItems] = useState([]);
+    const { data: menuData, error: menuError, refresh: loadMenu } = useCachedQuery('menu', fetchMenu);
+    const items = menuData || NO_ITEMS;
     const [search, setSearch] = useState('');
     const [form, setForm] = useState(null); // null = closed, { ...fields, _id? } = open
     const [saving, setSaving] = useState(false);
@@ -41,18 +42,9 @@ export default function PosMenu() {
     const [importText, setImportText] = useState('');
     const [importErrors, setImportErrors] = useState([]);
 
-    const loadMenu = useCallback(async () => {
-        try {
-            const res = await posApi.get('/menu');
-            setItems(res.data.items);
-        } catch {
-            showToast.error('Failed to load menu');
-        }
-    }, []);
-
     useEffect(() => {
-        if (user) loadMenu();
-    }, [user, loadMenu]);
+        if (menuError) showToast.error('Failed to load menu');
+    }, [menuError]);
 
     const counters = useMemo(() => [...new Set(items.map((item) => item.counter))].sort(), [items]);
     const categories = useMemo(() => [...new Set(items.map((item) => item.category).filter(Boolean))].sort(), [items]);
@@ -136,21 +128,11 @@ export default function PosMenu() {
         }
     };
 
-    if (!user) {
-        return (
-            <div className="pos-app flex min-h-screen items-center justify-center bg-stone-100">
-                <div className="h-12 w-12 animate-spin rounded-full border-4 border-orange-500 border-t-transparent" />
-            </div>
-        );
-    }
-
     return (
-        <div className="min-h-screen pos-app bg-stone-100">
-            <PosHeader user={user} hotelName={settings?.name} />
-
-            <div className="mx-auto max-w-5xl space-y-4 p-4">
+        <div>
+            <div className="mx-auto max-w-5xl space-y-4 px-3 py-5 sm:px-6 sm:py-6">
                 <div className="flex flex-wrap items-center gap-2">
-                    <h1 className="mr-auto text-2xl font-black">Menu ({items.length} items)</h1>
+                    <h1 className="mr-auto text-xl font-semibold tracking-tight">Menu <span className="text-sm font-normal text-stone-400">· {items.length} items</span></h1>
                     <div className="relative">
                         <FiSearch className="absolute left-3 top-1/2 -translate-y-1/2 text-stone-400" />
                         <input
@@ -218,7 +200,9 @@ export default function PosMenu() {
                     </section>
                 ))}
 
-                {grouped.length === 0 && (
+                {!menuData && Array.from({ length: 3 }, (_, index) => <Skeleton key={index} className="h-40" />)}
+
+                {menuData && grouped.length === 0 && (
                     <p className="rounded-xl bg-white py-12 text-center text-stone-500">
                         {items.length === 0 ? 'No items yet. Add one or use Bulk import.' : 'No items match your search.'}
                     </p>

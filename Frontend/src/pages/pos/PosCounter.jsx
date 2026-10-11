@@ -4,13 +4,15 @@ import {
     FiSearch, FiMinus, FiPlus, FiTrash2, FiMessageCircle, FiCheck, FiX, FiSlash,
     FiPhone, FiUser, FiRepeat, FiChevronUp, FiPrinter, FiShoppingBag, FiZap,
 } from 'react-icons/fi';
-import PosHeader from '../../components/pos/PosHeader';
 import PrintArea from '../../components/pos/PrintArea';
 import VegDot from '../../components/pos/VegDot';
+import Skeleton from '../../components/pos/Skeleton';
 import { showToast } from '../../utils/toast';
 import {
-    posApi, formatINR, computeTotals, buildUpiLink, isValidIndianMobile, useStaffUser, usePosSettings,
+    posApi, formatINR, computeTotals, buildUpiLink, isValidIndianMobile,
 } from '../../utils/pos';
+import { usePos } from '../../utils/posContext';
+import { useCachedQuery } from '../../utils/useCachedQuery';
 
 const PAYMENT_MODES = [
     { id: 'cash', label: 'Cash' },
@@ -28,14 +30,19 @@ const quickCashAmounts = (total) => {
     return [...amounts].filter((amount) => amount >= total).sort((a, b) => a - b).slice(0, 5);
 };
 
+const NO_ITEMS = [];
+const fetchMenu = () => posApi.get('/menu').then((res) => res.data.items);
+// Today's best sellers, pinned above the menu for one-tap billing
+const fetchPopular = () => posApi.get('/reports/summary')
+    .then((res) => res.data.summary.items.slice(0, POPULAR_COUNT).map((item) => item.name));
+
 const phoneDigits = (value) => String(value || '').replace(/\D/g, '').replace(/^91(?=\d{10}$)/, '');
 
 export default function PosCounter() {
-    const user = useStaffUser();
-    const settings = usePosSettings(Boolean(user));
-
-    const [menu, setMenu] = useState([]);
-    const [popular, setPopular] = useState([]);
+    const { settings } = usePos();
+    const { data: menuData, error: menuError, refresh: loadMenu, mutate: mutateMenu } = useCachedQuery('menu', fetchMenu);
+    const { data: popular = NO_ITEMS, refresh: loadPopular } = useCachedQuery('popular', fetchPopular);
+    const menu = menuData || NO_ITEMS;
     const [search, setSearch] = useState('');
     const [activeCounter, setActiveCounter] = useState('All');
     const [editAvailability, setEditAvailability] = useState(false);
@@ -57,30 +64,9 @@ export default function PosCounter() {
 
     const searchRef = useRef(null);
 
-    const loadMenu = useCallback(async () => {
-        try {
-            const res = await posApi.get('/menu');
-            setMenu(res.data.items);
-        } catch {
-            showToast.error('Failed to load menu');
-        }
-    }, []);
-
-    // Today's best sellers, pinned above the menu for one-tap billing
-    const loadPopular = useCallback(async () => {
-        try {
-            const res = await posApi.get('/reports/summary');
-            setPopular(res.data.summary.items.slice(0, POPULAR_COUNT).map((item) => item.name));
-        } catch {
-            // optional - the menu still works without it
-        }
-    }, []);
-
     useEffect(() => {
-        if (!user) return;
-        loadMenu();
-        loadPopular();
-    }, [user, loadMenu, loadPopular]);
+        if (menuError) showToast.error('Failed to load menu');
+    }, [menuError]);
 
     // Find regulars as the cashier types the first digits of their number
     useEffect(() => {
@@ -194,7 +180,7 @@ export default function PosCounter() {
     const toggleAvailability = async (item) => {
         try {
             const res = await posApi.patch(`/menu/${item._id}/availability`, { isAvailable: item.isAvailable === false });
-            setMenu((prev) => prev.map((menuItem) => (menuItem._id === item._id ? res.data.item : menuItem)));
+            mutateMenu((prev = []) => prev.map((menuItem) => (menuItem._id === item._id ? res.data.item : menuItem)));
             if (res.data.item.isAvailable === false) {
                 setCart((prev) => prev.filter((line) => line.item._id !== item._id));
             }
@@ -325,22 +311,12 @@ export default function PosCounter() {
         }
     };
 
-    if (!user || !settings) {
-        return (
-            <div className="pos-app flex min-h-screen items-center justify-center bg-stone-100">
-                <div className="h-10 w-10 animate-spin rounded-full border-4 border-orange-500 border-t-transparent" />
-            </div>
-        );
-    }
-
     const upiConfigured = Boolean(settings.upiVpa);
     const gstIncluded = settings.gstScheme === 'regular' && settings.pricesIncludeGst;
     const gstAdded = settings.gstScheme === 'regular' && !settings.pricesIncludeGst;
 
     return (
-        <div className="pos-app flex h-[100dvh] flex-col bg-stone-100">
-            <PosHeader user={user} hotelName={settings.name} />
-
+        <div className="flex h-full flex-col">
             <div className="flex min-h-0 flex-1">
                 {/* ---------- Menu ---------- */}
                 <section className="flex min-h-0 min-w-0 flex-1 flex-col px-3 pt-3 sm:px-5 sm:pt-4">
@@ -443,7 +419,8 @@ export default function PosCounter() {
                                 </button>
                             );
                         })}
-                        {visibleMenu.length === 0 && (
+                        {!menuData && Array.from({ length: 12 }, (_, index) => <Skeleton key={index} className="h-24" />)}
+                        {menuData && visibleMenu.length === 0 && (
                             <p className="col-span-full py-16 text-center text-stone-400">No dishes found</p>
                         )}
                     </div>

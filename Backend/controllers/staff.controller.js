@@ -1,6 +1,7 @@
 const bcrypt = require('bcryptjs');
 const User = require('../models/userauthentication.model');
 const { isValidEmail, isValidPassword, isValidObjectId, sanitizeString } = require('../middleware/validation');
+const { forgetCachedRole } = require('../middleware/auth');
 
 const STAFF_ROLES = ['staff', 'admin'];
 const PASSWORD_RULE = 'Password must be at least 8 characters with 1 uppercase, 1 lowercase and 1 number';
@@ -107,6 +108,7 @@ module.exports.removeStaff = async (req, res) => {
             return res.status(404).json({ success: false, message: 'Staff member not found' });
         }
 
+        forgetCachedRole(user._id);
         console.log(`✅ Staff login removed: ${user.email}`);
         res.status(200).json({ success: true, message: `${user.name} removed` });
     } catch (error) {

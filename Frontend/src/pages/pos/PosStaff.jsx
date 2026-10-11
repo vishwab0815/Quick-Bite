@@ -1,34 +1,27 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { FiUserPlus, FiKey, FiTrash2 } from 'react-icons/fi';
-import PosHeader from '../../components/pos/PosHeader';
+import Skeleton from '../../components/pos/Skeleton';
 import { showToast } from '../../utils/toast';
-import { posApi, formatDateTime, useStaffUser, usePosSettings } from '../../utils/pos';
+import { posApi, formatDateTime } from '../../utils/pos';
+import { usePos } from '../../utils/posContext';
+import { useCachedQuery } from '../../utils/useCachedQuery';
 
-const ADMIN_ONLY = ['admin'];
+const NO_STAFF = [];
+const fetchStaff = () => posApi.get('/staff').then((res) => res.data.staff);
 const EMPTY_FORM = { name: '', email: '', password: '' };
 const PASSWORD_HINT = 'At least 8 characters with an uppercase letter, a lowercase letter and a number';
 const STRONG_PASSWORD = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d).{8,}$/;
 
 export default function PosStaff() {
-    const user = useStaffUser(ADMIN_ONLY);
-    const settings = usePosSettings(Boolean(user));
-
-    const [staff, setStaff] = useState([]);
+    const { user } = usePos();
+    const { data: staffData, error: staffError, refresh: loadStaff } = useCachedQuery('staff', fetchStaff);
+    const staff = staffData || NO_STAFF;
     const [form, setForm] = useState(EMPTY_FORM);
     const [saving, setSaving] = useState(false);
 
-    const loadStaff = useCallback(async () => {
-        try {
-            const res = await posApi.get('/staff');
-            setStaff(res.data.staff);
-        } catch {
-            showToast.error('Failed to load staff');
-        }
-    }, []);
-
     useEffect(() => {
-        if (user) loadStaff();
-    }, [user, loadStaff]);
+        if (staffError) showToast.error('Failed to load staff');
+    }, [staffError]);
 
     const addStaff = async (event) => {
         event.preventDefault();
@@ -75,21 +68,12 @@ export default function PosStaff() {
         }
     };
 
-    if (!user) {
-        return (
-            <div className="pos-app flex min-h-screen items-center justify-center bg-stone-100">
-                <div className="h-12 w-12 animate-spin rounded-full border-4 border-orange-500 border-t-transparent" />
-            </div>
-        );
-    }
-
     return (
-        <div className="min-h-screen pos-app bg-stone-100">
-            <PosHeader user={user} hotelName={settings?.name} />
-
-            <div className="mx-auto grid max-w-5xl gap-4 p-4 lg:grid-cols-[1fr_320px]">
+        <div>
+            <div className="mx-auto grid max-w-5xl gap-4 px-3 py-5 sm:px-6 sm:py-6 lg:grid-cols-[1fr_320px]">
                 <section className="overflow-hidden rounded-2xl border border-stone-200/80 bg-white shadow-[0_1px_2px_rgba(28,25,23,0.05)]">
-                    <h1 className="border-b border-stone-100 px-4 py-3 text-xl font-black">Staff logins</h1>
+                    <h1 className="border-b border-stone-100 px-4 py-3 text-base font-semibold">Staff logins</h1>
+                    {!staffData && <div className="space-y-2 p-4">{Array.from({ length: 3 }, (_, index) => <Skeleton key={index} className="h-14" />)}</div>}
                     {staff.map((member) => (
                         <div key={member._id} className="flex items-center gap-3 border-b border-stone-50 px-4 py-3 last:border-0">
                             <div className="min-w-0 flex-1">

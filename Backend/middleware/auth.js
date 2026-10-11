@@ -96,10 +96,26 @@ const authorizeRoles = (...allowedRoles) => {
     };
 };
 
+// Short-lived role cache - kitchen screens poll every few seconds, so this saves
+// a database lookup per request. Removing a staff member clears their entry.
+const ROLE_CACHE_TTL_MS = 15 * 1000;
+const roleCache = new Map();
+
+const getActiveUser = async (id) => {
+    const cached = roleCache.get(id);
+    if (cached && cached.expiresAt > Date.now()) return cached.user;
+
+    const user = await User.findById(id).select('role').lean();
+    roleCache.set(id, { user, expiresAt: Date.now() + ROLE_CACHE_TTL_MS });
+    return user;
+};
+
+const forgetCachedRole = (id) => roleCache.delete(String(id));
+
 /**
- * Like authorizeRoles, but checks the role in the database on every request,
- * so a removed staff member or changed role takes effect immediately
- * instead of when their token expires.
+ * Like authorizeRoles, but checks the role against the database (cached for
+ * 15 seconds), so a removed staff member or changed role takes effect right
+ * away instead of when their token expires.
  * @param {Array} allowedRoles - Array of allowed roles
  */
 const requireActiveRole = (...allowedRoles) => {
@@ -112,7 +128,7 @@ const requireActiveRole = (...allowedRoles) => {
                 });
             }
 
-            const user = await User.findById(req.user.id).select('role').lean();
+            const user = await getActiveUser(String(req.user.id));
 
             if (!user) {
                 return res.status(401).json({
@@ -144,5 +160,6 @@ module.exports = {
     authenticateToken,
     optionalAuth,
     authorizeRoles,
-    requireActiveRole
+    requireActiveRole,
+    forgetCachedRole
 };
