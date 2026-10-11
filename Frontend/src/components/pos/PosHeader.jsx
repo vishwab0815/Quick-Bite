@@ -1,12 +1,12 @@
 import { NavLink, useNavigate } from 'react-router-dom';
 import PropTypes from 'prop-types';
 import axios from 'axios';
-import { FiShoppingBag, FiMonitor, FiFileText, FiTv, FiLogOut, FiHome, FiList, FiUsers } from 'react-icons/fi';
+import { FiShoppingBag, FiMonitor, FiBarChart2, FiTv, FiLogOut, FiHome, FiList, FiUsers } from 'react-icons/fi';
 
 const links = [
     { to: '/pos', label: 'Counter', icon: FiShoppingBag, end: true },
     { to: '/pos/kitchen', label: 'Kitchen', icon: FiMonitor },
-    { to: '/pos/bills', label: 'Bills', icon: FiFileText },
+    { to: '/pos/bills', label: 'Dashboard', icon: FiBarChart2 },
     { to: '/pos/menu', label: 'Menu', icon: FiList, adminOnly: true },
     { to: '/pos/staff', label: 'Staff', icon: FiUsers, adminOnly: true },
 ];

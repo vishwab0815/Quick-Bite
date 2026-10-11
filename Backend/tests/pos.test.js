@@ -183,6 +183,8 @@ describe('counter billing', () => {
         assert.equal(summary.cancelledCount, 1);
         assert.equal(summary.total, 835);
         assert.equal(summary.byMode.cash.total, 835);
+        assert.deepEqual(summary.counterSpeed.map((entry) => entry.counter).sort(), ['Beverages', 'Dosa Counter']);
+        assert.ok(summary.counterSpeed.every((entry) => entry.tokens === 1 && entry.avgMinutes >= 0));
     });
 
     it('rejects sold-out items', async () => {

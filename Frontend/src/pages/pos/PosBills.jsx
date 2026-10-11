@@ -1,26 +1,48 @@
-import { useCallback, useEffect, useState } from 'react';
-import { FiPrinter, FiMessageCircle, FiXCircle, FiRefreshCw } from 'react-icons/fi';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { FiPrinter, FiMessageCircle, FiXCircle, FiRefreshCw, FiCheckCircle, FiAlertTriangle } from 'react-icons/fi';
 import PosHeader from '../../components/pos/PosHeader';
 import PrintArea from '../../components/pos/PrintArea';
+import { Card, StatTile, HourlyColumns, PaymentMix, BarList } from '../../components/pos/DashboardCharts';
 import { showToast } from '../../utils/toast';
 import {
     posApi, formatINR, formatTime, todayInTimeZone, isValidIndianMobile, useStaffUser, usePosSettings,
 } from '../../utils/pos';
 
+const LIVE_REFRESH_MS = 30000;
+const BILLS_PREVIEW = 25;
+
 const STATUS_STYLES = {
-    preparing: 'bg-orange-100 text-orange-700',
-    ready: 'bg-green-100 text-green-700',
+    preparing: 'bg-orange-50 text-orange-800',
+    ready: 'bg-emerald-50 text-emerald-800',
     served: 'bg-stone-100 text-stone-600',
-    cancelled: 'bg-red-100 text-red-700',
+    cancelled: 'bg-rose-50 text-rose-700',
 };
 
-const StatCard = ({ label, value, sub }) => (
-    <div className="rounded-2xl border border-stone-200/80 bg-white shadow-[0_1px_2px_rgba(28,25,23,0.05)] p-4">
-        <p className="text-xs font-semibold uppercase tracking-wider text-stone-500">{label}</p>
-        <p className="mt-1 text-2xl font-black text-stone-900">{value}</p>
-        {sub && <p className="text-xs text-stone-500">{sub}</p>}
-    </div>
+const shiftDate = (date, days) => {
+    const value = new Date(`${date}T00:00:00Z`);
+    value.setUTCDate(value.getUTCDate() + days);
+    return value.toISOString().slice(0, 10);
+};
+
+const weekday = (date) => new Intl.DateTimeFormat('en-IN', { weekday: 'short', timeZone: 'UTC' }).format(new Date(`${date}T00:00:00Z`));
+
+const longDate = (date) => new Intl.DateTimeFormat('en-IN', {
+    weekday: 'long', day: 'numeric', month: 'long', timeZone: 'UTC',
+}).format(new Date(`${date}T00:00:00Z`));
+
+// Headline figures read better without paise: ₹27,595
+const wholeRupees = (amount) => `₹${Math.round(amount).toLocaleString('en-IN')}`;
+
+const percentChange = (current, previous) => (
+    previous > 0 ? Math.round(((current - previous) / previous) * 100) : undefined
 );
+
+const averagePrepMinutes = (summary) => {
+    const speed = summary?.counterSpeed || [];
+    const tokens = speed.reduce((sum, entry) => sum + entry.tokens, 0);
+    if (!tokens) return null;
+    return Math.round((speed.reduce((sum, entry) => sum + entry.avgMinutes * entry.tokens, 0) / tokens) * 10) / 10;
+};
 
 export default function PosBills() {
     const user = useStaffUser();
@@ -29,34 +51,47 @@ export default function PosBills() {
     const [date, setDate] = useState('');
     const [bills, setBills] = useState([]);
     const [summary, setSummary] = useState(null);
+    const [lastWeek, setLastWeek] = useState(null);
     const [loading, setLoading] = useState(false);
     const [countedCash, setCountedCash] = useState('');
     const [printJob, setPrintJob] = useState(null);
+    const [showAllBills, setShowAllBills] = useState(false);
+
+    const today = settings ? todayInTimeZone(settings.timeZone) : '';
 
     useEffect(() => {
         if (settings && !date) setDate(todayInTimeZone(settings.timeZone));
     }, [settings, date]);
 
-    const load = useCallback(async () => {
+    const load = useCallback(async ({ quiet = false } = {}) => {
         if (!date) return;
-        setLoading(true);
+        if (!quiet) setLoading(true);
         try {
-            const [billsRes, summaryRes] = await Promise.all([
+            const [billsRes, summaryRes, lastWeekRes] = await Promise.all([
                 posApi.get('/bills', { params: { date } }),
                 posApi.get('/reports/summary', { params: { date } }),
+                posApi.get('/reports/summary', { params: { date: shiftDate(date, -7) } }),
             ]);
             setBills(billsRes.data.bills);
             setSummary(summaryRes.data.summary);
+            setLastWeek(lastWeekRes.data.summary);
         } catch (error) {
-            showToast.error(error.response?.data?.message || 'Failed to load bills');
+            if (!quiet) showToast.error(error.response?.data?.message || 'Failed to load the dashboard');
         } finally {
-            setLoading(false);
+            if (!quiet) setLoading(false);
         }
     }, [date]);
 
     useEffect(() => {
         if (user) load();
     }, [user, load]);
+
+    // Live: today's dashboard refreshes itself
+    useEffect(() => {
+        if (!user || !date || date !== today) return undefined;
+        const timer = setInterval(() => load({ quiet: true }), LIVE_REFRESH_MS);
+        return () => clearInterval(timer);
+    }, [user, date, today, load]);
 
     const handlePrintDone = useCallback(() => setPrintJob(null), []);
 
@@ -84,7 +119,7 @@ export default function PosBills() {
                 tab?.close();
                 showToast.error(whatsapp.error || 'Could not send receipt');
             }
-            load();
+            load({ quiet: true });
         } catch (error) {
             tab?.close();
             showToast.error(error.response?.data?.message || 'Failed to send receipt');
@@ -97,16 +132,32 @@ export default function PosBills() {
         try {
             await posApi.patch(`/bills/${bill._id}/cancel`, { reason });
             showToast.success(`Token #${bill.tokenNumber} cancelled`);
-            load();
+            load({ quiet: true });
         } catch (error) {
             showToast.error(error.response?.data?.message || 'Failed to cancel bill');
         }
     };
 
+    const prep = averagePrepMinutes(summary);
+    const prepLastWeek = averagePrepMinutes(lastWeek);
+    const compareLabel = date ? `vs last ${weekday(date)}` : '';
+
+    const topItems = useMemo(() => (summary?.items || []).slice(0, 6).map((item) => ({
+        label: item.name,
+        value: item.quantity,
+        detail: formatINR(item.amount),
+    })), [summary]);
+
+    const counterRows = useMemo(() => (summary?.counterSpeed || []).map((entry) => ({
+        label: entry.counter,
+        value: entry.avgMinutes,
+        detail: `${entry.tokens} tokens`,
+    })), [summary]);
+
     if (!user || !settings) {
         return (
             <div className="pos-app flex min-h-screen items-center justify-center bg-stone-100">
-                <div className="h-12 w-12 animate-spin rounded-full border-4 border-orange-500 border-t-transparent" />
+                <div className="h-10 w-10 animate-spin rounded-full border-4 border-orange-500 border-t-transparent" />
             </div>
         );
     }
@@ -143,118 +194,151 @@ export default function PosBills() {
         </div>
     );
 
+    const visibleBills = showAllBills ? bills : bills.slice(0, BILLS_PREVIEW);
     const expectedCash = summary?.byMode.cash.total || 0;
-    const cashDifference = countedCash === '' ? null : Number(countedCash) - expectedCash;
-    const maxHourTotal = Math.max(1, ...(summary?.byHour || []).map((hour) => hour.total));
+    const cashDifference = countedCash === '' ? null : Math.round((Number(countedCash) - expectedCash) * 100) / 100;
 
     return (
         <div className="min-h-screen pos-app bg-stone-100">
             <PosHeader user={user} hotelName={settings.name} />
 
-            <div className="mx-auto max-w-7xl space-y-4 p-4">
-                <div className="flex flex-wrap items-center gap-3">
-                    <h1 className="text-2xl font-black text-stone-900">Bills & Sales</h1>
-                    <input
-                        type="date"
-                        value={date}
-                        max={todayInTimeZone(settings.timeZone)}
-                        onChange={(e) => setDate(e.target.value)}
-                        className="rounded-lg border border-stone-200 bg-white px-3 py-2"
-                    />
-                    <button onClick={load} className="flex items-center gap-1.5 rounded-lg bg-white px-3 py-2 font-semibold text-stone-700 border border-stone-200">
-                        <FiRefreshCw className={loading ? 'animate-spin' : ''} /> Refresh
-                    </button>
+            <div className="mx-auto max-w-7xl space-y-4 px-3 py-5 sm:px-5">
+                {/* Title */}
+                <div className="flex flex-wrap items-end justify-between gap-3">
+                    <div>
+                        <p className="flex items-center gap-2 text-sm font-medium text-stone-500">
+                            {date === today && <span className="h-2 w-2 animate-pulse rounded-full bg-emerald-500" />}
+                            {date === today ? 'Live · updates every 30s' : 'Day report'}
+                        </p>
+                        <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">{date ? longDate(date) : 'Dashboard'}</h1>
+                    </div>
+                    <div className="flex items-center gap-2">
+                        <input
+                            type="date"
+                            value={date}
+                            max={today}
+                            onChange={(e) => setDate(e.target.value)}
+                            className="rounded-full border border-stone-200 bg-white px-4 py-2 text-sm font-medium shadow-sm"
+                        />
+                        <button
+                            onClick={() => load()}
+                            className="flex items-center gap-2 rounded-full border border-stone-200 bg-white px-4 py-2 text-sm font-semibold text-stone-700 shadow-sm hover:text-stone-900"
+                        >
+                            <FiRefreshCw className={loading ? 'animate-spin' : ''} /> Refresh
+                        </button>
+                    </div>
                 </div>
 
                 {summary && (
                     <>
-                        <div className="grid grid-cols-2 gap-3 md:grid-cols-4 lg:grid-cols-6">
-                            <StatCard label="Total sales" value={formatINR(summary.total)} sub={`${summary.billCount} bills`} />
-                            <StatCard label="Average bill" value={formatINR(summary.averageBill)} />
-                            <StatCard label="Cash" value={formatINR(summary.byMode.cash.total)} sub={`${summary.byMode.cash.count} bills`} />
-                            <StatCard label="UPI" value={formatINR(summary.byMode.upi.total)} sub={`${summary.byMode.upi.count} bills`} />
-                            <StatCard label="Card" value={formatINR(summary.byMode.card.total)} sub={`${summary.byMode.card.count} bills`} />
-                            <StatCard
-                                label="GST collected"
-                                value={formatINR(summary.cgst + summary.sgst)}
-                                sub={`Cancelled: ${summary.cancelledCount}`}
+                        {/* KPIs */}
+                        <div className="grid grid-cols-2 gap-3 lg:grid-cols-5">
+                            <StatTile
+                                hero
+                                label="Sales"
+                                value={wholeRupees(summary.total)}
+                                delta={percentChange(summary.total, lastWeek?.total)}
+                                deltaLabel={compareLabel}
+                            />
+                            <StatTile
+                                label="Bills"
+                                value={summary.billCount}
+                                delta={percentChange(summary.billCount, lastWeek?.billCount)}
+                                deltaLabel={compareLabel}
+                            />
+                            <StatTile
+                                label="Average bill"
+                                value={wholeRupees(summary.averageBill)}
+                                delta={percentChange(summary.averageBill, lastWeek?.averageBill)}
+                                deltaLabel={compareLabel}
+                            />
+                            <StatTile
+                                label="Avg time to ready"
+                                value={prep === null ? '—' : `${prep} min`}
+                                delta={prep === null ? undefined : percentChange(prep, prepLastWeek)}
+                                deltaLabel={compareLabel}
+                                upIsGood={false}
                             />
                         </div>
 
                         <div className="grid gap-4 lg:grid-cols-3">
-                            {/* Cash drawer check */}
-                            <div className="rounded-2xl border border-stone-200/80 bg-white shadow-[0_1px_2px_rgba(28,25,23,0.05)] p-4">
-                                <h2 className="mb-2 font-bold text-stone-800">Cash drawer check</h2>
-                                <p className="text-sm text-stone-600">Expected cash: <span className="font-bold">{formatINR(expectedCash)}</span></p>
-                                <input
-                                    value={countedCash}
-                                    onChange={(e) => setCountedCash(e.target.value.replace(/[^\d.]/g, ''))}
-                                    placeholder="Counted cash in drawer"
-                                    inputMode="decimal"
-                                    className="mt-2 w-full rounded-lg border border-stone-200 px-3 py-2 outline-none focus:border-orange-500"
+                            <Card
+                                title="Sales by hour"
+                                subtitle={summary.byHour.length ? 'Hover a column for details · busiest hour labelled' : 'No sales yet'}
+                                className="lg:col-span-2"
+                            >
+                                <HourlyColumns data={summary.byHour} />
+                            </Card>
+
+                            <div className="space-y-4">
+                                <Card title="Payment mix" subtitle={`${summary.billCount} paid bills · ${summary.cancelledCount} cancelled`}>
+                                    <PaymentMix byMode={summary.byMode} />
+                                </Card>
+
+                                <Card title="Cash drawer check" subtitle={`Expected in drawer: ${formatINR(expectedCash)}`}>
+                                    <input
+                                        value={countedCash}
+                                        onChange={(e) => setCountedCash(e.target.value.replace(/[^\d.]/g, ''))}
+                                        placeholder="Count the cash and enter it here"
+                                        inputMode="decimal"
+                                        className="w-full rounded-xl border border-stone-200 bg-stone-50 px-3 py-2.5 text-sm outline-none focus:border-orange-400 focus:bg-white focus:ring-4 focus:ring-orange-100"
+                                    />
+                                    {cashDifference !== null && (
+                                        <p className={`mt-3 flex items-center gap-2 text-sm font-semibold ${cashDifference === 0 ? 'text-emerald-700' : 'text-rose-700'}`}>
+                                            {cashDifference === 0 ? <FiCheckCircle /> : <FiAlertTriangle />}
+                                            {cashDifference === 0
+                                                ? 'Cash matches'
+                                                : cashDifference > 0
+                                                    ? `Excess ${formatINR(cashDifference)}`
+                                                    : `Short ${formatINR(-cashDifference)}`}
+                                        </p>
+                                    )}
+                                </Card>
+                            </div>
+                        </div>
+
+                        <div className="grid gap-4 lg:grid-cols-2">
+                            <Card title="Counter speed" subtitle="Average minutes from bill to ready · slowest first">
+                                <BarList
+                                    rows={counterRows}
+                                    formatValue={(value) => `${value} min`}
+                                    emptyText="Appears once counters start marking tokens ready"
+                                    emphasizeFirst={counterRows.length > 1}
+                                    emphasisLabel="Slowest"
                                 />
-                                {cashDifference !== null && (
-                                    <p className={`mt-2 font-bold ${cashDifference === 0 ? 'text-green-700' : 'text-red-600'}`}>
-                                        {cashDifference === 0
-                                            ? '✓ Cash matches'
-                                            : cashDifference > 0
-                                                ? `Excess ${formatINR(cashDifference)}`
-                                                : `Short ${formatINR(-cashDifference)}`}
-                                    </p>
-                                )}
-                            </div>
-
-                            {/* Hourly sales */}
-                            <div className="rounded-2xl border border-stone-200/80 bg-white shadow-[0_1px_2px_rgba(28,25,23,0.05)] p-4">
-                                <h2 className="mb-2 font-bold text-stone-800">Sales by hour</h2>
-                                <div className="space-y-1">
-                                    {summary.byHour.map((hour) => (
-                                        <div key={hour.hour} className="flex items-center gap-2 text-sm">
-                                            <span className="w-12 text-stone-500">{hour.hour}:00</span>
-                                            <div className="h-4 flex-1 rounded bg-stone-100">
-                                                <div
-                                                    className="h-4 rounded bg-gradient-to-r from-orange-400 to-pink-500"
-                                                    style={{ width: `${(hour.total / maxHourTotal) * 100}%` }}
-                                                />
-                                            </div>
-                                            <span className="w-24 text-right font-semibold">{formatINR(hour.total)}</span>
-                                        </div>
-                                    ))}
-                                    {summary.byHour.length === 0 && <p className="text-sm text-stone-400">No sales yet</p>}
-                                </div>
-                            </div>
-
-                            {/* Top items */}
-                            <div className="rounded-2xl border border-stone-200/80 bg-white shadow-[0_1px_2px_rgba(28,25,23,0.05)] p-4">
-                                <h2 className="mb-2 font-bold text-stone-800">Top items</h2>
-                                <div className="max-h-56 space-y-1 overflow-y-auto">
-                                    {summary.items.map((item) => (
-                                        <div key={item.name} className="flex justify-between gap-2 text-sm">
-                                            <span className="truncate">{item.name}</span>
-                                            <span className="whitespace-nowrap font-semibold">{item.quantity} · {formatINR(item.amount)}</span>
-                                        </div>
-                                    ))}
-                                    {summary.items.length === 0 && <p className="text-sm text-stone-400">No sales yet</p>}
-                                </div>
-                            </div>
+                            </Card>
+                            <Card title="Top dishes" subtitle="Plates sold today">
+                                <BarList rows={topItems} formatValue={(value) => `${value}`} emptyText="No sales yet" />
+                            </Card>
                         </div>
                     </>
                 )}
 
                 {/* Bills - cards on phones */}
+                <div className="flex items-center justify-between pt-2">
+                    <h2 className="text-lg font-bold">Bills <span className="text-sm font-medium text-stone-400">({bills.length})</span></h2>
+                    {bills.length > BILLS_PREVIEW && (
+                        <button
+                            onClick={() => setShowAllBills((value) => !value)}
+                            className="rounded-full border border-stone-200 bg-white px-4 py-1.5 text-sm font-semibold text-stone-700 shadow-sm hover:text-stone-900"
+                        >
+                            {showAllBills ? `Show latest ${BILLS_PREVIEW}` : `Show all ${bills.length}`}
+                        </button>
+                    )}
+                </div>
                 <div className="space-y-2 md:hidden">
-                    {bills.map((bill) => (
+                    {visibleBills.map((bill) => (
                         <div key={bill._id} className="rounded-2xl border border-stone-200/80 bg-white p-4 shadow-[0_1px_2px_rgba(28,25,23,0.05)]">
                             <div className="flex items-start justify-between gap-3">
                                 <div>
-                                    <p className="text-2xl font-extrabold tabular-nums">#{bill.tokenNumber}</p>
+                                    <p className="text-2xl font-bold">#{bill.tokenNumber}</p>
                                     <p className="text-xs text-stone-400">
                                         {formatTime(bill.createdAt, settings.timeZone)} · {bill.payment.mode.toUpperCase()}
                                     </p>
                                 </div>
                                 <div className="text-right">
-                                    <p className="text-lg font-bold tabular-nums">{formatINR(bill.total)}</p>
-                                    <span className={`rounded-full px-2 py-0.5 text-xs font-bold ${STATUS_STYLES[bill.status]}`}>{bill.status}</span>
+                                    <p className="text-lg font-bold">{formatINR(bill.total)}</p>
+                                    <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${STATUS_STYLES[bill.status]}`}>{bill.status}</span>
                                 </div>
                             </div>
                             <p className="mt-2 text-sm text-stone-600">
@@ -275,45 +359,45 @@ export default function PosBills() {
                 </div>
 
                 {/* Bills - table on tablets & desktops */}
-                <div className="hidden overflow-x-auto rounded-2xl border border-stone-200/80 bg-white shadow-[0_1px_2px_rgba(28,25,23,0.05)] md:block">
+                <div className="hidden overflow-x-auto rounded-3xl border border-stone-200/80 bg-white shadow-[0_1px_2px_rgba(28,25,23,0.05)] md:block">
                     <table className="w-full text-sm">
-                        <thead className="bg-stone-50 text-left text-xs uppercase tracking-wider text-stone-500">
+                        <thead className="border-b border-stone-100 text-left text-xs font-semibold uppercase tracking-wider text-stone-400">
                             <tr>
-                                <th className="px-3 py-2">Token</th>
-                                <th className="px-3 py-2">Bill No</th>
-                                <th className="px-3 py-2">Time</th>
-                                <th className="px-3 py-2">Items</th>
-                                <th className="px-3 py-2">Paid by</th>
-                                <th className="px-3 py-2 text-right">Total</th>
-                                <th className="px-3 py-2">Status</th>
-                                <th className="px-3 py-2">Actions</th>
+                                <th className="px-4 py-3">Token</th>
+                                <th className="px-4 py-3">Bill no</th>
+                                <th className="px-4 py-3">Time</th>
+                                <th className="px-4 py-3">Items</th>
+                                <th className="px-4 py-3">Paid by</th>
+                                <th className="px-4 py-3 text-right">Total</th>
+                                <th className="px-4 py-3">Status</th>
+                                <th className="px-4 py-3"><span className="sr-only">Actions</span></th>
                             </tr>
                         </thead>
                         <tbody>
-                            {bills.map((bill) => (
-                                <tr key={bill._id} className="border-t border-stone-100">
-                                    <td className="px-3 py-2 text-lg font-black">#{bill.tokenNumber}</td>
-                                    <td className="px-3 py-2 font-mono text-xs">{bill.billNumber}</td>
-                                    <td className="px-3 py-2">{formatTime(bill.createdAt, settings.timeZone)}</td>
-                                    <td className="max-w-xs px-3 py-2 text-stone-600">
+                            {visibleBills.map((bill) => (
+                                <tr key={bill._id} className="border-t border-stone-100 hover:bg-stone-50/60">
+                                    <td className="px-4 py-2.5 text-base font-bold tabular-nums">#{bill.tokenNumber}</td>
+                                    <td className="px-4 py-2.5 font-mono text-xs text-stone-500">{bill.billNumber}</td>
+                                    <td className="px-4 py-2.5 tabular-nums text-stone-600">{formatTime(bill.createdAt, settings.timeZone)}</td>
+                                    <td className="max-w-xs px-4 py-2.5 text-stone-600">
                                         {bill.items.map((item) => `${item.name} ×${item.quantity}`).join(', ')}
                                     </td>
-                                    <td className="px-3 py-2 uppercase">{bill.payment.mode}</td>
-                                    <td className="px-3 py-2 text-right font-bold">{formatINR(bill.total)}</td>
-                                    <td className="px-3 py-2">
-                                        <span className={`rounded-full px-2 py-0.5 text-xs font-bold ${STATUS_STYLES[bill.status]}`}>
+                                    <td className="px-4 py-2.5 text-xs font-semibold uppercase text-stone-500">{bill.payment.mode}</td>
+                                    <td className="px-4 py-2.5 text-right font-semibold tabular-nums">{formatINR(bill.total)}</td>
+                                    <td className="px-4 py-2.5">
+                                        <span className={`rounded-full px-2.5 py-0.5 text-xs font-semibold ${STATUS_STYLES[bill.status]}`}>
                                             {bill.status}
                                         </span>
                                         {bill.status === 'cancelled' && bill.cancelReason && (
                                             <p className="mt-0.5 text-xs text-stone-500">{bill.cancelReason}</p>
                                         )}
                                     </td>
-                                    <td className="px-3 py-2">{renderActions(bill)}</td>
+                                    <td className="px-4 py-2.5">{renderActions(bill)}</td>
                                 </tr>
                             ))}
                             {bills.length === 0 && (
                                 <tr>
-                                    <td colSpan={8} className="px-3 py-10 text-center text-stone-400">No bills for this day</td>
+                                    <td colSpan={8} className="px-4 py-12 text-center text-stone-400">No bills for this day</td>
                                 </tr>
                             )}
                         </tbody>

@@ -13,6 +13,14 @@
     color-scheme: light;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
+
+    /* Dashboard chart roles - validated categorical slots (light surface) */
+    --viz-surface: #ffffff;
+    --viz-grid: #ece9e4;
+    --viz-series-1: #2a78d6; /* blue  - cash / magnitude */
+    --viz-series-2: #eb6834; /* orange - UPI / emphasis */
+    --viz-series-3: #1baf7a; /* aqua  - card */
+    --viz-muted: #d6d3ce;    /* de-emphasis */
   }
 }
 
@@ -37,4 +45,17 @@
   }
 }
 
+/* Token screen auto-close countdown */
+@keyframes pos-countdown {
+  from {
+    transform: scaleX(1);
+  }
+  to {
+    transform: scaleX(0);
+  }
+}
 
+.pos-countdown {
+  transform-origin: left;
+  animation: pos-countdown linear forwards;
+}

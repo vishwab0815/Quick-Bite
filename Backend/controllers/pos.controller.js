@@ -524,6 +524,7 @@ module.exports.getDailySummary = async (req, res) => {
         const byMode = { cash: { count: 0, total: 0 }, upi: { count: 0, total: 0 }, card: { count: 0, total: 0 } };
         const itemsMap = new Map();
         const byHour = {};
+        const counterSpeed = new Map();
         let taxableAmount = 0;
         let cgst = 0;
         let sgst = 0;
@@ -547,6 +548,17 @@ module.exports.getDailySummary = async (req, res) => {
             byHour[hour] = byHour[hour] || { count: 0, total: 0 };
             byHour[hour].count += 1;
             byHour[hour].total += bill.total;
+
+            // Preparation time per food counter: billed -> marked ready
+            for (const station of bill.stations) {
+                if (!station.readyAt) continue;
+                const minutes = (new Date(station.readyAt) - new Date(bill.createdAt)) / 60000;
+                if (minutes < 0) continue;
+                const entry = counterSpeed.get(station.counter) || { counter: station.counter, tokens: 0, totalMinutes: 0 };
+                entry.tokens += 1;
+                entry.totalMinutes += minutes;
+                counterSpeed.set(station.counter, entry);
+            }
 
             for (const item of bill.items) {
                 const entry = itemsMap.get(item.name) || { name: item.name, quantity: 0, amount: 0 };
@@ -575,7 +587,14 @@ module.exports.getDailySummary = async (req, res) => {
                     .map(([hour, data]) => ({ hour, count: data.count, total: round2(data.total) })),
                 items: [...itemsMap.values()]
                     .map((item) => ({ ...item, amount: round2(item.amount) }))
-                    .sort((a, b) => b.quantity - a.quantity)
+                    .sort((a, b) => b.quantity - a.quantity),
+                counterSpeed: [...counterSpeed.values()]
+                    .map(({ counter, tokens, totalMinutes }) => ({
+                        counter,
+                        tokens,
+                        avgMinutes: Math.round((totalMinutes / tokens) * 10) / 10
+                    }))
+                    .sort((a, b) => b.avgMinutes - a.avgMinutes)
             }
         });
     } catch (error) {

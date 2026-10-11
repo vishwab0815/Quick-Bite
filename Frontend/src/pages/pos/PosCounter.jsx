@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { QRCodeSVG } from 'qrcode.react';
 import {
     FiSearch, FiMinus, FiPlus, FiTrash2, FiMessageCircle, FiCheck, FiX, FiSlash,
-    FiPhone, FiUser, FiRepeat, FiChevronUp, FiPrinter, FiShoppingBag,
+    FiPhone, FiUser, FiRepeat, FiChevronUp, FiPrinter, FiShoppingBag, FiZap,
 } from 'react-icons/fi';
 import PosHeader from '../../components/pos/PosHeader';
 import PrintArea from '../../components/pos/PrintArea';
@@ -19,6 +19,8 @@ const PAYMENT_MODES = [
 ];
 
 const LOOKUP_DELAY_MS = 250;
+const POPULAR_COUNT = 6;
+const AUTO_CLOSE_MS = 2500;
 
 const quickCashAmounts = (total) => {
     const amounts = new Set([total]);
@@ -33,6 +35,7 @@ export default function PosCounter() {
     const settings = usePosSettings(Boolean(user));
 
     const [menu, setMenu] = useState([]);
+    const [popular, setPopular] = useState([]);
     const [search, setSearch] = useState('');
     const [activeCounter, setActiveCounter] = useState('All');
     const [editAvailability, setEditAvailability] = useState(false);
@@ -63,9 +66,21 @@ export default function PosCounter() {
         }
     }, []);
 
+    // Today's best sellers, pinned above the menu for one-tap billing
+    const loadPopular = useCallback(async () => {
+        try {
+            const res = await posApi.get('/reports/summary');
+            setPopular(res.data.summary.items.slice(0, POPULAR_COUNT).map((item) => item.name));
+        } catch {
+            // optional - the menu still works without it
+        }
+    }, []);
+
     useEffect(() => {
-        if (user) loadMenu();
-    }, [user, loadMenu]);
+        if (!user) return;
+        loadMenu();
+        loadPopular();
+    }, [user, loadMenu, loadPopular]);
 
     // Find regulars as the cashier types the first digits of their number
     useEffect(() => {
@@ -107,6 +122,13 @@ export default function PosCounter() {
             (!term || item.name.toLowerCase().includes(term))
         );
     }, [menu, search, activeCounter]);
+
+    const popularItems = useMemo(
+        () => popular
+            .map((name) => menu.find((item) => item.name === name))
+            .filter((item) => item && item.isAvailable !== false),
+        [popular, menu]
+    );
 
     const totals = useMemo(() => {
         if (!settings) return null;
@@ -230,6 +252,7 @@ export default function PosCounter() {
             const includeReceipt = !receiptOnWhatsapp || !coupons;
             setPrintJob({ bill, coupons, includeReceipt });
             posApi.post(`/bills/${bill._id}/printed`).catch(() => {});
+            loadPopular();
         } catch (error) {
             showToast.error(error.response?.data?.message || 'Failed to create bill');
             loadMenu();
@@ -263,6 +286,45 @@ export default function PosCounter() {
         return () => window.removeEventListener('keydown', onKey);
     }, [result, closeResult]);
 
+    // Nothing left to do on the token screen (no change to return, no WhatsApp tap) - move on by itself
+    const autoClose = Boolean(result) &&
+        !(result.bill.payment.changeReturned > 0) &&
+        (!result.whatsapp || result.whatsapp.status === 'sent');
+
+    useEffect(() => {
+        if (!autoClose) return undefined;
+        const timer = setTimeout(closeResult, AUTO_CLOSE_MS);
+        return () => clearTimeout(timer);
+    }, [autoClose, closeResult]);
+
+    // Ctrl+Enter confirms the order from anywhere on the counter
+    const confirmRef = useRef(null);
+    confirmRef.current = handleConfirm;
+    const modalOpen = Boolean(result) || upiDialog;
+    useEffect(() => {
+        if (modalOpen) return undefined;
+        const onKey = (event) => {
+            if (event.key === 'Enter' && (event.ctrlKey || event.metaKey)) {
+                event.preventDefault();
+                confirmRef.current?.();
+            }
+        };
+        window.addEventListener('keydown', onKey);
+        return () => window.removeEventListener('keydown', onKey);
+    }, [modalOpen]);
+
+    const handleSearchKey = (event) => {
+        if (event.key === 'Escape') {
+            setSearch('');
+        } else if (event.key === 'Enter' && !event.ctrlKey && !event.metaKey && search.trim()) {
+            const match = visibleMenu.find((item) => item.isAvailable !== false);
+            if (match) {
+                addItem(match);
+                setSearch('');
+            }
+        }
+    };
+
     if (!user || !settings) {
         return (
             <div className="pos-app flex min-h-screen items-center justify-center bg-stone-100">
@@ -289,10 +351,15 @@ export default function PosCounter() {
                                 ref={searchRef}
                                 value={search}
                                 onChange={(e) => setSearch(e.target.value)}
+                                onKeyDown={handleSearchKey}
                                 placeholder="Search dishes"
-                                className="w-full rounded-2xl border border-stone-200 bg-white py-3 pl-11 pr-4 text-[15px] shadow-sm outline-none transition placeholder:text-stone-400 focus:border-orange-400 focus:ring-4 focus:ring-orange-100"
+                                className="w-full rounded-2xl border border-stone-200 bg-white py-3 pl-11 pr-4 text-[15px] shadow-sm outline-none transition placeholder:text-stone-400 focus:border-orange-400 focus:ring-4 focus:ring-orange-100 lg:pr-56"
                                 autoFocus
                             />
+                            <span className="pointer-events-none absolute right-4 top-1/2 hidden -translate-y-1/2 text-xs text-stone-400 lg:block">
+                                <kbd className="rounded border border-stone-200 px-1.5 py-0.5 font-sans">Enter</kbd> add ·{' '}
+                                <kbd className="rounded border border-stone-200 px-1.5 py-0.5 font-sans">Ctrl+Enter</kbd> confirm
+                            </span>
                         </div>
                         <button
                             onClick={() => setEditAvailability((value) => !value)}
@@ -325,6 +392,24 @@ export default function PosCounter() {
                             </button>
                         ))}
                     </div>
+
+                    {popularItems.length > 0 && !search.trim() && activeCounter === 'All' && !editAvailability && (
+                        <div className="mb-3 flex items-center gap-2 overflow-x-auto pb-1 [scrollbar-width:none]">
+                            <span className="flex shrink-0 items-center gap-1 text-xs font-semibold uppercase tracking-wider text-stone-400">
+                                <FiZap className="text-orange-500" /> Popular
+                            </span>
+                            {popularItems.map((item) => (
+                                <button
+                                    key={item._id}
+                                    onClick={() => addItem(item)}
+                                    className="flex shrink-0 items-center gap-2 rounded-full bg-orange-50 px-3.5 py-2 text-sm font-semibold text-orange-900 ring-1 ring-orange-200 transition hover:bg-orange-100 active:scale-95"
+                                >
+                                    {item.name}
+                                    <span className="font-medium text-orange-700/70">{formatINR(item.price)}</span>
+                                </button>
+                            ))}
+                        </div>
+                    )}
 
                     <div className="grid min-h-0 flex-1 auto-rows-min grid-cols-2 gap-2.5 overflow-y-auto overflow-x-hidden pb-28 sm:grid-cols-3 sm:gap-3 lg:pb-5 xl:grid-cols-4 2xl:grid-cols-5">
                         {visibleMenu.map((item) => {
@@ -657,8 +742,9 @@ export default function PosCounter() {
 
                         <button
                             onClick={closeResult}
-                            className="mt-4 w-full rounded-2xl bg-stone-900 py-3.5 font-bold text-white hover:bg-stone-800"
+                            className="relative mt-4 w-full overflow-hidden rounded-2xl bg-stone-900 py-3.5 font-bold text-white hover:bg-stone-800"
                         >
+                            {autoClose && <span className="pos-countdown absolute inset-x-0 bottom-0 h-1 bg-orange-500" style={{ animationDuration: `${AUTO_CLOSE_MS}ms` }} />}
                             Next order <span className="text-stone-400">↵</span>
                         </button>
                         <button
