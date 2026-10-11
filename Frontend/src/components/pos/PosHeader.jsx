@@ -1,12 +1,14 @@
 import { NavLink, useNavigate } from 'react-router-dom';
 import PropTypes from 'prop-types';
 import axios from 'axios';
-import { FiShoppingBag, FiMonitor, FiFileText, FiTv, FiLogOut, FiHome } from 'react-icons/fi';
+import { FiShoppingBag, FiMonitor, FiFileText, FiTv, FiLogOut, FiHome, FiList, FiUsers } from 'react-icons/fi';
 
 const links = [
     { to: '/pos', label: 'Counter', icon: FiShoppingBag, end: true },
     { to: '/pos/kitchen', label: 'Kitchen', icon: FiMonitor },
     { to: '/pos/bills', label: "Today's Bills", icon: FiFileText },
+    { to: '/pos/menu', label: 'Menu', icon: FiList, adminOnly: true },
+    { to: '/pos/staff', label: 'Staff', icon: FiUsers, adminOnly: true },
 ];
 
 const PosHeader = ({ user, hotelName }) => {
@@ -29,7 +31,7 @@ const PosHeader = ({ user, hotelName }) => {
                 </div>
 
                 <nav className="flex flex-1 items-center gap-1 overflow-x-auto">
-                    {links.map((link) => {
+                    {links.filter((link) => !link.adminOnly || user?.role === 'admin').map((link) => {
                         const Icon = link.icon;
                         return (
                             <NavLink

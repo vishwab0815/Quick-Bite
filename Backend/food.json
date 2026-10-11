@@ -3,7 +3,6 @@
         {
             "id": 1,
             "price": 249,
-            "counter": "Main Kitchen",
             "name": "Classic Margherita Pizza",
             "ingredients": [
                 "Pizza dough",
@@ -52,7 +51,6 @@
         {
             "id": 2,
             "price": 179,
-            "counter": "Main Kitchen",
             "name": "Vegetarian Stir-Fry",
             "ingredients": [
                 "Tofu, cubed",
@@ -104,7 +102,6 @@
         {
             "id": 3,
             "price": 99,
-            "counter": "Desserts & Drinks",
             "name": "Chocolate Chip Cookies",
             "ingredients": [
                 "All-purpose flour",
@@ -157,7 +154,6 @@
         {
             "id": 4,
             "price": 279,
-            "counter": "Main Kitchen",
             "name": "Chicken Alfredo Pasta",
             "ingredients": [
                 "Fettuccine pasta",
@@ -208,7 +204,6 @@
         {
             "id": 5,
             "price": 299,
-            "counter": "Main Kitchen",
             "name": "Mango Salsa Chicken",
             "ingredients": [
                 "Chicken thighs",
@@ -258,7 +253,6 @@
         {
             "id": 6,
             "price": 219,
-            "counter": "Main Kitchen",
             "name": "Quinoa Salad with Avocado",
             "ingredients": [
                 "Quinoa, cooked",
@@ -309,7 +303,6 @@
         {
             "id": 7,
             "price": 149,
-            "counter": "Snacks Counter",
             "name": "Tomato Basil Bruschetta",
             "ingredients": [
                 "Baguette, sliced",
@@ -358,7 +351,6 @@
             {
                 "id": 8,
                 "price": 299,
-                "counter": "Main Kitchen",
                 "name": "Beef and Broccoli Stir-Fry",
                 "ingredients": [
                     "Beef sirloin, thinly sliced",
@@ -410,7 +402,6 @@
             {
                 "id": 9,
                 "price": 199,
-                "counter": "Main Kitchen",
                 "name": "Caprese Salad",
                 "ingredients": [
                     "Tomatoes, sliced",
@@ -458,7 +449,6 @@
             {
                 "id": 10,
                 "price": 329,
-                "counter": "Main Kitchen",
                 "name": "Shrimp Scampi Pasta",
                 "ingredients": [
                     "Linguine pasta",
@@ -508,7 +498,6 @@
             {
                 "id": 11,
                 "price": 249,
-                "counter": "Main Kitchen",
                 "name": "Chicken Biryani",
                 "ingredients": [
                     "Basmati rice",
@@ -567,7 +556,6 @@
             {
                 "id": 12,
                 "price": 289,
-                "counter": "Main Kitchen",
                 "name": "Chicken Karahi",
                 "ingredients": [
                     "Chicken, cut into pieces",
@@ -626,7 +614,6 @@
             {
                 "id": 13,
                 "price": 229,
-                "counter": "Main Kitchen",
                 "name": "Aloo Keema",
                 "ingredients": [
                     "Ground beef",
@@ -684,7 +671,6 @@
             {
                 "id": 14,
                 "price": 199,
-                "counter": "Snacks Counter",
                 "name": "Chapli Kebabs",
                 "ingredients": [
                     "Ground beef",
@@ -744,7 +730,6 @@
         {
             "id": 15,
             "price": 179,
-            "counter": "Main Kitchen",
             "name": "Saag (Spinach) with Makki di Roti",
             "ingredients": [
                 "Mustard greens, washed and chopped",
@@ -800,7 +785,6 @@
         {
             "id": 16,
             "price": 259,
-            "counter": "Main Kitchen",
             "name": "Japanese Ramen Soup",
             "ingredients": [
                 "Ramen noodles",
@@ -855,7 +839,6 @@
         {
             "id": 17,
             "price": 229,
-            "counter": "Main Kitchen",
             "name": "Moroccan Chickpea Tagine",
             "ingredients": [
                 "Chickpeas, cooked",
@@ -910,7 +893,6 @@
         {
             "id": 18,
             "price": 269,
-            "counter": "Main Kitchen",
             "name": "Korean Bibimbap",
             "ingredients": [
                 "Cooked white rice",
@@ -963,7 +945,6 @@
         {
             "id": 19,
             "price": 289,
-            "counter": "Main Kitchen",
             "name": "Greek Moussaka",
             "ingredients": [
                 "Eggplants, sliced",
@@ -1019,7 +1000,6 @@
         {
             "id": 20,
             "price": 299,
-            "counter": "Main Kitchen",
             "name": "Butter Chicken (Murgh Makhani)",
             "ingredients": [
                 "Chicken thighs, boneless and skinless",
@@ -1072,7 +1052,6 @@
         {
             "id": 21,
             "price": 129,
-            "counter": "Snacks Counter",
             "name": "Pancakes",
             "ingredients": [
                 "All-purpose flour",
@@ -1123,7 +1102,6 @@
         {
             "id": 22,
             "price": 169,
-            "counter": "Main Kitchen",
             "name": "Vegetable Fried Rice",
             "ingredients": [
                 "Cooked rice",
@@ -1176,7 +1154,6 @@
         {
             "id": 23,
             "price": 129,
-            "counter": "Main Kitchen",
             "name": "Lentil Soup",
             "ingredients": [
                 "Lentils, rinsed",
@@ -1229,7 +1206,6 @@
         {
             "id": 24,
             "price": 199,
-            "counter": "Main Kitchen",
             "name": "Stuffed Bell Peppers",
             "ingredients": [
                 "Bell peppers, halved and seeded",
@@ -1280,7 +1256,6 @@
         {
             "id": 25,
             "price": 449,
-            "counter": "Main Kitchen",
             "name": "Baked Salmon with Lemon",
             "ingredients": [
                 "Salmon fillets",
@@ -1329,7 +1304,6 @@
         {
             "id": 26,
             "price": 149,
-            "counter": "Desserts & Drinks",
             "name": "Chocolate Mousse",
             "ingredients": [
                 "Dark chocolate, chopped",
@@ -1378,7 +1352,6 @@
         {
             "id": 27,
             "price": 189,
-            "counter": "Snacks Counter",
             "name": "Tacos",
             "ingredients": [
                 "Corn or flour tortillas",
@@ -1430,7 +1403,6 @@
         {
             "id": 28,
             "price": 229,
-            "counter": "Main Kitchen",
             "name": "Pesto Pasta",
             "ingredients": [
                 "Pasta of choice",
@@ -1480,7 +1452,6 @@
         {
             "id": 29,
             "price": 119,
-            "counter": "Desserts & Drinks",
             "name": "Fruit Salad",
             "ingredients": [
                 "Mixed fresh fruits (e.g., strawberries, blueberries, bananas, kiwi)",
@@ -1528,7 +1499,6 @@
         {
             "id": 30,
             "price": 199,
-            "counter": "Snacks Counter",
             "name": "Cheeseburger",
             "ingredients": [
                 "Ground beef",

@@ -1,0 +1,25 @@
+{
+    "note": "Sample South Indian hotel menu for the billing counter. Replace with the hotel's real menu from the Menu screen (/pos/menu) or its bulk import.",
+    "items": [
+        { "name": "Idli (2 pcs)", "price": 40, "counter": "Idli & Vada Counter", "category": "Breakfast" },
+        { "name": "Medu Vada (1 pc)", "price": 35, "counter": "Idli & Vada Counter", "category": "Breakfast" },
+        { "name": "Idli Vada", "price": 70, "counter": "Idli & Vada Counter", "category": "Breakfast" },
+        { "name": "Rava Idli", "price": 55, "counter": "Idli & Vada Counter", "category": "Breakfast" },
+        { "name": "Plain Dosa", "price": 60, "counter": "Dosa Counter", "category": "Dosa" },
+        { "name": "Masala Dosa", "price": 80, "counter": "Dosa Counter", "category": "Dosa" },
+        { "name": "Ghee Podi Dosa", "price": 100, "counter": "Dosa Counter", "category": "Dosa" },
+        { "name": "Set Dosa", "price": 70, "counter": "Dosa Counter", "category": "Dosa" },
+        { "name": "Rava Masala Dosa", "price": 90, "counter": "Dosa Counter", "category": "Dosa" },
+        { "name": "Onion Uttapam", "price": 80, "counter": "Dosa Counter", "category": "Dosa" },
+        { "name": "Mini Meals", "price": 90, "counter": "Meals Counter", "category": "Meals" },
+        { "name": "Full Meals", "price": 140, "counter": "Meals Counter", "category": "Meals" },
+        { "name": "Bisi Bele Bath", "price": 70, "counter": "Meals Counter", "category": "Rice" },
+        { "name": "Curd Rice", "price": 60, "counter": "Meals Counter", "category": "Rice" },
+        { "name": "Lemon Rice", "price": 55, "counter": "Meals Counter", "category": "Rice" },
+        { "name": "Kesari Bath", "price": 45, "counter": "Meals Counter", "category": "Sweets" },
+        { "name": "Filter Coffee", "price": 30, "counter": "Beverages", "category": "Beverages" },
+        { "name": "Tea", "price": 25, "counter": "Beverages", "category": "Beverages" },
+        { "name": "Badam Milk", "price": 40, "counter": "Beverages", "category": "Beverages" },
+        { "name": "Buttermilk", "price": 25, "counter": "Beverages", "category": "Beverages" }
+    ]
+}

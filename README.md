@@ -225,6 +225,13 @@ QuickBite/
 | GET | `/pos/settings` | Hotel, GST, UPI & counter settings | Yes (Staff/Admin) |
 | GET | `/pos/menu` | Full menu incl. sold-out items | Yes (Staff/Admin) |
 | PATCH | `/pos/menu/:id/availability` | Mark item sold out / available | Yes (Staff/Admin) |
+| POST | `/pos/menu` | Add menu item | Yes (Admin) |
+| PUT | `/pos/menu/:id` | Edit menu item | Yes (Admin) |
+| DELETE | `/pos/menu/:id` | Remove menu item | Yes (Admin) |
+| POST | `/pos/menu/import` | Bulk add / update items by name | Yes (Admin) |
+| GET / POST | `/pos/staff` | List / add counter staff logins | Yes (Admin) |
+| PATCH | `/pos/staff/:id/password` | Reset a staff or admin password | Yes (Admin) |
+| DELETE | `/pos/staff/:id` | Remove a staff login | Yes (Admin) |
 | POST | `/pos/bills` | Create bill → token number (+ WhatsApp receipt) | Yes (Staff/Admin) |
 | GET | `/pos/bills?date=YYYY-MM-DD` | Bills for a day | Yes (Staff/Admin) |
 | PATCH | `/pos/bills/:id/stations` | Counter status: preparing / ready / served | Yes (Staff/Admin) |
@@ -247,7 +254,7 @@ QuickBite/
 - ✅ **Authorization**: Role-based access control (User/Admin)
 - ✅ **Password Security**: bcrypt hashing with 12 rounds
 - ✅ **Password Validation**: Minimum 8 chars, uppercase, lowercase, number
-- ✅ **Rate Limiting**: 100 req/15min (general), 5 req/15min (auth)
+- ✅ **Rate Limiting**: 100 req/15min (general), 5 failed login/register attempts per 15min
 - ✅ **Input Validation**: All inputs validated and sanitized
 - ✅ **NoSQL Injection Protection**: Express-mongo-sanitize
 - ✅ **XSS Protection**: Helmet security headers
@@ -298,11 +305,16 @@ QuickBite/
 
 ## 👨‍💼 Default Admin Credentials
 
-After seeding the database, you can log in as admin:
+After seeding a development database, you can log in as:
 
-- **Email:** `admin@gmail.com`
-- **Password:** `Admin1234`
-- **Role:** admin
+| Role | Email | Password |
+|------|-------|----------|
+| Admin (owner) | `admin@gmail.com` | `Admin1234` |
+| Counter staff | `counter@quickbite.com` | `Counter1234` |
+
+These demo passwords are only for development. In production the seed script requires
+`SEED_ADMIN_PASSWORD` and `SEED_STAFF_PASSWORD`, and refuses to run without `--force` because it wipes all data.
+Change passwords anytime from `/pos/staff`.
 
 ## 🎨 Design System
 
@@ -422,17 +434,22 @@ the token TV (`/pos/display`) shows "Ready – collect at Dosa Counter" → staf
 | Billing counter | `/pos` | Staff / Admin |
 | Kitchen / counter screen | `/pos/kitchen` | Staff / Admin |
 | Today's bills, cash check & reports | `/pos/bills` | Staff / Admin (only admin can cancel) |
+| Menu: add / edit / remove items, bulk import | `/pos/menu` | Admin |
+| Staff logins: add, reset password, remove | `/pos/staff` | Admin |
 | Token TV | `/pos/display` | Public (no prices or customer details) |
 | E-receipt | `/receipt/:id` | Public link (sent on WhatsApp / QR on bill) |
 
-**Staff login (after seeding):** `counter@quickbite.com` / `Counter1234` → opens `/pos` directly.
+Staff accounts go straight to `/pos` after login. Roles are checked against the database on every
+counter request, so removing a staff login signs them out immediately.
 
 **Setup notes**
 - **Hotel details, GST & UPI:** set `HOTEL_*`, `GST_SCHEME`, `GST_RATE`, `PRICES_INCLUDE_GST` and `UPI_VPA` in `Backend/.env`
   (see `.env.example`). Prices always come from the database; bills are numbered per financial year
   (`QB/2026-27/000123`) and tokens reset daily.
-- **Food counters:** each menu item has a `counter` field (e.g. `Dosa Counter`, `Coffee Counter`) – set it via the
-  food item update API. Coupons and kitchen screens are grouped by it.
+- **Menu & food counters:** the counter menu is separate from the website's recipes. Each item has a price, a food
+  counter (e.g. `Dosa Counter`, `Beverages`), a category and a veg / non-veg mark. Coupons and kitchen screens are
+  grouped by counter. Seeding loads a sample South Indian menu (`Backend/menu.json`); replace it from `/pos/menu`,
+  where **Bulk import** accepts lines like `Masala Dosa, 80, Dosa Counter, Dosa, veg` or rows pasted from Excel.
 - **Printing:** receipts print from the browser on 80mm or 58mm thermal rolls (`RECEIPT_PAPER_WIDTH`). For one-tap
   printing without the dialog, start Chrome on the counter PC with `--kiosk-printing` and set the thermal printer as default.
   Print bill / counter coupons / WhatsApp can each be switched on or off at the counter.
@@ -496,7 +513,8 @@ npm run install:all      # Install all dependencies (root, backend, frontend)
 ```bash
 npm run dev              # Start development server with nodemon
 npm start                # Start production server
-npm run seed             # Seed database with admin and food items
+npm run seed             # Seed database (wipes data!) with logins, food items and sample counter menu
+npm test                 # API tests against an in-memory MongoDB
 ```
 
 ### Frontend

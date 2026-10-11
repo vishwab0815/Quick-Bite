@@ -6,6 +6,7 @@ import {
 } from 'react-icons/fi';
 import PosHeader from '../../components/pos/PosHeader';
 import PrintArea from '../../components/pos/PrintArea';
+import VegDot from '../../components/pos/VegDot';
 import { showToast } from '../../utils/toast';
 import {
     posApi, formatINR, computeTotals, buildUpiLink, isValidIndianMobile,
@@ -296,7 +297,10 @@ export default function PosCounter() {
                                             : 'border-gray-200 bg-white hover:border-orange-400 hover:shadow-md'
                                     } ${editAvailability ? 'ring-2 ring-red-200' : ''}`}
                                 >
-                                    <span className="text-sm font-semibold leading-tight">{item.name}</span>
+                                    <span className="flex items-start gap-1.5 text-sm font-semibold leading-tight">
+                                        <span className="mt-0.5"><VegDot isVeg={item.isVeg !== false} /></span>
+                                        {item.name}
+                                    </span>
                                     <span className="mt-2 flex items-center justify-between">
                                         <span className={`font-bold ${soldOut ? '' : 'text-orange-600'}`}>{formatINR(item.price)}</span>
                                         {soldOut && <span className="rounded bg-red-100 px-1.5 py-0.5 text-xs font-bold text-red-600">SOLD OUT</span>}

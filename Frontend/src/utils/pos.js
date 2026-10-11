@@ -120,21 +120,25 @@ export const playBeep = (frequency = 880, duration = 0.15) => {
 };
 
 /**
- * Ensures the current user is counter staff or admin; redirects otherwise
+ * Ensures the current user has one of the allowed roles (default: counter staff or admin);
+ * redirects otherwise
  */
-export const useStaffUser = () => {
+export const useStaffUser = (allowedRoles = STAFF_ROLES) => {
     const navigate = useNavigate();
     const [user, setUser] = useState(null);
+    const rolesKey = allowedRoles.join(',');
 
     useEffect(() => {
         let active = true;
+        const roles = rolesKey.split(',');
 
         axios.get(`${import.meta.env.VITE_API_URL}/api/auth/profile`, { withCredentials: true })
             .then((res) => {
                 if (!active) return;
-                if (!STAFF_ROLES.includes(res.data.user?.role)) {
-                    showToast.error('Counter access is for staff only');
-                    navigate('/home');
+                const role = res.data.user?.role;
+                if (!roles.includes(role)) {
+                    showToast.error(roles.includes('staff') ? 'Counter access is for staff only' : 'Only the owner (admin) can open this page');
+                    navigate(STAFF_ROLES.includes(role) ? '/pos' : '/home');
                     return;
                 }
                 setUser(res.data.user);
@@ -146,7 +150,7 @@ export const useStaffUser = () => {
             });
 
         return () => { active = false; };
-    }, [navigate]);
+    }, [navigate, rolesKey]);
 
     return user;
 };

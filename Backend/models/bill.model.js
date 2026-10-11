@@ -9,7 +9,7 @@ const mongoose = require('mongoose');
 const billItemSchema = new mongoose.Schema({
     itemId: {
         type: mongoose.Schema.Types.ObjectId,
-        ref: 'Recipe',
+        ref: 'MenuItem',
         required: true
     },
     name: { type: String, required: true },

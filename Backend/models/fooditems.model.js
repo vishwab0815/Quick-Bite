@@ -63,17 +63,6 @@ const recipeSchema = new mongoose.Schema({
         min: 0,
         default: 0
     },
-    // Food counter / kitchen station that prepares this item (e.g. Dosa Counter)
-    counter: {
-        type: String,
-        trim: true,
-        default: 'Main Kitchen'
-    },
-    // Counter staff can mark an item sold out for the day
-    isAvailable: {
-        type: Boolean,
-        default: true
-    },
     rating: {
         type: Number,
         min: 0,

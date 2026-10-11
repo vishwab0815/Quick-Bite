@@ -104,11 +104,12 @@ STEP 5: Update CORS
    • Set to: https://your-frontend.onrender.com
    • Backend will auto-redeploy
 
-STEP 6: Seed Production Database
+STEP 6: Seed Production Database (first deploy only - it wipes ALL data)
    ↓
+   • Set SEED_ADMIN_PASSWORD and SEED_STAFF_PASSWORD (required in production)
    • Backend service → Shell tab
-   • Run: npm run seed
-   • Creates admin user and food items
+   • Run: node seedDatabase.js --force
+   • Creates admin + counter staff logins, food items and the sample counter menu
 
 STEP 7: Test Deployment
    ↓
@@ -211,7 +212,9 @@ Your application already implements:
 ✅ **Security Headers**: Helmet.js enabled
 
 **Post-Deployment Checklist:**
-- [ ] Change default admin password (`Admin1234`)
+- [ ] Seed with your own `SEED_ADMIN_PASSWORD` / `SEED_STAFF_PASSWORD` (never the demo passwords)
+- [ ] Replace the sample counter menu from `/pos/menu` and add staff logins from `/pos/staff`
+- [ ] Set up daily database backups (bills are GST records)
 - [ ] Use strong JWT_SECRET (64+ characters)
 - [ ] Verify MongoDB has strong password
 - [ ] Set up proper CORS (not `*`)
@@ -279,9 +282,10 @@ Solution: Upgrade to paid plan for always-on instances
 - **Backend**: http://localhost:3000
 - **Health Check**: http://localhost:3000/health
 
-### Default Credentials
-- **Admin Email**: admin@gmail.com
-- **Admin Password**: Admin1234
+### Default Credentials (development seed only)
+- **Admin**: admin@gmail.com / Admin1234
+- **Counter staff**: counter@quickbite.com / Counter1234
+- Production seeding requires `SEED_ADMIN_PASSWORD` and `SEED_STAFF_PASSWORD`
 
 ### Important Commands
 

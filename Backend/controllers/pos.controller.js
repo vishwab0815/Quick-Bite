@@ -1,7 +1,7 @@
 const crypto = require('crypto');
 const Bill = require('../models/bill.model');
 const Sequence = require('../models/sequence.model');
-const Recipe = require('../models/fooditems.model');
+const MenuItem = require('../models/menuItem.model');
 const { isValidObjectId } = require('../middleware/validation');
 const { sendBillReceipt, getWhatsappMode, getReceiptBaseUrl } = require('../config/whatsapp');
 const {
@@ -34,7 +34,7 @@ const recordWhatsappResult = (bill, result) => {
  */
 module.exports.getSettings = async (req, res) => {
     try {
-        const counters = await Recipe.distinct('counter');
+        const counters = await MenuItem.distinct('counter');
 
         res.status(200).json({
             success: true,
@@ -48,55 +48,6 @@ module.exports.getSettings = async (req, res) => {
     } catch (error) {
         console.error('❌ Error fetching POS settings:', error);
         res.status(500).json({ success: false, message: 'Failed to fetch settings' });
-    }
-};
-
-/**
- * Full menu for the counter, including sold-out items
- */
-module.exports.getMenu = async (req, res) => {
-    try {
-        const items = await Recipe.find({})
-            .select('id name price counter mealType image isAvailable')
-            .sort({ name: 1 })
-            .lean();
-
-        res.status(200).json({ success: true, count: items.length, items });
-    } catch (error) {
-        console.error('❌ Error fetching POS menu:', error);
-        res.status(500).json({ success: false, message: 'Failed to fetch menu' });
-    }
-};
-
-/**
- * Mark a menu item as available / sold out
- */
-module.exports.setItemAvailability = async (req, res) => {
-    try {
-        const { id } = req.params;
-        const { isAvailable } = req.body;
-
-        if (!isValidObjectId(id)) {
-            return res.status(400).json({ success: false, message: 'Invalid item ID' });
-        }
-        if (typeof isAvailable !== 'boolean') {
-            return res.status(400).json({ success: false, message: 'isAvailable must be true or false' });
-        }
-
-        const item = await Recipe.findByIdAndUpdate(
-            id,
-            { isAvailable },
-            { new: true }
-        ).select('id name price counter mealType image isAvailable');
-
-        if (!item) {
-            return res.status(404).json({ success: false, message: 'Menu item not found' });
-        }
-
-        res.status(200).json({ success: true, item });
-    } catch (error) {
-        console.error('❌ Error updating item availability:', error);
-        res.status(500).json({ success: false, message: 'Failed to update item' });
     }
 };
 
@@ -130,28 +81,25 @@ module.exports.createBill = async (req, res) => {
             quantities.set(line.itemId, merged);
         }
 
-        const recipes = await Recipe.find({ _id: { $in: [...quantities.keys()] } }).lean();
-        const recipesById = new Map(recipes.map((recipe) => [String(recipe._id), recipe]));
+        const menuItems = await MenuItem.find({ _id: { $in: [...quantities.keys()] } }).lean();
+        const menuById = new Map(menuItems.map((menuItem) => [String(menuItem._id), menuItem]));
 
         const lines = [];
         for (const [itemId, quantity] of quantities) {
-            const recipe = recipesById.get(itemId);
-            if (!recipe) {
+            const menuItem = menuById.get(itemId);
+            if (!menuItem) {
                 return res.status(400).json({ success: false, message: 'Some items are no longer on the menu' });
             }
-            if (recipe.isAvailable === false) {
-                return res.status(400).json({ success: false, message: `${recipe.name} is sold out` });
-            }
-            if (!(recipe.price > 0)) {
-                return res.status(400).json({ success: false, message: `${recipe.name} has no price set` });
+            if (menuItem.isAvailable === false) {
+                return res.status(400).json({ success: false, message: `${menuItem.name} is sold out` });
             }
             lines.push({
-                itemId: recipe._id,
-                name: recipe.name,
-                price: recipe.price,
+                itemId: menuItem._id,
+                name: menuItem.name,
+                price: menuItem.price,
                 quantity,
-                amount: round2(recipe.price * quantity),
-                counter: recipe.counter || DEFAULT_COUNTER
+                amount: round2(menuItem.price * quantity),
+                counter: menuItem.counter || DEFAULT_COUNTER
             });
         }
 

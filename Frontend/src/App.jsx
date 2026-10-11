@@ -22,6 +22,8 @@ import AdminDashboard from './pages/AdminDashboard';
 import PosCounter from './pages/pos/PosCounter';
 import KitchenScreen from './pages/pos/KitchenScreen';
 import PosBills from './pages/pos/PosBills';
+import PosMenu from './pages/pos/PosMenu';
+import PosStaff from './pages/pos/PosStaff';
 import TokenDisplay from './pages/pos/TokenDisplay';
 import ReceiptPage from './pages/pos/ReceiptPage';
 
@@ -49,6 +51,8 @@ const App = () => {
                         <Route path="/pos" element={<PosCounter />} />
                         <Route path="/pos/kitchen" element={<KitchenScreen />} />
                         <Route path="/pos/bills" element={<PosBills />} />
+                        <Route path="/pos/menu" element={<PosMenu />} />
+                        <Route path="/pos/staff" element={<PosStaff />} />
                         {/* Public: token TV & e-receipt link */}
                         <Route path="/pos/display" element={<TokenDisplay />} />
                         <Route path="/receipt/:publicId" element={<ReceiptPage />} />

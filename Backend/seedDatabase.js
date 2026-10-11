@@ -1,6 +1,10 @@
 /**
  * Database Seed Script
- * Clears all data and seeds fresh data including admin user and food items
+ * Clears all data and seeds fresh data: admin + counter staff logins,
+ * website food items and the sample counter menu
+ *
+ * ⚠️  Wipes ALL data (users, orders, bills). Refuses to run with
+ *    NODE_ENV=production unless started with --force.
  */
 
 require('dotenv').config();
@@ -9,12 +13,44 @@ const bcrypt = require('bcryptjs');
 const User = require('./models/userauthentication.model');
 const Order = require('./models/order.model');
 const Recipe = require('./models/fooditems.model');
+const MenuItem = require('./models/menuItem.model');
 const Bill = require('./models/bill.model');
 const Sequence = require('./models/sequence.model');
 const foodData = require('./food.json');
+const menuData = require('./menu.json');
+
+const isProduction = process.env.NODE_ENV === 'production';
+
+/**
+ * Login details for seeded accounts. Development falls back to the documented
+ * demo passwords; production must set them in the environment.
+ */
+const getSeedAccount = (role, defaults) => {
+    const prefix = `SEED_${role.toUpperCase()}`;
+    const password = process.env[`${prefix}_PASSWORD`];
+
+    if (!password && isProduction) {
+        throw new Error(`${prefix}_PASSWORD must be set when seeding in production`);
+    }
+
+    return {
+        email: (process.env[`${prefix}_EMAIL`] || defaults.email).toLowerCase(),
+        password: password || defaults.password,
+        passwordSource: password ? `from ${prefix}_PASSWORD` : defaults.password,
+    };
+};
 
 const seedDatabase = async () => {
     try {
+        if (isProduction && !process.argv.includes('--force')) {
+            console.error('❌ Refusing to seed: NODE_ENV=production and seeding deletes ALL data.');
+            console.error('   If you really mean it, run: node seedDatabase.js --force');
+            process.exit(1);
+        }
+
+        const admin = getSeedAccount('admin', { email: 'admin@gmail.com', password: 'Admin1234' });
+        const staff = getSeedAccount('staff', { email: 'counter@quickbite.com', password: 'Counter1234' });
+
         // Connect to MongoDB
         console.log('🔌 Connecting to MongoDB...');
         await mongoose.connect(process.env.MONGO_URI);
@@ -28,42 +64,39 @@ const seedDatabase = async () => {
         console.log('   ✓ Orders cleared');
         await Recipe.deleteMany({});
         console.log('   ✓ Food items cleared');
+        await MenuItem.deleteMany({});
         await Bill.deleteMany({});
         await Sequence.deleteMany({});
-        console.log('   ✓ Counter bills & token numbers cleared');
+        console.log('   ✓ Counter menu, bills & token numbers cleared');
         console.log('✅ All data cleared\n');
 
         // Step 2: Create Admin User
         console.log('👨‍💼 Creating admin user...');
-        const hashedPassword = await bcrypt.hash('Admin1234', 12);
-        const adminUser = new User({
+        await User.create({
             name: 'Admin',
-            email: 'admin@gmail.com',
-            password: hashedPassword,
+            email: admin.email,
+            password: await bcrypt.hash(admin.password, 12),
             role: 'admin'
         });
-        await adminUser.save();
         console.log('✅ Admin user created');
-        console.log('   📧 Email: admin@gmail.com');
-        console.log('   🔑 Password: Admin1234');
+        console.log(`   📧 Email: ${admin.email}`);
+        console.log(`   🔑 Password: ${admin.passwordSource}`);
         console.log('   👤 Role: admin\n');
 
         // Step 2b: Create Counter Staff User (billing counter & kitchen screens)
         console.log('🧑‍🍳 Creating counter staff user...');
-        const staffPassword = await bcrypt.hash('Counter1234', 12);
-        const staffUser = new User({
+        await User.create({
             name: 'Counter Staff',
-            email: 'counter@quickbite.com',
-            password: staffPassword,
+            email: staff.email,
+            password: await bcrypt.hash(staff.password, 12),
             role: 'staff'
         });
-        await staffUser.save();
         console.log('✅ Counter staff user created');
-        console.log('   📧 Email: counter@quickbite.com');
-        console.log('   🔑 Password: Counter1234');
+        console.log(`   📧 Email: ${staff.email}`);
+        console.log(`   🔑 Password: ${staff.passwordSource}`);
         console.log('   👤 Role: staff\n');
 
-        // Step 3: Seed Food Items
+        // Step 3: Seed Food Items (customer website)
         console.log('🍕 Seeding food items...');
         const recipes = foodData.recipes || foodData;
         const foodItems = recipes.map(item => ({
@@ -80,8 +113,6 @@ const seedDatabase = async () => {
             userId: item.userId || 1,
             image: item.image,
             price: item.price || 0,
-            counter: item.counter || 'Main Kitchen',
-            isAvailable: true,
             rating: item.rating || 4.5,
             reviewCount: item.reviewCount || 0,
             mealType: item.mealType || ['Lunch']
@@ -89,6 +120,16 @@ const seedDatabase = async () => {
 
         await Recipe.insertMany(foodItems);
         console.log(`✅ ${foodItems.length} food items seeded\n`);
+
+        // Step 4: Seed the sample counter menu (billing counter)
+        console.log('🧾 Seeding sample counter menu...');
+        const menuItems = menuData.items.map((item, index) => ({
+            ...item,
+            nameKey: item.name.trim().toLowerCase(),
+            sortOrder: index
+        }));
+        await MenuItem.insertMany(menuItems);
+        console.log(`✅ ${menuItems.length} counter menu items seeded (sample - replace from /pos/menu)\n`);
 
         // Summary
         console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
@@ -98,20 +139,19 @@ const seedDatabase = async () => {
         console.log(`   • Users: 2 (Admin, Counter Staff)`);
         console.log(`   • Orders: 0`);
         console.log(`   • Food Items: ${foodItems.length}`);
-        console.log('\n🔐 Admin Credentials:');
-        console.log('   Email: admin@gmail.com');
-        console.log('   Password: Admin1234');
+        console.log(`   • Counter Menu Items: ${menuItems.length}`);
         console.log('\n💡 Next Steps:');
         console.log('   1. Start backend: npm run dev');
         console.log('   2. Start frontend: npm run dev');
         console.log('   3. Login with admin credentials');
         console.log('   4. Access admin dashboard from profile menu');
         console.log('   5. Counter billing: login as counter staff, open /pos');
+        console.log('   6. Change the default passwords from /pos/staff');
         console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n');
 
         process.exit(0);
     } catch (error) {
-        console.error('❌ Seed Error:', error);
+        console.error('❌ Seed Error:', error.message || error);
         process.exit(1);
     }
 };

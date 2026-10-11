@@ -82,7 +82,10 @@ app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 app.use(cookieParser());
 
 // Routes
-app.use('/api/auth', authLimiter, authRouter); // Apply stricter rate limiting to auth routes
+// Stricter rate limiting only on login/register - profile checks on every page load
+// must not count towards the 5 failed attempts (that locked staff out of shared counter PCs)
+app.use(['/api/auth/login', '/api/auth/register'], authLimiter);
+app.use('/api/auth', authRouter);
 app.use('/fooditems', router);
 app.use('/success', orderrouter);
 app.use('/pos', posRouter); // Counter billing, kitchen screens & token display (polled - kept off the /api limiter)
