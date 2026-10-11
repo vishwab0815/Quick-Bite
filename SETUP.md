@@ -33,8 +33,8 @@ cd Backend
 npm install
 cp .env.example .env
 # Edit .env with your configuration (see Environment Variables below)
-npm run seed      # Seed database with admin user and food items
 npm run dev       # Start backend on http://localhost:3000
+# No MongoDB? Use `npm run demo` instead - in-memory database with a sample menu
 
 # 3. Setup Frontend (new terminal)
 cd Frontend
@@ -44,10 +44,10 @@ cp .env.example .env
 npm run dev       # Start frontend on http://localhost:5173
 ```
 
-### Default Admin Credentials
-After seeding:
-- **Email**: `admin@gmail.com`
-- **Password**: `Admin1234` (⚠️ Change after first login!)
+### Logins
+- **Demo mode** (`npm run demo`): `admin@gmail.com` / `Admin1234`, `counter@quickbite.com` / `Counter1234`
+- **Your own empty database:** register at `/register`, then set that user's `role` to `admin` in
+  MongoDB Atlas (Browse Collections → `users`). Add the menu at `/pos/menu` and cashiers at `/pos/staff`.
 
 ---
 
@@ -106,15 +106,12 @@ STEP 5: Update CORS
    • Set to: https://your-frontend.onrender.com
    • Backend will auto-redeploy
 
-STEP 6: Seed Production Database - ONLY for a brand-new, empty database
+STEP 6: First admin & menu
    ↓
-   ⚠️  Seeding DELETES all users, bills and menus. Never run it on a live database.
-   • Set SEED_ADMIN_PASSWORD and SEED_STAFF_PASSWORD (required in production)
-   • Backend service → Shell tab
-   • Run: node seedDatabase.js --force
-   • Creates admin + counter staff logins, food items and the sample counter menu
-   Existing database instead: sign in as admin → add the menu at /pos/menu (Bulk import)
-   and cashier logins at /pos/staff.
+   • Existing database: sign in as the admin you already have
+   • Brand-new database: register at /register, then in MongoDB Atlas
+     (Browse Collections → users) set that user's role to "admin"
+   • Add the menu at /pos/menu (Bulk import) and cashier logins at /pos/staff
 
 STEP 7: Test Deployment
    ↓
@@ -230,8 +227,9 @@ Your application already implements:
 ✅ **Security Headers**: Helmet.js enabled
 
 **Post-Deployment Checklist:**
-- [ ] Seed with your own `SEED_ADMIN_PASSWORD` / `SEED_STAFF_PASSWORD` (never the demo passwords)
-- [ ] Replace the sample counter menu from `/pos/menu` and add staff logins from `/pos/staff`
+- [ ] Strong passwords on every login (never the demo passwords) - reset from `/pos/staff`
+- [ ] Set real menu prices at `/pos/menu` and add staff logins from `/pos/staff`
+- [ ] Add an UptimeRobot monitor on `<backend URL>/health` (free plan - see below)
 - [ ] Set up daily database backups (bills are GST records)
 - [ ] Use strong JWT_SECRET (64+ characters)
 - [ ] Verify MongoDB has strong password
@@ -288,7 +286,10 @@ Solution:
 **❌ Render Free Tier Slow Start**
 ```
 Info: Free tier services spin down after 15 mins of inactivity
-Solution: Upgrade to paid plan for always-on instances
+Solution: Already handled - .github/workflows/keep-alive.yml pings /health every 5 minutes,
+          and the frontend wakes the API as soon as any page opens.
+          Add an UptimeRobot HTTP monitor (5 min) on <backend URL>/health as a backup.
+          For always-on with no tricks: Render Starter plan ($7/month).
 ```
 
 ---
@@ -300,10 +301,9 @@ Solution: Upgrade to paid plan for always-on instances
 - **Backend**: http://localhost:3000
 - **Health Check**: http://localhost:3000/health
 
-### Default Credentials (development seed only)
+### Demo Logins (`npm run demo` only)
 - **Admin**: admin@gmail.com / Admin1234
 - **Counter staff**: counter@quickbite.com / Counter1234
-- Production seeding requires `SEED_ADMIN_PASSWORD` and `SEED_STAFF_PASSWORD`
 
 ### Important Commands
 
@@ -311,7 +311,8 @@ Solution: Upgrade to paid plan for always-on instances
 # Backend
 npm run dev          # Development mode with auto-reload
 npm start            # Production mode
-npm run seed         # Seed database with initial data
+npm run demo         # In-memory database with sample data (no MongoDB needed)
+npm test             # API tests
 
 # Frontend
 npm run dev          # Development server

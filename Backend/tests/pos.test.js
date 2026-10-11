@@ -5,8 +5,6 @@
 
 const { describe, it, before, after } = require('node:test');
 const assert = require('node:assert/strict');
-const path = require('path');
-const { execFileSync } = require('child_process');
 const bcrypt = require('bcryptjs');
 const request = require('supertest');
 const mongoose = require('mongoose');
@@ -328,20 +326,5 @@ describe('security', () => {
             assert.equal((await request(app).get('/api/auth/profile')).status, 401);
         }
         await login('cashier@test.com');
-    });
-
-    it('seeding refuses to run in production without --force', () => {
-        let error;
-        try {
-            execFileSync(process.execPath, ['seedDatabase.js'], {
-                cwd: path.join(__dirname, '..'),
-                env: { ...process.env, NODE_ENV: 'production' },
-                stdio: 'pipe',
-            });
-        } catch (err) {
-            error = err;
-        }
-        assert.ok(error, 'seed should exit with an error');
-        assert.match(String(error.stderr), /Refusing to seed/);
     });
 });

@@ -3,7 +3,6 @@ import axios from 'axios';
 import { useParams, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useCart } from '../context/CartContext';
-import { showSuccessToast } from '../utils/toast';
 import Button from './common/Button';
 
 const InfoCard = () => {
@@ -32,7 +31,7 @@ const InfoCard = () => {
         };
 
         const validCustomizations = Object.fromEntries(
-          Object.entries(mergedCustomizations).filter(([_, options]) => options && options.length > 0)
+          Object.entries(mergedCustomizations).filter(([, options]) => options && options.length > 0)
         );
 
         setFoodItem({

@@ -18,7 +18,7 @@ class ErrorBoundary extends React.Component {
         };
     }
 
-    static getDerivedStateFromError(error) {
+    static getDerivedStateFromError() {
         // Update state so the next render will show the fallback UI
         return { hasError: true };
     }
@@ -33,7 +33,7 @@ class ErrorBoundary extends React.Component {
         });
 
         // Send error to logging service (optional)
-        if (process.env.NODE_ENV === 'production') {
+        if (import.meta.env.PROD) {
             // Example: logErrorToService(error, errorInfo);
         }
     }
@@ -69,7 +69,7 @@ class ErrorBoundary extends React.Component {
  */
 const ErrorFallback = ({ error, errorInfo, onReload, onReset }) => {
     const navigate = useNavigate();
-    const isDev = process.env.NODE_ENV === 'development';
+    const isDev = import.meta.env.DEV;
 
     return (
         <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-orange-50 via-pink-50 to-purple-50 p-4">

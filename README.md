@@ -154,8 +154,9 @@ QuickBite/
 │   │   └── db.js                    # MongoDB connection
 │   ├── app.js                       # Express app configuration
 │   ├── server.js                    # Server entry point
-│   ├── seedDatabase.js              # Database seeding script
-│   ├── food.json                    # Food items seed data (30 recipes)
+│   ├── scripts/demo.js              # Demo mode: in-memory DB with sample data
+│   ├── tests/                       # API tests (node:test + in-memory MongoDB)
+│   ├── food.json                    # Website recipes (30 items)
 │   ├── .env.example                 # Environment variables template
 │   └── package.json
 │
@@ -320,18 +321,21 @@ QuickBite/
 - `orderDate` - Timestamp (indexed)
 - `timestamps` - Created and updated timestamps
 
-## 👨‍💼 Default Admin Credentials
+## 👨‍💼 Logins
 
-After seeding a development database, you can log in as:
+**Demo mode** (`npm run demo`, in-memory data only):
 
 | Role | Email | Password |
 |------|-------|----------|
 | Admin (owner) | `admin@gmail.com` | `Admin1234` |
 | Counter staff | `counter@quickbite.com` | `Counter1234` |
 
-These demo passwords are only for development. In production the seed script requires
-`SEED_ADMIN_PASSWORD` and `SEED_STAFF_PASSWORD`, and refuses to run without `--force` because it wipes all data.
-Change passwords anytime from `/pos/staff`.
+These passwords exist only inside demo mode - they never touch a real database.
+
+**Production:** the live database already has the owner and counter logins (strong passwords, shared privately).
+The owner adds or removes cashier logins and resets passwords from `/pos/staff`.
+On a brand-new empty database: register at `/register`, then set that user's `role` to `admin` in MongoDB Atlas
+(Browse Collections → `users`). Everything else - menu, staff - is then managed from the app.
 
 ## 🎨 Design System
 
@@ -406,11 +410,8 @@ VITE_API_URL=http://localhost:3000
    - Get credentials from: https://console.cloudinary.com/settings
    - Add to Backend/.env
 
-5. **Seed the database**
-```bash
-cd Backend
-npm run seed
-```
+5. **No MongoDB yet?** Skip steps 3-4 and run `cd Backend && npm run demo` - it starts an in-memory database
+   with a sample menu and the demo logins above.
 
 6. **Run the application**
 
@@ -470,7 +471,7 @@ counter request, so removing a staff login signs them out immediately.
   fills their name and offers **Repeat last order**, so regulars don't have to repeat themselves.
 - **Menu & food counters:** the counter menu is separate from the website's recipes. Each item has a price, a food
   counter (e.g. `Dosa Counter`, `Beverages`), a category and a veg / non-veg mark. Coupons and kitchen screens are
-  grouped by counter. Seeding loads a sample South Indian menu (`Backend/menu.json`); replace it from `/pos/menu`,
+  grouped by counter. The menu is managed from `/pos/menu`,
   where **Bulk import** accepts lines like `Masala Dosa, 80, Dosa Counter, Dosa, veg` or rows pasted from Excel.
 - **Printing:** receipts print automatically from the browser on 80mm or 58mm thermal rolls (`RECEIPT_PAPER_WIDTH`).
   For silent one-click printing (no print dialog), set the thermal printer as the Windows default and open the counter
@@ -542,7 +543,6 @@ npm run install:all      # Install all dependencies (root, backend, frontend)
 ```bash
 npm run dev              # Start development server with nodemon
 npm start                # Start production server
-npm run seed             # Seed database (wipes data!) with logins, food items and sample counter menu
 npm test                 # API tests against an in-memory MongoDB
 npm run demo             # Try the app without MongoDB: in-memory DB + dummy data (wiped on stop)
 ```
@@ -572,9 +572,31 @@ Optional: `TRUST_PROXY` (defaults to 1 in production - right for Render), `JWT_E
 - **Rewrite rule (required):** Redirects/Rewrites → Source `/*`, Destination `/index.html`, Action **Rewrite**,
   so links like `/pos/kitchen` and `/receipt/...` work on refresh.
 
-### After deploying to an existing database
-- **Do not run the seed script** - it deletes all users, bills and menus.
-- Sign in as the admin, add the menu at `/pos/menu` (Bulk import), add cashier logins at `/pos/staff`.
+### After deploying
+- Sign in as the admin, update the menu and prices at `/pos/menu` (Bulk import), add cashier logins at `/pos/staff`.
+
+### Keeping the API awake (free plan)
+Render's free plan sleeps the API after 15 minutes without traffic; the next request then waits 30-60s.
+Three layers keep the counter fast:
+1. **GitHub Actions** - [`keep-alive.yml`](.github/workflows/keep-alive.yml) pings `/health` every 5 minutes
+   (free on a public repo). Override the URL with the repository variable `KEEP_ALIVE_URL`.
+2. **UptimeRobot** (free, recommended backup) - add an HTTP monitor on `<backend URL>/health`, 5-minute interval.
+   GitHub can delay scheduled runs at busy times; two independent pingers close the gaps. It also emails you if the API goes down.
+3. **Wake-on-open** - the frontend pings `/health` the moment any page loads, so even a cold start is already
+   warming up while the cashier types their password.
+
+`/health` also reports `"db": "connected"`, so the keep-alive warns if MongoDB is unreachable.
+One always-on free service uses ~744 of Render's 750 free hours a month - fine for one API. For a paying
+restaurant, the Starter plan ($7/month) removes sleeping entirely.
+
+## ✅ CI (GitHub Actions)
+| Workflow | Runs | Checks |
+|---|---|---|
+| Backend CI | changes in `Backend/` | 19 API tests on Node 20 & 22 + server boot check |
+| Frontend CI | changes in `Frontend/` | ESLint + production build (bundle size in the run summary) |
+| Repository Checks | every push / PR | required files, no `.env` committed, no hardcoded secrets |
+| Pull Request Checks | PRs | title format, model changes, files over 1 MB |
+| Keep API Awake | every 5 minutes | pings the live API |
 
 ## 📝 License
 

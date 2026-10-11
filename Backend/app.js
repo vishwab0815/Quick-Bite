@@ -1,5 +1,6 @@
 require('dotenv').config();
 const express = require('express');
+const mongoose = require('mongoose');
 const connectToDB = require('./db/db');
 const cors = require('cors');
 const cookieParser = require('cookie-parser');
@@ -100,9 +101,12 @@ app.use('/success', orderrouter);
 app.use('/pos', posRouter); // Counter billing, kitchen screens & token display (polled - kept off the /api limiter)
 
 // Health check endpoint
+// Also used by the keep-alive ping (.github/workflows/keep-alive.yml)
 app.get('/health', (req, res) => {
+    res.set('Cache-Control', 'no-store');
     res.status(200).json({
         status: 'ok',
+        db: mongoose.connection.readyState === 1 ? 'connected' : 'disconnected',
         environment: process.env.NODE_ENV,
         timestamp: new Date().toISOString()
     });

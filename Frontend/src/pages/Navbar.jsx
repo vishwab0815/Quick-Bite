@@ -28,7 +28,7 @@ const Navbar = ({ user: userProp }) => {
                 });
                 console.log('✅ Navbar - User fetched:', res.data.user);
                 setUser(res.data.user);
-            } catch (error) {
+            } catch {
                 // Silently fail - user is not logged in
                 console.log('⚠️ Navbar - User not logged in');
                 setUser(null);
@@ -87,11 +87,6 @@ const Navbar = ({ user: userProp }) => {
         return () => document.removeEventListener('mousedown', handleClickOutside);
     }, [showDropdown]);
 
-    const menuVariants = {
-        hidden: { opacity: 0, y: -20 },
-        visible: { opacity: 1, y: 0 },
-        exit: { opacity: 0, y: -20 },
-    };
 
     const mobileMenuVariants = {
         hidden: { opacity: 0, x: '100%' },

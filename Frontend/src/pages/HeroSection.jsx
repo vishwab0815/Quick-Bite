@@ -1,8 +1,7 @@
-import React, { useRef } from 'react';
+import React from 'react';
 import { motion } from 'framer-motion';
 
 const HeroSection = () => {
-  const scrollToRef = useRef(null);
 
   const scrollToSection = () => {
     const targetPosition = window.innerHeight * 0.7;

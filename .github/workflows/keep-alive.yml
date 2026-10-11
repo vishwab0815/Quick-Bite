@@ -1,0 +1,43 @@
+name: Keep API Awake
+# Render's free plan puts the API to sleep after 15 minutes without traffic,
+# and the next request then waits ~30-60s for it to wake. This pings it every
+# 5 minutes so the counter never hits a cold start.
+#
+# GitHub may delay scheduled runs at busy times, so pair this with an external
+# monitor (e.g. UptimeRobot, 5-minute HTTP check on /health) for full coverage.
+# GitHub pauses schedules after 60 days without commits - re-enable from the
+# Actions tab if that happens.
+
+on:
+  schedule:
+    - cron: '*/5 * * * *'
+  workflow_dispatch:
+
+concurrency:
+  group: keep-alive
+  cancel-in-progress: true
+
+jobs:
+  ping:
+    name: Ping API
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      HEALTH_URL: ${{ vars.KEEP_ALIVE_URL || 'https://quick-bite-4l7a.onrender.com/health' }}
+
+    steps:
+      - name: Ping /health (waits for a cold start if needed)
+        run: |
+          for attempt in 1 2 3 4 5 6; do
+            body=$(curl -fsS --max-time 60 "$HEALTH_URL") && {
+              echo "✅ $body"
+              if ! echo "$body" | grep -q '"db":"connected"'; then
+                echo "::warning::API is awake but the database is not connected"
+              fi
+              exit 0
+            }
+            echo "Attempt $attempt failed, retrying in 15s..."
+            sleep 15
+          done
+          echo "::error::API did not respond at $HEALTH_URL"
+          exit 1

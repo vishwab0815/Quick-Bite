@@ -16,15 +16,8 @@ const Home = () => {
     const navigate = useNavigate();
     const [Item, setItem] = useState("Breakfast");
     const [foodData, setFoodData] = useState([]);
-    const [count, setCount] = useState(0);
+    const [, setCount] = useState(0);
     const [user, setUser] = useState(null);
-
-
-    const [data, setData] = useState({ imageData: [] });
-
-    const setImageData = (data) => {
-        setData({ imageData: data });
-    };
 
 
 
