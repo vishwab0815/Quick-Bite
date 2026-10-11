@@ -18,7 +18,9 @@ export default function PosLayout() {
     const location = useLocation();
     const context = useMemo(() => ({ user, settings }), [user, settings]);
 
-    // The counter fills the screen; every other screen scrolls (with a stable gutter so nothing shifts)
+    // The counter fills the screen; every other screen scrolls (with a stable gutter so nothing shifts).
+    // `relative` makes <main> the containing block, so absolutely positioned bits inside it
+    // (e.g. screen-reader-only labels) can never stretch the page and add a second scrollbar.
     const isCounter = location.pathname === '/pos';
 
     if (!user || !settings) {
@@ -36,7 +38,7 @@ export default function PosLayout() {
         <PosContext.Provider value={context}>
             <div className="pos-app flex h-[100dvh] flex-col bg-stone-100">
                 <PosHeader user={user} hotelName={settings.name} />
-                <main className={`min-h-0 flex-1 ${isCounter ? 'overflow-hidden' : 'overflow-y-auto [scrollbar-gutter:stable]'}`}>
+                <main className={`relative min-h-0 flex-1 ${isCounter ? 'overflow-hidden' : 'overflow-y-auto [scrollbar-gutter:stable]'}`}>
                     <div key={location.pathname} className="pos-page h-full">
                         <Outlet />
                     </div>
