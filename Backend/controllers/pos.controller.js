@@ -44,6 +44,7 @@ module.exports.getSettings = async (req, res) => {
             success: true,
             settings: {
                 ...getBusinessSettings(req.hotel),
+                isDemo: Boolean(req.hotel?.isDemo),
                 counters: counters.length > 0 ? counters.sort() : [DEFAULT_COUNTER],
                 whatsappMode: getWhatsappMode(),
                 receiptBaseUrl: getReceiptBaseUrl()

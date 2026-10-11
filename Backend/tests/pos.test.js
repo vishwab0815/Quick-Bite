@@ -543,3 +543,47 @@ describe('upgrading an existing single-restaurant database', () => {
         assert.equal(await assignToFirstHotel(), null, 'running again does nothing');
     });
 });
+
+describe('client demo (Try the demo buttons)', () => {
+    it('signs into a separate sample restaurant with realistic sales, as owner or cashier', async () => {
+        const owner = request.agent(app);
+        const res = await owner.post('/api/auth/demo').send({ role: 'admin' });
+        assert.equal(res.status, 200, res.body.message);
+        assert.equal(res.body.user.role, 'admin');
+        assert.equal(res.body.user.hotel.slug, 'quickbite-demo');
+        const cookie = res.headers['set-cookie'].find((value) => value.startsWith('token='));
+        assert.ok(Number(cookie.match(/Max-Age=(\d+)/)[1]) <= 2 * 3600, 'demo sessions last 2 hours');
+
+        const settings = (await owner.get('/pos/settings')).body.settings;
+        assert.equal(settings.isDemo, true);
+        assert.equal((await owner.get('/pos/menu')).body.items.length, 20);
+        const dashboard = (await owner.get('/pos/reports/dashboard')).body;
+        assert.ok(dashboard.compare.billCount > 50, 'last week has sample sales to compare with');
+        assert.ok(dashboard.bills.every((bill) => String(bill.hotel) !== String(hotel._id)), 'never shows a real hotel');
+
+        const cashier = request.agent(app);
+        const asCashier = await cashier.post('/api/auth/demo').send({ role: 'staff' });
+        assert.equal(asCashier.body.user.role, 'staff');
+        assert.equal((await cashier.get('/pos/kitchen')).status, 200);
+    });
+
+    it('does not let demo visitors create or change logins', async () => {
+        const owner = request.agent(app);
+        await owner.post('/api/auth/demo').send({ role: 'admin' });
+        const blocked = await owner.post('/pos/staff').send({ name: 'Hacker', email: 'x@evil.com', password: 'Abcd12345' });
+        assert.equal(blocked.status, 403);
+        assert.equal(await User.countDocuments({ email: 'x@evil.com' }), 0);
+    });
+
+    it('stays out of the platform owner revenue figures and can be switched off', async () => {
+        const boss = await login('boss@quickbite.app');
+        const overview = (await boss.get('/platform/overview')).body;
+        assert.equal(overview.hotels.total, await Hotel.countDocuments({ isDemo: { $ne: true } }));
+        const listed = (await boss.get('/platform/hotels')).body.hotels.find((entry) => entry.slug === 'quickbite-demo');
+        assert.equal(listed.isDemo, true);
+
+        process.env.DEMO_ENABLED = 'false';
+        assert.equal((await request(app).post('/api/auth/demo').send({ role: 'admin' })).status, 404);
+        delete process.env.DEMO_ENABLED;
+    });
+});

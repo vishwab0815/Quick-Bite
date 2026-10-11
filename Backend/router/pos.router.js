@@ -11,6 +11,11 @@ const posRouter = express.Router();
 const isStaff = [authenticateToken, requireActiveRole('admin', 'staff')];
 const isAdmin = [authenticateToken, requireActiveRole('admin')];
 
+// Demo visitors can try everything except creating or changing real logins
+const notInDemo = (req, res, next) => (req.hotel?.isDemo
+    ? res.status(403).json({ success: false, message: 'Staff logins cannot be changed in the demo' })
+    : next());
+
 // Reads are always revalidated: unchanged polls get a tiny "304 Not Modified" instead of the full list
 posRouter.use((req, res, next) => {
     if (req.method === 'GET') res.set('Cache-Control', 'private, no-cache');
@@ -51,9 +56,9 @@ posRouter.delete('/menu/:id', isAdmin, MenuController.deleteMenuItem);
 
 // Admin-only - staff logins
 posRouter.get('/staff', isAdmin, StaffController.listStaff);
-posRouter.post('/staff', isAdmin, StaffController.createStaff);
-posRouter.patch('/staff/:id/password', isAdmin, StaffController.resetPassword);
-posRouter.delete('/staff/:id', isAdmin, StaffController.removeStaff);
+posRouter.post('/staff', isAdmin, notInDemo, StaffController.createStaff);
+posRouter.patch('/staff/:id/password', isAdmin, notInDemo, StaffController.resetPassword);
+posRouter.delete('/staff/:id', isAdmin, notInDemo, StaffController.removeStaff);
 
 // Admin-only - cancelling a paid bill
 posRouter.patch('/bills/:id/cancel', isAdmin, PosController.cancelBill);

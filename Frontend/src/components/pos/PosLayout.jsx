@@ -84,6 +84,12 @@ export default function PosLayout() {
     return (
         <PosContext.Provider value={context}>
             <div className="pos-app flex h-[100dvh] flex-col bg-stone-100">
+                {settings.isDemo && (
+                    <div className="flex items-center justify-center gap-2 bg-stone-900 px-3 py-1.5 text-center text-xs font-medium text-white">
+                        <span className="rounded-full bg-orange-500 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider">Demo</span>
+                        <span className="truncate">Sample restaurant - try anything. It resets every few hours.</span>
+                    </div>
+                )}
                 <PosHeader user={user} hotelName={settings.name} hotelSlug={settings.slug} />
                 <main className={`relative min-h-0 flex-1 ${isCounter ? 'overflow-hidden' : 'overflow-y-auto [scrollbar-gutter:stable]'}`}>
                     <div key={location.pathname} className="pos-page h-full">

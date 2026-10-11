@@ -3,11 +3,13 @@ const Hotel = require('../models/hotel.model');
 const AuditLog = require('../models/auditLog.model');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
+const { getDemoRestaurant } = require('../utils/demoRestaurant');
 
 // Sessions last 24 hours by default (one working day at the counter);
 // the platform owner's console session is shorter
 const DEFAULT_SESSION_LENGTH = '24h';
 const DEFAULT_PLATFORM_SESSION_LENGTH = '8h';
+const DEMO_SESSION_LENGTH = '2h';
 
 const ALLOWED_ROLES = ['superadmin', 'admin', 'staff'];
 const HOTEL_ROLES = ['admin', 'staff'];
@@ -26,10 +28,10 @@ const cookieOptions = () => ({
 /**
  * Sign a JWT and set it as an httpOnly cookie that expires exactly when the token does
  */
-const startSession = (res, user) => {
-    const expiresIn = user.role === 'superadmin'
+const startSession = (res, user, sessionLength) => {
+    const expiresIn = sessionLength || (user.role === 'superadmin'
         ? process.env.JWT_PLATFORM_EXPIRES_IN || DEFAULT_PLATFORM_SESSION_LENGTH
-        : process.env.JWT_EXPIRES_IN || DEFAULT_SESSION_LENGTH;
+        : process.env.JWT_EXPIRES_IN || DEFAULT_SESSION_LENGTH);
     const token = jwt.sign(
         { id: user._id, name: user.name, email: user.email, role: user.role },
         process.env.JWT_SECRET,
@@ -94,6 +96,28 @@ const login = async (req, res) => {
     }
 }
 
+/**
+ * One-click sign-in to the client demo restaurant ("Try the demo" on the sign-in page).
+ * Set DEMO_ENABLED=false to switch it off.
+ */
+const demoLogin = async (req, res) => {
+    if (process.env.DEMO_ENABLED === 'false') {
+        return res.status(404).json({ success: false, message: 'The demo is not available' });
+    }
+    try {
+        const { hotel, owner, cashier } = await getDemoRestaurant();
+        if (!Hotel.accessStatus(hotel).ok) {
+            return res.status(403).json({ success: false, message: 'The demo is switched off right now.' });
+        }
+        const user = req.body?.role === 'staff' ? cashier : owner;
+        startSession(res, user, DEMO_SESSION_LENGTH);
+        return res.status(200).json({ success: true, user: publicUser(user, hotel) });
+    } catch (error) {
+        console.error('❌ Demo sign-in error:', error);
+        return res.status(500).json({ success: false, message: 'Could not open the demo. Please try again.' });
+    }
+};
+
 const logout = async (req, res) => {
     try {
         // Clear cookie with same options as when it was set
@@ -125,4 +149,4 @@ const getprofile = async (req, res) => {
 };
 
 
-module.exports = { login, logout, getprofile };
+module.exports = { login, demoLogin, logout, getprofile };

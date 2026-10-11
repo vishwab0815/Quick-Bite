@@ -25,7 +25,10 @@ const HOTEL_COLUMNS = [
         label: 'Hotel',
         render: (hotel) => (
             <>
-                <p className="font-semibold text-stone-900">{hotel.name}</p>
+                <p className="font-semibold text-stone-900">
+                    {hotel.name}
+                    {hotel.isDemo && <span className="ml-2 rounded-full bg-sky-50 px-2 py-0.5 align-middle text-[11px] font-semibold text-sky-800 ring-1 ring-sky-200">Demo</span>}
+                </p>
                 <p className="text-xs text-stone-500">{hotel.city || `/${hotel.slug}`}</p>
             </>
         ),

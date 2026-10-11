@@ -12,6 +12,7 @@ record subscription payments.
 |-----|-------|------|
 | Everyone | `/` | QuickBite landing page with a live token board, menu and "Book a demo" |
 | Hotel staff & owners | `/signin` | Sign in (no public sign-up - logins are created for them) |
+| Prospects / clients | `/signin` → **Try the demo** | One click into a sample restaurant as **Hotel owner** or **Cashier** (see below) |
 | Cashier | `/pos` | Fast billing: tap or type dishes, cash / UPI / card, automatic printing, WhatsApp bill |
 | Kitchen | `/pos/kitchen` | Per-counter tickets, Ready / Served, coupon QR scanning |
 | Hotel owner | `/pos/bills` | Live dashboard: sales vs last week, payment mix, counter speed, bills, cash check |
@@ -55,6 +56,16 @@ if it had lapsed) and the hotel works again at once. **Disable hotel** switches 
 - Optional `PLATFORM_IP_ALLOWLIST` limits the console to your own IP addresses.
 - httpOnly secure cookies, Helmet headers, CORS allow-list, NoSQL-injection sanitising, 1 MB body limit,
   passwords hashed with bcrypt, customers' phone numbers never shown on public pages or in the console.
+
+## 🎬 Client demo
+
+Under the sign-in form, **Try the demo → Hotel owner / Cashier** opens a sample restaurant with no password:
+today's sales up to now, the same weekday last week for comparison, tokens in the kitchen and regular
+customers - so the dashboard looks alive when you show it to a client.
+- Completely separate from real hotels; it resets itself every 6 hours.
+- Demo visitors can try everything (bill, cancel, edit the menu) except creating or changing logins.
+- 2-hour demo sessions, rate limited; left out of the console's revenue figures (tagged "Demo").
+- Set `DEMO_ENABLED=false` on the backend to switch it off.
 
 ## 🧾 Counter billing
 
@@ -131,7 +142,7 @@ connected and, if not, why. Render's Starter plan ($7/month) removes sleeping en
 ## ✅ CI (GitHub Actions)
 | Workflow | Runs | Checks |
 |---|---|---|
-| Backend CI | changes in `Backend/` | 30 API tests (billing, hotel isolation, console, subscriptions) on Node 20 & 22 + server boot check |
+| Backend CI | changes in `Backend/` | 33 API tests (billing, hotel isolation, console, subscriptions) on Node 20 & 22 + server boot check |
 | Frontend CI | changes in `Frontend/` | ESLint + production build |
 | Repository Checks | every push / PR | required files, no `.env` committed, no hardcoded secrets |
 | Pull Request Checks | PRs | title format, model changes, files over 1 MB |

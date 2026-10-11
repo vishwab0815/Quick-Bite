@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import axios from 'axios';
 import { Link, useNavigate } from 'react-router-dom';
-import { FiArrowRight, FiEye, FiEyeOff, FiLock } from 'react-icons/fi';
+import { FiArrowRight, FiBarChart2, FiEye, FiEyeOff, FiLock, FiShoppingBag } from 'react-icons/fi';
 import { demoHref, demoIsExternal } from '../utils/sales';
 
 const API = import.meta.env.VITE_API_URL;
@@ -15,6 +15,7 @@ export default function Signin() {
     const [showPassword, setShowPassword] = useState(false);
     const [error, setError] = useState('');
     const [loading, setLoading] = useState(false);
+    const [demoLoading, setDemoLoading] = useState('');
 
     // Already signed in on this device - go straight in
     useEffect(() => {
@@ -48,6 +49,24 @@ export default function Signin() {
             setLoading(false);
         }
     };
+
+    // One click into the sample restaurant - for showing QuickBite to a client
+    const openDemo = async (role) => {
+        setDemoLoading(role);
+        setError('');
+        try {
+            await axios.post(`${API}/api/auth/demo`, { role }, { withCredentials: true });
+            navigate('/pos', { replace: true });
+        } catch (err) {
+            setError(err.response?.data?.message || 'Could not open the demo. Please try again.');
+            setDemoLoading('');
+        }
+    };
+
+    const demos = [
+        { role: 'admin', title: 'Hotel owner', text: 'Dashboard, menu & staff', icon: FiBarChart2 },
+        { role: 'staff', title: 'Cashier', text: 'Billing counter & kitchen', icon: FiShoppingBag },
+    ];
 
     const field = 'w-full rounded-2xl border border-ink/15 bg-white px-4 py-3.5 text-[15px] text-ink outline-none transition focus:border-ink focus:ring-4 focus:ring-ink/5';
 
@@ -133,9 +152,39 @@ export default function Signin() {
                         </button>
                     </form>
 
-                    <p className="mt-8 text-sm text-ink/55">
+                    <p className="mt-6 text-sm text-ink/55">
                         Forgot your password? Ask your restaurant owner to reset it from Staff.
                     </p>
+
+                    <section className="mt-10" aria-labelledby="demo-heading">
+                        <h2 id="demo-heading" className="flex items-center gap-3 font-code text-[11px] font-semibold uppercase tracking-[0.2em] text-ink/45">
+                            <span className="h-px flex-1 bg-ink/10" /> Try the demo <span className="h-px flex-1 bg-ink/10" />
+                        </h2>
+                        <div className="mt-4 grid grid-cols-2 gap-3">
+                            {demos.map((demo) => {
+                                const Icon = demo.icon;
+                                return (
+                                    <button
+                                        key={demo.role}
+                                        type="button"
+                                        onClick={() => openDemo(demo.role)}
+                                        disabled={Boolean(demoLoading)}
+                                        className="group rounded-2xl border border-ink/10 bg-white p-4 text-left transition hover:border-ink/30 hover:shadow-[0_10px_30px_-18px_rgba(15,14,12,0.5)] disabled:opacity-60"
+                                    >
+                                        <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-saffron/10 text-saffron-deep">
+                                            <Icon />
+                                        </span>
+                                        <span className="mt-3 flex items-center gap-1.5 font-semibold">
+                                            {demoLoading === demo.role ? 'Opening…' : demo.title}
+                                            <FiArrowRight className="text-ink/40 transition-transform group-hover:translate-x-0.5" />
+                                        </span>
+                                        <span className="mt-0.5 block text-xs leading-snug text-ink/55">{demo.text}</span>
+                                    </button>
+                                );
+                            })}
+                        </div>
+                        <p className="mt-3 text-center text-xs text-ink/45">A sample restaurant - no sign-up, nothing real is touched.</p>
+                    </section>
                 </div>
 
                 <p className="text-center text-sm text-ink/55">

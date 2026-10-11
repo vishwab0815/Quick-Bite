@@ -106,6 +106,7 @@ const hotelSummary = (hotel, stats) => ({
     _id: hotel._id,
     name: hotel.name,
     slug: hotel.slug,
+    isDemo: Boolean(hotel.isDemo),
     status: hotel.status,
     statusReason: hotel.statusReason,
     city: hotel.settings?.address || '',
@@ -195,11 +196,13 @@ const parseFee = (fee) => {
 module.exports.getOverview = async (req, res) => {
     try {
         const now = Date.now();
+        // The client demo restaurant's sample sales never count towards the real figures
+        const demoIds = await Hotel.find({ isDemo: true }).distinct('_id');
         const [hotels, stats, daily, collected] = await Promise.all([
-            Hotel.find().select('name slug status statusReason settings.address subscription createdAt').lean(),
+            Hotel.find({ isDemo: { $ne: true } }).select('name slug status statusReason settings.address subscription createdAt').lean(),
             statsByHotel(),
             Bill.aggregate([
-                { $match: { ...paidOrders, businessDate: { $gte: trendStart() } } },
+                { $match: { ...paidOrders, hotel: { $nin: demoIds }, businessDate: { $gte: trendStart() } } },
                 { $group: { _id: '$businessDate', orders: { $sum: 1 }, sales: { $sum: '$total' } } }
             ]),
             Hotel.aggregate([
@@ -258,7 +261,7 @@ module.exports.getOverview = async (req, res) => {
 module.exports.listHotels = async (req, res) => {
     try {
         const [hotels, stats] = await Promise.all([
-            Hotel.find().select('name slug status statusReason settings.address subscription createdAt').sort({ createdAt: -1 }).lean(),
+            Hotel.find().select('name slug status statusReason settings.address subscription isDemo createdAt').sort({ isDemo: 1, createdAt: -1 }).lean(),
             statsByHotel()
         ]);
         res.status(200).json({ success: true, hotels: hotels.map((hotel) => hotelSummary(hotel, stats.get(String(hotel._id)))) });

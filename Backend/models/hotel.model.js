@@ -66,6 +66,10 @@ const hotelSchema = new mongoose.Schema({
     },
     payments: [paymentSchema],
 
+    // The public client demo restaurant (one-click sign-in, sample data that resets itself)
+    isDemo: { type: Boolean, default: false },
+    demoResetAt: Date,
+
     createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'user' }
 }, { timestamps: true });
 
