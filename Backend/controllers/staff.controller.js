@@ -7,11 +7,11 @@ const STAFF_ROLES = ['staff', 'admin'];
 const PASSWORD_RULE = 'Password must be at least 8 characters with 1 uppercase, 1 lowercase and 1 number';
 
 /**
- * List counter staff and admins (admin)
+ * List the hotel's counter staff and admins (admin)
  */
 module.exports.listStaff = async (req, res) => {
     try {
-        const staff = await User.find({ role: { $in: STAFF_ROLES } })
+        const staff = await User.find({ hotel: req.hotelId, role: { $in: STAFF_ROLES } })
             .select('name email role createdAt')
             .sort({ role: 1, name: 1 })
             .lean();
@@ -50,7 +50,8 @@ module.exports.createStaff = async (req, res) => {
             name,
             email,
             password: await bcrypt.hash(password, 12),
-            role: 'staff'
+            role: 'staff',
+            hotel: req.hotelId
         });
 
         console.log(`✅ Staff login created: ${user.email}`);
@@ -77,7 +78,7 @@ module.exports.resetPassword = async (req, res) => {
             return res.status(400).json({ success: false, message: PASSWORD_RULE });
         }
 
-        const user = await User.findOne({ _id: req.params.id, role: { $in: STAFF_ROLES } });
+        const user = await User.findOne({ _id: req.params.id, hotel: req.hotelId, role: { $in: STAFF_ROLES } });
         if (!user) {
             return res.status(404).json({ success: false, message: 'Staff member not found' });
         }
@@ -103,7 +104,7 @@ module.exports.removeStaff = async (req, res) => {
             return res.status(400).json({ success: false, message: 'Invalid user ID' });
         }
 
-        const user = await User.findOneAndDelete({ _id: req.params.id, role: 'staff' }).lean();
+        const user = await User.findOneAndDelete({ _id: req.params.id, hotel: req.hotelId, role: 'staff' }).lean();
         if (!user) {
             return res.status(404).json({ success: false, message: 'Staff member not found' });
         }

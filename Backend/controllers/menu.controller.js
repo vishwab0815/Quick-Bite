@@ -71,7 +71,7 @@ const isDuplicateKeyError = (error) => error?.code === 11000;
  */
 module.exports.getMenu = async (req, res) => {
     try {
-        const items = await MenuItem.find({})
+        const items = await MenuItem.find({ hotel: req.hotelId })
             .sort({ counter: 1, sortOrder: 1, name: 1 })
             .lean();
 
@@ -97,7 +97,7 @@ module.exports.setItemAvailability = async (req, res) => {
             return res.status(400).json({ success: false, message: 'isAvailable must be true or false' });
         }
 
-        const item = await MenuItem.findByIdAndUpdate(id, { isAvailable }, { new: true }).lean();
+        const item = await MenuItem.findOneAndUpdate({ _id: id, hotel: req.hotelId }, { isAvailable }, { new: true }).lean();
         if (!item) {
             return res.status(404).json({ success: false, message: 'Menu item not found' });
         }
@@ -119,7 +119,7 @@ module.exports.createMenuItem = async (req, res) => {
             return res.status(400).json({ success: false, message: error });
         }
 
-        const item = await MenuItem.create(value);
+        const item = await MenuItem.create({ ...value, hotel: req.hotelId });
         console.log(`✅ Menu item added: ${item.name} (₹${item.price}, ${item.counter})`);
 
         res.status(201).json({ success: true, item });
@@ -147,7 +147,7 @@ module.exports.updateMenuItem = async (req, res) => {
             return res.status(400).json({ success: false, message: error });
         }
 
-        const item = await MenuItem.findById(req.params.id);
+        const item = await MenuItem.findOne({ _id: req.params.id, hotel: req.hotelId });
         if (!item) {
             return res.status(404).json({ success: false, message: 'Menu item not found' });
         }
@@ -175,7 +175,7 @@ module.exports.deleteMenuItem = async (req, res) => {
             return res.status(400).json({ success: false, message: 'Invalid item ID' });
         }
 
-        const item = await MenuItem.findByIdAndDelete(req.params.id).lean();
+        const item = await MenuItem.findOneAndDelete({ _id: req.params.id, hotel: req.hotelId }).lean();
         if (!item) {
             return res.status(404).json({ success: false, message: 'Menu item not found' });
         }
@@ -234,11 +234,11 @@ module.exports.importMenu = async (req, res) => {
             const setOnInsert = Object.fromEntries(
                 Object.entries(insertDefaults).filter(([field]) => row[field] === undefined)
             );
-            const update = { $set: row };
+            const update = { $set: { ...row, hotel: req.hotelId } };
             if (Object.keys(setOnInsert).length > 0) update.$setOnInsert = setOnInsert;
             return {
                 updateOne: {
-                    filter: { nameKey: row.nameKey },
+                    filter: { hotel: req.hotelId, nameKey: row.nameKey },
                     update,
                     upsert: true
                 }

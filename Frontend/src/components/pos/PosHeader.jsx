@@ -1,7 +1,7 @@
 import { NavLink, useNavigate } from 'react-router-dom';
 import PropTypes from 'prop-types';
 import axios from 'axios';
-import { FiShoppingBag, FiMonitor, FiBarChart2, FiTv, FiLogOut, FiHome, FiList, FiUsers } from 'react-icons/fi';
+import { FiShoppingBag, FiMonitor, FiBarChart2, FiTv, FiLogOut, FiList, FiUsers } from 'react-icons/fi';
 
 const links = [
     { to: '/pos', label: 'Counter', icon: FiShoppingBag, end: true },
@@ -16,7 +16,7 @@ const navClass = ({ isActive }) =>
         isActive ? 'bg-stone-900 text-white shadow-sm' : 'text-stone-500 hover:bg-stone-100 hover:text-stone-900'
     }`;
 
-const PosHeader = ({ user, hotelName }) => {
+const PosHeader = ({ user, hotelName, hotelSlug }) => {
     const navigate = useNavigate();
     const name = hotelName || 'QuickBite';
 
@@ -52,7 +52,7 @@ const PosHeader = ({ user, hotelName }) => {
                         );
                     })}
                     <a
-                        href="/pos/display"
+                        href={`/tv/${hotelSlug}`}
                         target="_blank"
                         rel="noreferrer"
                         title="Token TV"
@@ -64,15 +64,6 @@ const PosHeader = ({ user, hotelName }) => {
                 </nav>
 
                 <div className="flex items-center gap-1">
-                    {user?.role === 'admin' && (
-                        <button
-                            onClick={() => navigate('/home')}
-                            className="hidden rounded-full p-2.5 text-stone-500 hover:bg-stone-100 hover:text-stone-900 sm:block"
-                            title="Back to website"
-                        >
-                            <FiHome />
-                        </button>
-                    )}
                     <span
                         className="hidden h-8 w-8 items-center justify-center rounded-full bg-stone-100 text-xs font-bold text-stone-600 md:flex"
                         title={user?.name}
@@ -95,6 +86,7 @@ const PosHeader = ({ user, hotelName }) => {
 PosHeader.propTypes = {
     user: PropTypes.object,
     hotelName: PropTypes.string,
+    hotelSlug: PropTypes.string,
 };
 
 export default PosHeader;

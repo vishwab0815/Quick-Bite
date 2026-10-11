@@ -10,10 +10,9 @@ const rateLimit = require('express-rate-limit');
 const mongoSanitize = require('@exortek/express-mongo-sanitize');
 const { requestLogger, errorLogger } = require('./middleware/logger');
 
-const router = require('./router/foodItems.router');
-const orderrouter = require('./router/orders.router');
 const authRouter = require('./router/userAuth.router');
 const posRouter = require('./router/pos.router');
+const platformRouter = require('./router/platform.router');
 
 const app = express();
 
@@ -87,8 +86,9 @@ app.use(cors({
 }));
 
 // Middleware
-app.use(express.json({ limit: '10mb' })); // Limit body size
-app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+// Small body limit: the largest request (a 500-item menu import) is well under 1 MB
+app.use(express.json({ limit: '1mb' }));
+app.use(express.urlencoded({ extended: true, limit: '1mb' }));
 app.use(cookieParser());
 
 // Health check endpoint
@@ -118,13 +118,12 @@ app.use((req, res, next) => {
 });
 
 // Routes
-// Stricter rate limiting only on login/register - profile checks on every page load
+// Stricter rate limiting only on login - profile checks on every page load
 // must not count towards the 5 failed attempts (that locked staff out of shared counter PCs)
-app.use(['/api/auth/login', '/api/auth/register'], authLimiter);
+app.use('/api/auth/login', authLimiter);
 app.use('/api/auth', authRouter);
-app.use('/fooditems', router);
-app.use('/success', orderrouter);
 app.use('/pos', posRouter); // Counter billing, kitchen screens & token display (polled - kept off the /api limiter)
+app.use('/platform', platformRouter); // QuickBite owner console - superadmin only, invisible (404) to everyone else
 
 
 // 404 handler - must be after all routes

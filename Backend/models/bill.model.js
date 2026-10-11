@@ -31,7 +31,9 @@ const stationSchema = new mongoose.Schema({
 }, { _id: false });
 
 const billSchema = new mongoose.Schema({
-    billNumber: { type: String, required: true, unique: true },
+    hotel: { type: mongoose.Schema.Types.ObjectId, ref: 'Hotel', required: true },
+    // Unique per hotel (see indexes below)
+    billNumber: { type: String, required: true },
     tokenNumber: { type: Number, required: true },
     businessDate: { type: String, required: true },
     // Unguessable id used for the public receipt link sent on WhatsApp
@@ -89,8 +91,11 @@ const billSchema = new mongoose.Schema({
     cancelReason: String
 }, { timestamps: true });
 
-billSchema.index({ businessDate: 1, tokenNumber: 1 }, { unique: true });
-billSchema.index({ businessDate: 1, status: 1 });
+// Every lookup is scoped to one hotel, so the hotel leads each index
+billSchema.index({ hotel: 1, billNumber: 1 }, { unique: true });
+billSchema.index({ hotel: 1, businessDate: 1, tokenNumber: 1 }, { unique: true });
+billSchema.index({ hotel: 1, businessDate: 1, status: 1 });
+billSchema.index({ hotel: 1, createdAt: -1 });
 
 /**
  * Derive the overall bill status from its stations

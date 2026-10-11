@@ -1,9 +1,11 @@
 /**
- * Create the owner (admin) login, or turn an existing login into an admin and reset its password.
- * Use it once on a new database; after that the owner manages every login from /pos/staff.
+ * Create the QuickBite platform owner (superadmin) login - the only account that can open the
+ * hidden console at /console and manage every hotel. Run again with the same email to reset its password.
+ * This script is the ONLY way to create a platform owner: no API or screen can grant that role.
  * It only adds or updates one user - it never deletes anything.
  *
- * Usage: npm run create-admin   (uses MONGO_URI from Backend/.env or the environment)
+ * Usage: npm run create-platform-owner   (uses MONGO_URI from Backend/.env or the environment)
+ * Hotels and their owner logins are created from the console.
  */
 
 const path = require('path');
@@ -16,7 +18,8 @@ require('dotenv').config({ path: path.join(__dirname, '..', '.env') });
 const User = require('../models/userauthentication.model');
 const { isValidEmail, isValidPassword } = require('../middleware/validation');
 
-const PASSWORD_RULE = 'At least 8 characters with 1 uppercase, 1 lowercase and 1 number';
+const PASSWORD_RULE = 'At least 12 characters with 1 uppercase, 1 lowercase and 1 number';
+const MIN_LENGTH = 12;
 
 const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
 
@@ -61,7 +64,7 @@ const askHidden = (question) => readAnswer(question, true);
         process.exit(1);
     }
 
-    console.log('👤 Create the owner (admin) login\n');
+    console.log('👤 Create the QuickBite platform owner login (console access)\n');
     const email = (await ask('Email: ')).toLowerCase();
     if (!isValidEmail(email)) throw new Error('That is not a valid email address');
 
@@ -69,29 +72,31 @@ const askHidden = (question) => readAnswer(question, true);
     console.log(`Connected to database "${mongoose.connection.name}"\n`);
 
     const existing = await User.findOne({ email });
+    if (existing && existing.role !== 'superadmin') {
+        throw new Error(`${email} is a ${existing.role} login. Use a different email for the platform owner.`);
+    }
     if (existing) {
-        const answer = await ask(`${email} already exists (role: ${existing.role}). Make it admin and set a new password? (y/N): `);
+        const answer = await ask(`${email} is already the platform owner. Set a new password? (y/N): `);
         if (answer.toLowerCase() !== 'y') {
             console.log('Nothing changed.');
             return;
         }
     }
 
-    const name = existing ? existing.name : (await ask('Name (e.g. Owner): ')) || 'Owner';
+    const name = existing ? existing.name : (await ask('Name: ')) || 'Platform Owner';
     const password = await askHidden(`Password (${PASSWORD_RULE}): `);
-    if (!isValidPassword(password)) throw new Error(`Password too weak - ${PASSWORD_RULE}`);
+    if (password.length < MIN_LENGTH || !isValidPassword(password)) throw new Error(`Password too weak - ${PASSWORD_RULE}`);
     if (await askHidden('Repeat password: ') !== password) throw new Error('Passwords do not match');
 
     const hashed = await bcrypt.hash(password, 12);
     if (existing) {
-        existing.role = 'admin';
         existing.password = hashed;
         await existing.save();
     } else {
-        await User.create({ name, email, password: hashed, role: 'admin' });
+        await User.create({ name, email, password: hashed, role: 'superadmin' });
     }
 
-    console.log(`\n✅ ${email} is now an admin. Sign in at /signin, then add cashier logins at /pos/staff.`);
+    console.log(`\n✅ ${email} is the platform owner. Sign in at /signin to open the console.`);
 })()
     .catch((error) => {
         console.error(`\n❌ ${error.message}`);

@@ -10,6 +10,9 @@ import LiveReceipt from '../components/landing/LiveReceipt';
 import Magnetic from '../components/landing/Magnetic';
 import { MaskReveal, ScrollWords } from '../components/landing/TextEffects';
 import { posApi } from '../utils/pos';
+import { demoHref, demoIsExternal } from '../utils/sales';
+
+const demoLinkProps = { href: demoHref, ...(demoIsExternal && { target: '_blank', rel: 'noreferrer' }) };
 
 const LIVE_REFRESH_MS = 15000;
 
@@ -152,12 +155,12 @@ export default function Landing() {
                         >
                             Sign in
                         </Link>
-                        <Link
-                            to="/contact"
+                        <a
+                            {...demoLinkProps}
                             className={`rounded-full px-5 py-2.5 text-sm font-semibold transition-colors ${scrolled ? 'bg-ink text-paper hover:bg-ink/80' : 'bg-paper text-ink hover:bg-white'}`}
                         >
                             Book a demo
-                        </Link>
+                        </a>
                     </div>
                 </div>
             </header>
@@ -191,9 +194,9 @@ export default function Landing() {
                                 </p>
                                 <div className="mt-9 flex flex-wrap items-center gap-3">
                                     <Magnetic>
-                                        <Link to="/contact" className="group inline-flex items-center gap-2 rounded-full bg-saffron px-7 py-4 text-sm font-bold text-ink transition-colors hover:bg-paper">
+                                        <a {...demoLinkProps} className="group inline-flex items-center gap-2 rounded-full bg-saffron px-7 py-4 text-sm font-bold text-ink transition-colors hover:bg-paper">
                                             Book a demo <FiArrowUpRight className="transition-transform group-hover:-translate-y-0.5 group-hover:translate-x-0.5" />
-                                        </Link>
+                                        </a>
                                     </Magnetic>
                                     <a href="#how" onClick={scrollTo('how')} className="inline-flex items-center gap-2 rounded-full border border-paper/15 px-7 py-4 text-sm font-semibold transition-colors hover:border-paper/40">
                                         See an order play out <FiArrowDown />
@@ -273,7 +276,7 @@ export default function Landing() {
                             )}
                             <Magnetic className="mt-10">
                                 <a
-                                    href="/pos/display"
+                                    href={restaurant?.slug ? `/tv/${restaurant.slug}` : '#live'}
                                     target="_blank"
                                     rel="noreferrer"
                                     className="inline-flex items-center gap-2.5 rounded-full bg-ink px-7 py-4 text-sm font-semibold text-paper transition-colors hover:bg-ink/85"
@@ -338,9 +341,9 @@ export default function Landing() {
                             </p>
                             <div className="mt-11 flex flex-wrap justify-center gap-3">
                                 <Magnetic>
-                                    <Link to="/contact" className="inline-flex items-center gap-2 rounded-full bg-saffron px-9 py-5 font-bold text-ink transition-colors hover:bg-paper">
+                                    <a {...demoLinkProps} className="inline-flex items-center gap-2 rounded-full bg-saffron px-9 py-5 font-bold text-ink transition-colors hover:bg-paper">
                                         Book a demo <FiArrowUpRight />
-                                    </Link>
+                                    </a>
                                 </Magnetic>
                                 <Link to="/signin" className="inline-flex items-center gap-2 rounded-full border border-paper/15 px-9 py-5 font-semibold transition-colors hover:border-paper/40">
                                     Staff sign in

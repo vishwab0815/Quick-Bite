@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { useParams } from 'react-router-dom';
 import { FiVolume2 } from 'react-icons/fi';
 import { posApi, playBeep } from '../../utils/pos';
 
@@ -6,11 +7,13 @@ const POLL_MS = 3000;
 const MAX_READY = 12;
 
 /**
- * Public token display for the TV near the counters.
+ * Public token display for the TV near the counters - /tv/<hotel address>.
  * Shows only token numbers and counter names - no prices or customer details.
  */
 export default function TokenDisplay() {
+    const { slug } = useParams();
     const [board, setBoard] = useState({ hotelName: '', preparing: [], ready: [] });
+    const [missing, setMissing] = useState(false);
     const [clock, setClock] = useState(() => new Date());
     const [soundOn, setSoundOn] = useState(false);
     const [offline, setOffline] = useState(false);
@@ -23,9 +26,10 @@ export default function TokenDisplay() {
 
         const load = async () => {
             try {
-                const res = await posApi.get('/display');
+                const res = await posApi.get(`/public/${encodeURIComponent(slug)}/display`);
                 if (!active) return;
                 setOffline(false);
+                setMissing(false);
                 setBoard(res.data);
 
                 const readyKeys = res.data.ready.map((entry) => `${entry.tokenNumber}:${entry.counters.join(',')}`);
@@ -48,8 +52,11 @@ export default function TokenDisplay() {
                     }
                 }
                 announced.current = new Set(readyKeys);
-            } catch {
-                if (active) setOffline(true);
+            } catch (error) {
+                if (!active) return;
+                // Unknown, paused or unpaid hotel: show a notice instead of a stale board
+                if (error.response?.status === 404) setMissing(true);
+                else setOffline(true);
             }
         };
 
@@ -59,7 +66,7 @@ export default function TokenDisplay() {
             active = false;
             clearInterval(poll);
         };
-    }, [soundOn]);
+    }, [soundOn, slug]);
 
     useEffect(() => {
         const tick = setInterval(() => setClock(new Date()), 1000);
@@ -71,6 +78,14 @@ export default function TokenDisplay() {
         const timer = setTimeout(() => setHighlight(new Set()), 8000);
         return () => clearTimeout(timer);
     }, [highlight]);
+
+    if (missing) {
+        return (
+            <div className="pos-app flex min-h-screen items-center justify-center bg-stone-950 p-6 text-center text-stone-300">
+                <p className="text-2xl font-semibold">This token board is not available.</p>
+            </div>
+        );
+    }
 
     const ready = [...board.ready]
         .sort((a, b) => new Date(b.readyAt || 0) - new Date(a.readyAt || 0))

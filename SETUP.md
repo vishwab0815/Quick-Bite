@@ -1,356 +1,167 @@
 # 🚀 QuickBite - Setup & Deployment Guide
 
-Complete guide for local development and production deployment.
-
----
-
-## 📋 Table of Contents
-
-- [Local Development Setup](#-local-development-setup)
-- [Production Deployment (Render)](#-production-deployment-render)
-- [Environment Variables Reference](#-environment-variables-reference)
+- [Local development](#-local-development)
+- [Production deployment (Render)](#-production-deployment-render)
+- [Adding a hotel](#-adding-a-hotel)
+- [Environment variables](#-environment-variables)
 - [Troubleshooting](#-troubleshooting)
 
 ---
 
-## 🖥️ Local Development Setup
+## 🖥️ Local development
 
-### Prerequisites
-
-- **Node.js** ≥16.0.0 ([Download](https://nodejs.org/))
-- **MongoDB** - Local or [MongoDB Atlas](https://www.mongodb.com/cloud/atlas) (free tier)
-- **Git**
-
-### Quick Start
+**Prerequisites:** Node.js 20+, Git. MongoDB is optional (demo mode runs an in-memory database).
 
 ```bash
-# 1. Clone repository
-git clone https://github.com/yourusername/QuickBite.git
-cd QuickBite
-
-# 2. Setup Backend
+# Backend
 cd Backend
 npm install
-cp .env.example .env
-# Edit .env with your configuration (see Environment Variables below)
-npm run dev       # Start backend on http://localhost:3000
-# No MongoDB? Use `npm run demo` instead - in-memory database with a sample menu
+cp .env.example .env      # set MONGO_URI and JWT_SECRET (or skip and use demo mode)
+npm run demo              # in-memory database + two sample hotels, OR: npm run dev
 
-# 3. Setup Frontend (new terminal)
+# Frontend (new terminal)
 cd Frontend
 npm install
-cp .env.example .env
-# Edit .env: VITE_API_URL=http://localhost:3000
-npm run dev       # Start frontend on http://localhost:5173
+cp .env.example .env      # VITE_API_URL=http://localhost:3000
+npm run dev               # http://localhost:5173
 ```
 
-### Logins
-- **Demo mode** (`npm run demo`): `admin@gmail.com` / `Admin1234`, `counter@quickbite.com` / `Counter1234`
-- **Your own empty database:** run `npm run create-admin` in `Backend` (uses `MONGO_URI` from `.env`) to create
-  the owner login. Then sign in, add the menu at `/pos/menu` and cashiers at `/pos/staff`.
+**Demo logins** (`npm run demo` only): console `owner@quickbite.app` / `Platform1234` ·
+hotel owner `admin@gmail.com` / `Admin1234` · cashier `counter@quickbite.com` / `Counter1234`.
+
+**Your own database:** run `npm run create-platform-owner` in `Backend` once (uses `MONGO_URI` from `.env`),
+sign in at `/signin` - you land on `/console` - and add hotels there.
 
 ---
 
-## 🌐 Production Deployment (Render)
-
-### Deployment Flow
+## 🌐 Production deployment (Render)
 
 ```
-┌─────────────────────────────────────────────────────────────────────┐
-│                    DEPLOYMENT PROCESS FLOW                          │
-└─────────────────────────────────────────────────────────────────────┘
+STEP 1  MongoDB Atlas
+        • Free cluster at cloud.mongodb.com, a database user with a strong password
+        • Network Access → allow 0.0.0.0/0 (Render's IPs change)
+        • Connection string: mongodb+srv://<user>:<pass>@<cluster>.mongodb.net/quickbite?retryWrites=true&w=majority
 
-STEP 1: Setup MongoDB Atlas (Database)
-   ↓
-   • Create free cluster at cloud.mongodb.com
-   • Create database user with password
-   • Network Access → Add IP: 0.0.0.0/0 (allow all)
-   • Copy connection string:
-     mongodb+srv://<user>:<pass>@cluster.mongodb.net/quickbite
+STEP 2  Backend → Render → New → Web Service
+        • Root Directory: Backend · Build: npm install · Start: npm start
+        • Environment: NODE_ENV=production, MONGO_URI, JWT_SECRET, FRONTEND_URL (see table below)
+        • Check https://<backend>.onrender.com/health → "db":"connected"
 
-STEP 2: Deploy Backend to Render
-   ↓
-   • Go to render.com → New → Web Service
-   • Connect your GitHub repository
-   • Configuration:
-     - Name: quickbite-backend
-     - Root Directory: Backend
-     - Build Command: npm install
-     - Start Command: npm start
-   • Add Environment Variables (see Backend ENV table below)
-   • Deploy
+STEP 3  Frontend → Render → New → Static Site
+        • Root Directory: Frontend · Build: npm install && npm run build · Publish: dist
+        • Environment: VITE_API_URL=<backend URL>, VITE_SALES_WHATSAPP=<your WhatsApp number, e.g. 919876543210>
+        • Redirects/Rewrites (recommended): Source /*  →  Destination /index.html  (Rewrite)
+          Deep links like /pos/kitchen, /tv/... and /receipt/... also work without it (404.html fallback).
 
-STEP 3: Verify Backend
-   ↓
-   • Visit: https://your-backend.onrender.com/health
-   • Should return: {"status":"ok","environment":"production"}
+STEP 4  Platform owner login (once)
+        • On your computer: put the production MONGO_URI in Backend/.env and run
+            npm run create-platform-owner      (asks for email + a 12+ character password)
+        • Remove MONGO_URI from Backend/.env afterwards
+        • Sign in at <frontend>/signin → you land on the console at /console
 
-STEP 4: Deploy Frontend to Render
-   ↓
-   • Go to render.com → New → Static Site
-   • Connect your GitHub repository
-   • Configuration:
-     - Name: quickbite-frontend
-     - Root Directory: Frontend
-     - Build Command: npm install && npm run build
-     - Publish Directory: dist
-   • Add Environment Variables (see Frontend ENV table below)
-   • Redirects/Rewrites → add: Source /*  →  Destination /index.html  (Action: Rewrite)
-     (required so /pos, /pos/kitchen and /receipt/... links work on refresh)
-   • Deploy
+STEP 5  Hotels
+        • Console → Hotels → Add hotel (creates the hotel and its owner login)
+        • Give the owner their login; they add the menu at /pos/menu and cashiers at /pos/staff
 
-STEP 5: Update CORS
-   ↓
-   • Go to Backend service on Render
-   • Update FRONTEND_URL environment variable
-   • Set to: https://your-frontend.onrender.com
-   • Backend will auto-redeploy
-
-STEP 6: First admin & menu
-   ↓
-   • Existing database: sign in as the admin you already have
-   • Brand-new database: on your computer, put the production MONGO_URI in Backend/.env
-     and run: npm run create-admin   (creates the owner login; never deletes anything)
-   • Add the menu at /pos/menu (Bulk import) and cashier logins at /pos/staff
-
-STEP 7: Test Deployment
-   ↓
-   • Visit your frontend URL - the landing page shows the name, hours and live menu
-   • Sign in as admin → /pos: bill a dish, check Kitchen, Dashboard and /pos/display
-   • Refresh on /pos/kitchen - if you see "Not Found", the rewrite rule (STEP 4) is missing
-
-REDEPLOYING after code changes
-   ↓
-   • Push to main → Render auto-deploys both services (if Auto-Deploy is on)
-   • Otherwise: each service → Manual Deploy → Deploy latest commit
-
-✅ DEPLOYMENT COMPLETE
+Redeploying: push to main - Render rebuilds both services.
 ```
+
+**Upgrading the old single-restaurant database:** nothing to do. On its first start the server moves the
+existing bills, menu, customers and logins into one hotel (named from `HOTEL_NAME`, 30 days paid), keeps the
+bill numbering going and switches to per-hotel indexes. It only adds data and does nothing on later starts.
+Then set that hotel's plan and details from the console.
 
 ---
 
-## 📊 Environment Variables Reference
+## 🏨 Adding a hotel
 
-### Backend Environment Variables
-
-**For Local Development:**
-
-```env
-NODE_ENV=development
-PORT=3000
-MONGO_URI=mongodb://localhost:27017/quickbite
-JWT_SECRET=generate_using_crypto_randomBytes
-JWT_EXPIRES_IN=24h
-SENDGRID_API_KEY=SG.your_key_here (optional)
-SENDGRID_FROM_EMAIL=your@email.com (optional)
-SENDGRID_FROM_NAME=QuickBite
-FRONTEND_URL=http://localhost:5173
-```
-
-**For Production (Render):**
-
-| Variable | Value for Render | Required | Notes |
-|----------|------------------|----------|-------|
-| `NODE_ENV` | `production` | ✅ | Auto-set by Render |
-| `PORT` | `10000` | ✅ | Auto-set by Render |
-| `MONGO_URI` | `mongodb+srv://...` | ✅ | From MongoDB Atlas |
-| `JWT_SECRET` | Generate new | ✅ | Use crypto.randomBytes(64) |
-| `JWT_EXPIRES_IN` | `24h` | ✅ | Login session length |
-| `SENDGRID_API_KEY` | `SG.xxxxx` | ❌ | Optional - for emails |
-| `SENDGRID_FROM_EMAIL` | `your@email.com` | ❌ | Must be verified in SendGrid |
-| `SENDGRID_FROM_NAME` | `QuickBite` | ❌ | Sender name |
-| `FRONTEND_URL` | `https://your-app.onrender.com` | ✅ | Your frontend URL |
-| `HOTEL_NAME` | `Sri Ganesh Restaurant` | ✅ | Shown on bills, screens and the landing page |
-| `HOTEL_ADDRESS` / `HOTEL_PHONE` / `HOTEL_HOURS` | your details | ✅ | Landing page + receipts |
-| `HOTEL_GSTIN` | `29ABCDE1234F1Z5` | ⚠️ | Printed on GST bills (empty if not registered) |
-| `GST_SCHEME` / `GST_RATE` / `PRICES_INCLUDE_GST` | `regular` / `5` / `true` | ✅ | `true` = menu price is final |
-| `UPI_VPA` / `UPI_PAYEE_NAME` | business UPI ID / name | ✅ | Exact-amount UPI QR at the counter |
-| `PUBLIC_RECEIPT_BASE_URL` | `https://your-app.onrender.com` | ✅ | Links in WhatsApp bills |
-| `TRUST_PROXY` | `1` | ❌ | Defaults to 1 in production (correct for Render) |
-| `WHATSAPP_TOKEN` / `WHATSAPP_PHONE_NUMBER_ID` / `WHATSAPP_TEMPLATE_NAME` | from Meta | ❌ | Automatic WhatsApp bills |
-
-**Generate JWT_SECRET:**
-```bash
-node -e "console.log(require('crypto').randomBytes(64).toString('hex'))"
-```
-
-### Frontend Environment Variables
-
-**For Local Development:**
-```env
-VITE_API_URL=http://localhost:3000
-```
-
-**For Production (Render):**
-
-| Variable | Value for Render | Required | Notes |
-|----------|------------------|----------|-------|
-| `VITE_API_URL` | `https://your-backend.onrender.com` | ✅ | Your backend URL |
-
-⚠️ **Important**: Vite requires `VITE_` prefix for all environment variables.
+1. Console → **Hotels → Add hotel**: name, web address (used for the token TV: `/tv/<address>`), owner
+   name / email / password, plan, monthly fee and free days.
+2. Send the owner their login. They sign in at `/signin` and land on the counter.
+3. When they pay: hotel page → **Subscription → Record a payment** - the paid period is extended at once.
+4. If they stop paying, the counter locks itself after the paid date + grace days. **Disable hotel** locks
+   it immediately (e.g. fraud or a closed account). Nothing is ever deleted.
+5. Every change is listed in **Activity log**.
 
 ---
 
-## 📧 SendGrid Email Setup (Optional)
+## 📊 Environment variables
 
-SendGrid provides free email functionality (100 emails/day).
+### Backend
 
-### Quick Setup:
+| Variable | Example | Required | Notes |
+|----------|---------|----------|-------|
+| `NODE_ENV` | `production` | ✅ | |
+| `MONGO_URI` | `mongodb+srv://...` | ✅ | From Atlas |
+| `JWT_SECRET` | 64+ random hex characters | ✅ | `node -e "console.log(require('crypto').randomBytes(48).toString('hex'))"` |
+| `FRONTEND_URL` | `https://your-app.onrender.com` | ✅ | CORS - must match exactly, no trailing slash |
+| `JWT_EXPIRES_IN` | `24h` | ❌ | Hotel login session length |
+| `JWT_PLATFORM_EXPIRES_IN` | `8h` | ❌ | Console session length |
+| `PLATFORM_IP_ALLOWLIST` | `203.0.113.7` | ❌ | Console only from these IPs (comma-separated) |
+| `SHOWCASE_HOTEL` | `sri-ganesh-restaurant` | ❌ | Hotel shown live on the landing page (default: first active hotel) |
+| `PUBLIC_RECEIPT_BASE_URL` | `https://your-app.onrender.com` | ❌ | Receipt links in WhatsApp bills (default: `FRONTEND_URL`) |
+| `TRUST_PROXY` | `1` | ❌ | Defaults to 1 in production (right for Render) |
+| `WHATSAPP_TOKEN` / `WHATSAPP_PHONE_NUMBER_ID` / `WHATSAPP_TEMPLATE_NAME` | from Meta | ❌ | Fully automatic WhatsApp bills |
+| `HOTEL_NAME`, `HOTEL_*`, `UPI_*`, `GST_*` | | ❌ | Only read once, to create the first hotel when upgrading an old database |
 
-1. **Create Account**: [signup.sendgrid.com](https://signup.sendgrid.com/)
-2. **Get API Key**: Settings → API Keys → Create API Key (Full Access)
-3. **Verify Sender**: Settings → Sender Authentication → Verify Single Sender
-4. **Add to .env**:
-   ```env
-   SENDGRID_API_KEY=SG.your_actual_key
-   SENDGRID_FROM_EMAIL=your_verified_email@domain.com
-   SENDGRID_FROM_NAME=QuickBite
-   ```
+Hotel details (address, GSTIN, GST scheme, UPI ID, bill prefix, receipt options) are set per hotel in the console.
 
-**Email Features:**
-- Welcome email on registration
-- Order confirmation emails
-- Beautiful HTML templates
+### Frontend
+
+| Variable | Example | Required | Notes |
+|----------|---------|----------|-------|
+| `VITE_API_URL` | `https://your-backend.onrender.com` | ✅ | Backend URL |
+| `VITE_SALES_WHATSAPP` | `919876543210` | ❌ | "Book a demo" opens a WhatsApp chat with this number |
 
 ---
 
-## 🔒 Security Best Practices
+## 🔒 Security checklist
 
-Your application already implements:
+- [ ] Strong, unique `JWT_SECRET` (changing it signs everyone out)
+- [ ] Platform owner password 12+ characters, never shared; consider `PLATFORM_IP_ALLOWLIST`
+- [ ] Rotate the MongoDB password if it was ever shared, and update `MONGO_URI`
+- [ ] No demo passwords in production
+- [ ] Daily database backups (bills are GST records) - Atlas M0 has no automatic backups
+- [ ] An UptimeRobot monitor on `<backend URL>/health`
 
-✅ **Password Security**: bcrypt with 12 rounds
-✅ **JWT Authentication**: HttpOnly cookies
-✅ **Rate Limiting**: 100 req/15min (general), 5 req/15min (auth)
-✅ **Input Validation**: All inputs sanitized
-✅ **NoSQL Injection Protection**: mongo-sanitize enabled
-✅ **CORS Protection**: Origin validation
-✅ **Security Headers**: Helmet.js enabled
-
-**Post-Deployment Checklist:**
-- [ ] Strong passwords on every login (never the demo passwords) - reset from `/pos/staff`
-- [ ] Set real menu prices at `/pos/menu` and add staff logins from `/pos/staff`
-- [ ] Add an UptimeRobot monitor on `<backend URL>/health` (free plan - see below)
-- [ ] Set up daily database backups (bills are GST records)
-- [ ] Use strong JWT_SECRET (64+ characters)
-- [ ] Verify MongoDB has strong password
-- [ ] Set up proper CORS (not `*`)
-- [ ] Run `npm audit` regularly
-- [ ] Monitor failed login attempts
+Already built in: per-hotel data isolation, role + hotel + subscription re-checked on every request,
+no public sign-up, login rate limiting, constant-time login, console invisible (404) to others, audit log,
+httpOnly secure cookies, Helmet, CORS allow-list, NoSQL-injection sanitising, 1 MB request limit.
 
 ---
 
 ## 🐛 Troubleshooting
 
-### Common Issues
+**Login fails / "cannot reach the database"** - open `<backend URL>/health`. If `"db"` is `"disconnected"`,
+`"dbProblem"` says why:
+- *Wrong database username or password* → fix `MONGO_URI` on Render
+- *Cannot reach the database* → Atlas → Network Access → allow `0.0.0.0/0`
+- *Database host not found* → check the cluster address in `MONGO_URI`
 
-**❌ MongoDB Connection Failed**
-```
-Solution:
-- Check MONGO_URI format
-- For Atlas: Verify IP whitelist (0.0.0.0/0 for Render)
-- Check username/password are correct
-```
+The server keeps retrying and connects within a minute of the fix.
 
-**❌ CORS Errors**
-```
-Solution:
-- Verify FRONTEND_URL matches exactly (no trailing slash)
-- Check both services are deployed
-- Clear browser cookies
-```
+**"Counter paused" / "Subscription expired" on a hotel's counter** - the hotel is disabled or its paid
+period (plus grace days) has ended. Console → the hotel → **Subscription → Record a payment**, or **Enable hotel**.
 
-**❌ Backend Not Starting**
-```
-Solution:
-- Check all required env variables are set
-- Verify Node.js version (≥16.0.0)
-- Check Render logs for specific errors
-```
+**CORS errors** - `FRONTEND_URL` must match the frontend address exactly.
 
-**❌ Frontend Shows "Network Error"**
-```
-Solution:
-- Verify VITE_API_URL is correct
-- Check backend is running and accessible
-- Test backend health endpoint directly
-```
-
-**❌ Emails Not Sending**
-```
-Solution:
-- Verify SendGrid API key is valid
-- Check sender email is verified in SendGrid
-- Note: Email functionality is optional
-```
-
-**❌ Login fails / "cannot reach the database"**
-```
-Open <backend URL>/health in a browser. If "db" is "disconnected", "dbProblem" says why:
-  • Wrong database username or password  → fix MONGO_URI on Render (Environment tab)
-  • Cannot reach the database            → MongoDB Atlas → Network Access → allow 0.0.0.0/0
-  • Database host not found              → check the cluster address in MONGO_URI
-  • MONGO_URI is not set                 → add it on Render
-The server keeps retrying by itself; once fixed it connects within a minute (no redeploy needed
-for Atlas changes; Render redeploys automatically when you save environment variables).
-```
-
-**❌ Render Free Tier Slow Start**
-```
-Info: Free tier services spin down after 15 mins of inactivity
-Solution: Already handled - .github/workflows/keep-alive.yml pings /health every 5 minutes,
-          and the frontend wakes the API as soon as any page opens.
-          Add an UptimeRobot HTTP monitor (5 min) on <backend URL>/health as a backup.
-          For always-on with no tricks: Render Starter plan ($7/month).
-```
+**Slow first load (free plan)** - Render sleeps after 15 idle minutes. `.github/workflows/keep-alive.yml`
+pings every 5 minutes and the frontend wakes the API on page load; add UptimeRobot as a backup, or use
+Render Starter ($7/month) for always-on.
 
 ---
 
-## 🎯 Quick Reference
-
-### Local Development URLs
-- **Frontend**: http://localhost:5173
-- **Backend**: http://localhost:3000
-- **Health Check**: http://localhost:3000/health
-
-### Demo Logins (`npm run demo` only)
-- **Admin**: admin@gmail.com / Admin1234
-- **Counter staff**: counter@quickbite.com / Counter1234
-
-### Important Commands
+## 🎯 Commands
 
 ```bash
 # Backend
-npm run dev          # Development mode with auto-reload
-npm start            # Production mode
-npm run demo         # In-memory database with sample data (no MongoDB needed)
-npm test             # API tests
-npm run create-admin # Create the owner (admin) login
+npm run dev                     # development server
+npm start                       # production server
+npm run demo                    # in-memory database + sample hotels
+npm test                        # API tests
+npm run create-platform-owner   # create / reset the console login
 
 # Frontend
-npm run dev          # Development server
-npm run build        # Production build
-npm run preview      # Preview production build
+npm run dev                     # development server
+npm run build                   # production build
 ```
-
----
-
-## 📚 Additional Resources
-
-- **MongoDB Atlas**: [docs.mongodb.com](https://docs.mongodb.com)
-- **Render Docs**: [render.com/docs](https://render.com/docs)
-- **SendGrid Docs**: [docs.sendgrid.com](https://docs.sendgrid.com)
-- **Vite Docs**: [vitejs.dev](https://vitejs.dev)
-
----
-
-## 🆘 Support
-
-**Need help?**
-- Check troubleshooting section above
-- Review environment variables carefully
-- Check Render service logs
-- File an issue on GitHub
-
----
-
-**Built with ❤️ using the MERN Stack**

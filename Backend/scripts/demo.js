@@ -4,7 +4,7 @@
  * It can only ever write to its own in-memory database - never to a real one.
  *
  * Usage: npm run demo   (then start the frontend with VITE_API_URL=http://localhost:3000)
- * Logins: admin@gmail.com / Admin1234 · counter@quickbite.com / Counter1234
+ * Logins: owner@quickbite.app / Platform1234 (console) · admin@gmail.com / Admin1234 · counter@quickbite.com / Counter1234
  */
 
 const path = require('path');
@@ -49,20 +49,43 @@ const SAMPLE_MENU = [
     ['Buttermilk', 25, 'Beverages', 'Beverages'],
 ];
 
-const loadSampleData = async () => {
-    const User = require('../models/userauthentication.model');
-    const Recipe = require('../models/fooditems.model');
-    const MenuItem = require('../models/menuItem.model');
-    const foodData = require('../food.json');
+const DAY_MS = 24 * 60 * 60 * 1000;
 
-    await User.create([
-        { name: 'Admin', email: 'admin@gmail.com', password: await bcrypt.hash('Admin1234', 10), role: 'admin' },
-        { name: 'Counter Staff', email: 'counter@quickbite.com', password: await bcrypt.hash('Counter1234', 10), role: 'staff' },
+const loadSampleData = async () => {
+    const Hotel = require('../models/hotel.model');
+    const User = require('../models/userauthentication.model');
+    const MenuItem = require('../models/menuItem.model');
+
+    const [main, second] = await Hotel.create([
+        {
+            name: 'Sri Ganesh Restaurant',
+            slug: 'sri-ganesh-restaurant',
+            settings: { address: DEMO_ENV.HOTEL_ADDRESS, phone: DEMO_ENV.HOTEL_PHONE, hours: DEMO_ENV.HOTEL_HOURS, upiVpa: DEMO_ENV.UPI_VPA, upiPayeeName: 'Sri Ganesh Restaurant' },
+            subscription: { plan: 'monthly', monthlyFee: 1499, paidUntil: new Date(Date.now() + 20 * DAY_MS) }
+        },
+        {
+            name: 'Annapoorna Tiffin Room',
+            slug: 'annapoorna-tiffin-room',
+            settings: { address: 'Jayanagar, Bengaluru', hours: '7 AM – 9 PM', upiVpa: 'annapoorna@okicici' },
+            subscription: { plan: 'trial', paidUntil: new Date(Date.now() + 5 * DAY_MS) }
+        }
     ]);
-    await Recipe.insertMany(foodData.recipes.map((recipe) => ({ ...recipe, rating: recipe.rating || 4.5 })));
-    await MenuItem.insertMany(SAMPLE_MENU.map(([name, price, counter, category], index) => ({
-        name, nameKey: name.toLowerCase(), price, counter, category, sortOrder: index,
-    })));
+
+    const hash = (password) => bcrypt.hash(password, 10);
+    await User.create([
+        { name: 'Platform Owner', email: 'owner@quickbite.app', password: await hash('Platform1234'), role: 'superadmin' },
+        { name: 'Admin', email: 'admin@gmail.com', password: await hash('Admin1234'), role: 'admin', hotel: main._id },
+        { name: 'Counter Staff', email: 'counter@quickbite.com', password: await hash('Counter1234'), role: 'staff', hotel: main._id },
+        { name: 'Annapoorna Owner', email: 'annapoorna@quickbite.com', password: await hash('Annapoorna1234'), role: 'admin', hotel: second._id },
+    ]);
+
+    const menuFor = (hotel, items) => items.map(([name, price, counter, category], index) => ({
+        hotel: hotel._id, name, nameKey: name.toLowerCase(), price, counter, category, sortOrder: index,
+    }));
+    await MenuItem.insertMany([
+        ...menuFor(main, SAMPLE_MENU),
+        ...menuFor(second, SAMPLE_MENU.slice(0, 8).map(([name, price, counter, category]) => [name, price - 5, counter, category])),
+    ]);
 };
 
 (async () => {
@@ -83,11 +106,12 @@ const loadSampleData = async () => {
     process.env.MONGO_URI = mongo.getUri('quickbite-demo');
 
     require('../server');
-    await require('mongoose').connection.asPromise();
+    await require('../db/db').ready;
     await loadSampleData();
 
     console.log('⚠️  DEMO MODE: sample data lives in memory and is wiped when you stop the server.');
-    console.log('   Logins: admin@gmail.com / Admin1234 · counter@quickbite.com / Counter1234\n');
+    console.log('   Console (platform owner): owner@quickbite.app / Platform1234  ->  /console');
+    console.log('   Hotel logins: admin@gmail.com / Admin1234 · counter@quickbite.com / Counter1234\n');
 
     const stopMongo = () => mongo.stop().catch(() => {});
     process.on('SIGINT', stopMongo);

@@ -5,6 +5,7 @@ const mongoose = require('mongoose');
  * Kept separate from the website's recipe catalogue - only what the counter needs
  */
 const menuItemSchema = new mongoose.Schema({
+    hotel: { type: mongoose.Schema.Types.ObjectId, ref: 'Hotel', required: true },
     name: {
         type: String,
         required: [true, 'Name is required'],
@@ -12,11 +13,10 @@ const menuItemSchema = new mongoose.Schema({
         minlength: [2, 'Name must be at least 2 characters'],
         maxlength: [60, 'Name must be at most 60 characters']
     },
-    // Lowercased name - keeps item names unique regardless of case
+    // Lowercased name - keeps item names unique within a hotel regardless of case
     nameKey: {
         type: String,
-        required: true,
-        unique: true
+        required: true
     },
     price: {
         type: Number,
@@ -57,7 +57,8 @@ menuItemSchema.pre('validate', function (next) {
     next();
 });
 
-menuItemSchema.index({ counter: 1, sortOrder: 1, name: 1 });
+menuItemSchema.index({ hotel: 1, nameKey: 1 }, { unique: true });
+menuItemSchema.index({ hotel: 1, counter: 1, sortOrder: 1, name: 1 });
 
 const MenuItem = mongoose.model('MenuItem', menuItemSchema);
 

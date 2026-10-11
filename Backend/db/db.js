@@ -35,6 +35,20 @@ mongoose.connection.on('reconnected', () => {
     console.log('✅ MongoDB reconnected successfully');
 });
 
+// Resolves once the database is connected and startup upgrades have run
+let markReady;
+const ready = new Promise((resolve) => { markReady = resolve; });
+
+const runMigrations = async () => {
+    try {
+        await require('../utils/migrations').runStartupMigrations();
+    } catch (error) {
+        console.error('❌ Startup upgrade failed:', error);
+    } finally {
+        markReady();
+    }
+};
+
 // Keeps retrying (5s, 10s, 20s ... up to 60s) instead of exiting, so the server stays up
 // and /health explains the problem. Exiting made Render restart it in a loop.
 const connectToDB = async () => {
@@ -47,6 +61,7 @@ const connectToDB = async () => {
             });
             lastProblem = null;
             console.log(`✅ MongoDB Connected Successfully: ${conn.connection.host}`);
+            await runMigrations();
             return conn;
         } catch (error) {
             lastProblem = describeError(error);
@@ -80,3 +95,4 @@ process.on('SIGINT', async () => {
 
 module.exports = connectToDB;
 module.exports.getDbStatus = getDbStatus;
+module.exports.ready = ready;

@@ -16,7 +16,7 @@ module.exports.searchCustomers = async (req, res) => {
         }
 
         // Digits only, so safe to use in a prefix regex (uses the phone index)
-        const customers = await Customer.find({ phone: { $regex: `^91${digits.slice(0, 10)}` } })
+        const customers = await Customer.find({ hotel: req.hotelId, phone: { $regex: `^91${digits.slice(0, 10)}` } })
             .sort({ lastVisitAt: -1 })
             .limit(5)
             .select('phone name visits lastVisitAt lastItems')

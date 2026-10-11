@@ -1,195 +1,154 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import axios from 'axios';
-import { useNavigate, Link } from 'react-router-dom';
-import { motion, AnimatePresence } from 'framer-motion';
-import Input from '../components/common/Input';
-import Button from '../components/common/Button';
-import { FiMail, FiLock, FiLogIn } from 'react-icons/fi';
+import { Link, useNavigate } from 'react-router-dom';
+import { FiArrowRight, FiEye, FiEyeOff, FiLock } from 'react-icons/fi';
+import { demoHref, demoIsExternal } from '../utils/sales';
+
+const API = import.meta.env.VITE_API_URL;
+
+// Where each kind of login lands
+const homeFor = (role) => (role === 'superadmin' ? '/console' : '/pos');
 
 export default function Signin() {
     const navigate = useNavigate();
     const [form, setForm] = useState({ email: '', password: '' });
+    const [showPassword, setShowPassword] = useState(false);
     const [error, setError] = useState('');
     const [loading, setLoading] = useState(false);
 
-    const handleChange = (e) => {
-        setForm({ ...form, [e.target.name]: e.target.value });
-        // Clear error when user starts typing
+    // Already signed in on this device - go straight in
+    useEffect(() => {
+        document.title = 'Sign in · QuickBite';
+        let active = true;
+        axios.get(`${API}/api/auth/profile`, { withCredentials: true })
+            .then((res) => { if (active && res.data.user) navigate(homeFor(res.data.user.role), { replace: true }); })
+            .catch(() => {});
+        return () => { active = false; };
+    }, [navigate]);
+
+    const update = (event) => {
+        setForm({ ...form, [event.target.name]: event.target.value });
         if (error) setError('');
     };
 
-    const handleSubmit = async (e) => {
-        e.preventDefault();
-        setError('');
+    const submit = async (event) => {
+        event.preventDefault();
         setLoading(true);
-
+        setError('');
         try {
-            const res = await axios.post(
-                `${import.meta.env.VITE_API_URL}/api/auth/login`,
-                form,
-                { withCredentials: true }
-            );
-
-            if (res.data.success) {
-                // Success animation before navigation
-                // Counter staff go straight to the billing counter
-                const destination = res.data.user?.role === 'staff' ? '/pos' : '/home';
-                setTimeout(() => {
-                    navigate(destination);
-                }, 500);
-            } else {
-                setError(res.data.message);
-            }
+            const res = await axios.post(`${API}/api/auth/login`, form, { withCredentials: true });
+            navigate(homeFor(res.data.user?.role), { replace: true });
         } catch (err) {
-            setError(err.response?.data?.message || 'Login failed. Please try again.');
+            setError(
+                err.response?.status === 429
+                    ? 'Too many attempts. Please wait 15 minutes and try again.'
+                    : err.response?.data?.message || 'Could not sign in. Check your connection and try again.'
+            );
         } finally {
             setLoading(false);
         }
     };
 
+    const field = 'w-full rounded-2xl border border-ink/15 bg-white px-4 py-3.5 text-[15px] text-ink outline-none transition focus:border-ink focus:ring-4 focus:ring-ink/5';
+
     return (
-        <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-orange-50 via-pink-50 to-purple-50 p-4">
-            {/* Background Decoration */}
-            <div className="absolute inset-0 overflow-hidden pointer-events-none">
-                <div className="absolute top-20 left-10 w-72 h-72 bg-orange-200 rounded-full mix-blend-multiply filter blur-xl opacity-30 animate-blob" />
-                <div className="absolute top-40 right-10 w-72 h-72 bg-pink-200 rounded-full mix-blend-multiply filter blur-xl opacity-30 animate-blob animation-delay-2000" />
-                <div className="absolute -bottom-8 left-1/2 w-72 h-72 bg-purple-200 rounded-full mix-blend-multiply filter blur-xl opacity-30 animate-blob animation-delay-4000" />
-            </div>
+        <div className="qb-landing grid min-h-[100dvh] bg-paper text-ink lg:grid-cols-[1.05fr_1fr]">
+            {/* Brand panel */}
+            <aside className="hero-glow grain relative hidden flex-col justify-between overflow-hidden bg-ink p-12 text-paper lg:flex">
+                <Link to="/" className="relative flex items-center gap-2.5">
+                    <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-saffron font-extrabold text-ink">Q</span>
+                    <span className="text-lg font-bold tracking-tight">QuickBite</span>
+                </Link>
+                <div className="relative">
+                    <p className="font-display text-[clamp(3rem,5.5vw,5.5rem)] font-extrabold leading-[0.88] tracking-[-0.05em]">
+                        Rush hour,<br />
+                        <span className="font-accent font-normal italic text-saffron">handled.</span>
+                    </p>
+                    <p className="mt-6 max-w-sm text-stone-400">Bills in seconds, tokens on screen and every rupee on one live dashboard.</p>
+                </div>
+                <p className="relative font-code text-[11px] uppercase tracking-[0.2em] text-stone-500">Counter billing & tokens</p>
+            </aside>
 
-            <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.5 }}
-                className="relative bg-white/90 backdrop-blur-sm shadow-2xl rounded-2xl p-8 max-w-md w-full border border-white/20"
-            >
-                {/* Header */}
-                <div className="text-center mb-8">
-                    <motion.div
-                        initial={{ scale: 0 }}
-                        animate={{ scale: 1 }}
-                        transition={{ delay: 0.2, type: 'spring', stiffness: 200 }}
-                        className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-r from-orange-500 to-pink-500 rounded-full mb-4"
-                    >
-                        <FiLogIn className="text-white text-2xl" />
-                    </motion.div>
+            {/* Form */}
+            <main className="flex flex-col px-5 py-8 sm:px-10">
+                <Link to="/" className="flex items-center gap-2.5 lg:hidden">
+                    <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-saffron font-extrabold text-ink">Q</span>
+                    <span className="text-lg font-bold tracking-tight">QuickBite</span>
+                </Link>
 
-                    <motion.h2
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        transition={{ delay: 0.3 }}
-                        className="text-3xl font-bold text-gray-800 mb-2"
-                    >
-                        Welcome Back
-                    </motion.h2>
-                    <p className="text-gray-600">Sign in to your account</p>
+                <div className="mx-auto my-auto w-full max-w-sm py-12">
+                    <h1 className="font-display text-4xl font-bold tracking-[-0.03em]">Sign in</h1>
+                    <p className="mt-2 text-ink/60">Use the login your restaurant gave you.</p>
+
+                    <form onSubmit={submit} className="mt-9 space-y-4" noValidate>
+                        <label className="block">
+                            <span className="mb-1.5 block text-sm font-semibold">Email / login ID</span>
+                            <input
+                                className={field}
+                                type="email"
+                                name="email"
+                                autoComplete="username"
+                                inputMode="email"
+                                value={form.email}
+                                onChange={update}
+                                required
+                                autoFocus
+                            />
+                        </label>
+                        <label className="block">
+                            <span className="mb-1.5 block text-sm font-semibold">Password</span>
+                            <span className="relative block">
+                                <input
+                                    className={`${field} pr-12`}
+                                    type={showPassword ? 'text' : 'password'}
+                                    name="password"
+                                    autoComplete="current-password"
+                                    value={form.password}
+                                    onChange={update}
+                                    required
+                                />
+                                <button
+                                    type="button"
+                                    onClick={() => setShowPassword((value) => !value)}
+                                    className="absolute inset-y-0 right-0 flex w-12 items-center justify-center text-ink/45 hover:text-ink"
+                                    aria-label={showPassword ? 'Hide password' : 'Show password'}
+                                >
+                                    {showPassword ? <FiEyeOff /> : <FiEye />}
+                                </button>
+                            </span>
+                        </label>
+
+                        {error && (
+                            <p role="alert" className="flex items-start gap-2 rounded-2xl bg-red-50 px-4 py-3 text-sm font-medium text-red-700 ring-1 ring-red-200">
+                                <FiLock className="mt-0.5 shrink-0" /> {error}
+                            </p>
+                        )}
+
+                        <button
+                            type="submit"
+                            disabled={loading || !form.email || !form.password}
+                            className="group flex w-full items-center justify-center gap-2 rounded-2xl bg-ink px-5 py-4 font-semibold text-paper transition hover:bg-ink/85 disabled:cursor-not-allowed disabled:opacity-50"
+                        >
+                            {loading ? 'Signing in…' : <>Sign in <FiArrowRight className="transition-transform group-hover:translate-x-0.5" /></>}
+                        </button>
+                    </form>
+
+                    <p className="mt-8 text-sm text-ink/55">
+                        Forgot your password? Ask your restaurant owner to reset it from Staff.
+                    </p>
                 </div>
 
-                {/* Error Alert */}
-                <AnimatePresence>
-                    {error && (
-                        <motion.div
-                            initial={{ opacity: 0, height: 0 }}
-                            animate={{ opacity: 1, height: 'auto' }}
-                            exit={{ opacity: 0, height: 0 }}
-                            className="bg-red-50 border-l-4 border-red-500 p-3 mb-6 rounded"
-                        >
-                            <p className="text-red-700 text-sm">{error}</p>
-                        </motion.div>
-                    )}
-                </AnimatePresence>
-
-                {/* Login Form */}
-                <form onSubmit={handleSubmit} className="space-y-5">
-                    <motion.div
-                        initial={{ opacity: 0, x: -20 }}
-                        animate={{ opacity: 1, x: 0 }}
-                        transition={{ delay: 0.4 }}
+                <p className="text-center text-sm text-ink/55">
+                    New restaurant?{' '}
+                    <a
+                        href={demoHref}
+                        {...(demoIsExternal && { target: '_blank', rel: 'noreferrer' })}
+                        className="font-semibold text-ink underline decoration-ink/25 underline-offset-4 hover:decoration-ink"
                     >
-                        <Input
-                            label="Email Address"
-                            type="email"
-                            name="email"
-                            value={form.email}
-                            onChange={handleChange}
-                            icon={<FiMail />}
-                            required
-                        />
-                    </motion.div>
-
-                    <motion.div
-                        initial={{ opacity: 0, x: -20 }}
-                        animate={{ opacity: 1, x: 0 }}
-                        transition={{ delay: 0.5 }}
-                    >
-                        <Input
-                            label="Password"
-                            type="password"
-                            name="password"
-                            value={form.password}
-                            onChange={handleChange}
-                            icon={<FiLock />}
-                            required
-                        />
-                    </motion.div>
-
-                    {/* Submit Button */}
-                    <motion.div
-                        initial={{ opacity: 0, y: 20 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ delay: 0.7 }}
-                        className="pt-2"
-                    >
-                        <Button
-                            type="submit"
-                            variant="primary"
-                            size="md"
-                            fullWidth
-                            loading={loading}
-                        >
-                            Sign in
-                        </Button>
-                    </motion.div>
-                </form>
-
-                {/* Register Link */}
-                <motion.p
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    transition={{ delay: 0.8 }}
-                    className="mt-6 text-center text-sm text-gray-600"
-                >
-                    Don't have an account?{' '}
-                    <Link
-                        to="/register"
-                        className="font-semibold text-transparent bg-clip-text bg-gradient-to-r from-orange-600 to-pink-600 hover:from-orange-700 hover:to-pink-700 transition-all"
-                    >
-                        Sign up
-                    </Link>
-                </motion.p>
-            </motion.div>
-
-            <style jsx>{`
-                @keyframes blob {
-                    0%, 100% {
-                        transform: translate(0, 0) scale(1);
-                    }
-                    33% {
-                        transform: translate(30px, -50px) scale(1.1);
-                    }
-                    66% {
-                        transform: translate(-20px, 20px) scale(0.9);
-                    }
-                }
-                .animate-blob {
-                    animation: blob 7s infinite;
-                }
-                .animation-delay-2000 {
-                    animation-delay: 2s;
-                }
-                .animation-delay-4000 {
-                    animation-delay: 4s;
-                }
-            `}</style>
+                        Book a demo
+                    </a>
+                </p>
+            </main>
         </div>
     );
 }

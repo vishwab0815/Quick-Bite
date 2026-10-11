@@ -145,13 +145,7 @@ const ErrorFallback = ({ error, errorInfo, onReload, onReset }) => {
                 {/* Support Info */}
                 <div className="mt-8 pt-6 border-t border-gray-200 text-center">
                     <p className="text-sm text-gray-500">
-                        If this problem persists, please{' '}
-                        <a
-                            href="/contact"
-                            className="text-orange-600 hover:text-orange-700 font-medium underline"
-                        >
-                            contact support
-                        </a>
+                        If this keeps happening, reload the page or contact QuickBite support.
                     </p>
                 </div>
             </div>

@@ -9,10 +9,17 @@ export const posApi = axios.create({
     withCredentials: true,
 });
 
+// Hotel switched off by QuickBite or subscription lapsed - the counter shows a full-screen notice
+export const BLOCKED_EVENT = 'quickbite:blocked';
+const BLOCKED_CODES = ['HOTEL_DISABLED', 'SUBSCRIPTION_EXPIRED', 'HOTEL_NOT_FOUND'];
+
 // Session ended (24h login expired or staff removed) - send the screen back to sign in once
 let redirectingToSignin = false;
 posApi.interceptors.response.use(undefined, (error) => {
-    if (error.response?.status === 401 && !redirectingToSignin && window.location.pathname !== '/signin') {
+    const { status, data } = error.response || {};
+    if (status === 403 && BLOCKED_CODES.includes(data?.code)) {
+        window.dispatchEvent(new CustomEvent(BLOCKED_EVENT, { detail: { code: data.code, message: data.message } }));
+    } else if (status === 401 && !redirectingToSignin && window.location.pathname !== '/signin') {
         redirectingToSignin = true;
         showToast.error('Session expired - please sign in again');
         window.location.assign('/signin');
@@ -144,9 +151,13 @@ export const useStaffUser = () => {
         axios.get(`${import.meta.env.VITE_API_URL}/api/auth/profile`, { withCredentials: true })
             .then((res) => {
                 if (!active) return;
+                if (res.data.user?.role === 'superadmin') {
+                    navigate('/console', { replace: true });
+                    return;
+                }
                 if (!STAFF_ROLES.includes(res.data.user?.role)) {
                     showToast.error('Counter access is for staff only');
-                    navigate('/home');
+                    navigate('/signin', { replace: true });
                     return;
                 }
                 setUser(res.data.user);

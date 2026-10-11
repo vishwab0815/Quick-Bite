@@ -3,7 +3,9 @@ const Bill = require('../models/bill.model');
 const Sequence = require('../models/sequence.model');
 const MenuItem = require('../models/menuItem.model');
 const Customer = require('../models/customer.model');
+const Hotel = require('../models/hotel.model');
 const { isValidObjectId } = require('../middleware/validation');
+const { buildSummary, SUMMARY_FIELDS } = require('../utils/reports');
 const { sendBillReceipt, getWhatsappMode, getReceiptBaseUrl } = require('../config/whatsapp');
 const {
     DEFAULT_COUNTER,
@@ -36,12 +38,12 @@ const recordWhatsappResult = (bill, result) => {
  */
 module.exports.getSettings = async (req, res) => {
     try {
-        const counters = await MenuItem.distinct('counter');
+        const counters = await MenuItem.distinct('counter', { hotel: req.hotelId });
 
         res.status(200).json({
             success: true,
             settings: {
-                ...getBusinessSettings(),
+                ...getBusinessSettings(req.hotel),
                 counters: counters.length > 0 ? counters.sort() : [DEFAULT_COUNTER],
                 whatsappMode: getWhatsappMode(),
                 receiptBaseUrl: getReceiptBaseUrl()
@@ -60,7 +62,7 @@ module.exports.getSettings = async (req, res) => {
 module.exports.createBill = async (req, res) => {
     try {
         const { items, payment = {}, customer = {}, sendWhatsapp = false, source = 'counter' } = req.body;
-        const settings = getBusinessSettings();
+        const settings = getBusinessSettings(req.hotel);
 
         // Validate and merge order lines
         if (!Array.isArray(items) || items.length === 0) {
@@ -83,7 +85,7 @@ module.exports.createBill = async (req, res) => {
             quantities.set(line.itemId, merged);
         }
 
-        const menuItems = await MenuItem.find({ _id: { $in: [...quantities.keys()] } }).lean();
+        const menuItems = await MenuItem.find({ _id: { $in: [...quantities.keys()] }, hotel: req.hotelId }).lean();
         const menuById = new Map(menuItems.map((menuItem) => [String(menuItem._id), menuItem]));
 
         const lines = [];
@@ -149,13 +151,14 @@ module.exports.createBill = async (req, res) => {
         // Numbering: token resets daily, bill number runs per financial year
         const businessDate = getBusinessDate(new Date(), settings.timeZone);
         const financialYear = getFinancialYear(businessDate);
-        const tokenNumber = await Sequence.next(`token:${businessDate}`);
-        const billSeq = await Sequence.next(`bill:${financialYear}`);
+        const tokenNumber = await Sequence.next(`${req.hotelId}:token:${businessDate}`);
+        const billSeq = await Sequence.next(`${req.hotelId}:bill:${financialYear}`);
         const billNumber = `${settings.billPrefix}/${financialYear}/${String(billSeq).padStart(6, '0')}`;
 
         const counters = [...new Set(lines.map((line) => line.counter))];
 
         const bill = new Bill({
+            hotel: req.hotelId,
             billNumber,
             tokenNumber,
             businessDate,
@@ -208,14 +211,14 @@ module.exports.createBill = async (req, res) => {
  */
 module.exports.listBills = async (req, res) => {
     try {
-        const settings = getBusinessSettings();
+        const settings = getBusinessSettings(req.hotel);
         const date = req.query.date || getBusinessDate(new Date(), settings.timeZone);
 
         if (!isValidDate(date)) {
             return res.status(400).json({ success: false, message: 'Date must be in YYYY-MM-DD format' });
         }
 
-        const bills = await Bill.find({ businessDate: date })
+        const bills = await Bill.find({ hotel: req.hotelId, businessDate: date })
             .sort({ tokenNumber: -1 })
             .limit(1000)
             .lean();
@@ -236,7 +239,7 @@ module.exports.getBill = async (req, res) => {
             return res.status(400).json({ success: false, message: 'Invalid bill ID' });
         }
 
-        const bill = await Bill.findById(req.params.id).lean();
+        const bill = await Bill.findOne({ _id: req.params.id, hotel: req.hotelId }).lean();
         if (!bill) {
             return res.status(404).json({ success: false, message: 'Bill not found' });
         }
@@ -253,11 +256,11 @@ module.exports.getBill = async (req, res) => {
  */
 module.exports.getKitchenTickets = async (req, res) => {
     try {
-        const settings = getBusinessSettings();
+        const settings = getBusinessSettings(req.hotel);
         const counter = req.query.counter ? String(req.query.counter) : '';
         const businessDate = getBusinessDate(new Date(), settings.timeZone);
 
-        const query = { businessDate, status: { $in: ['preparing', 'ready'] } };
+        const query = { hotel: req.hotelId, businessDate, status: { $in: ['preparing', 'ready'] } };
         if (counter) {
             query.stations = { $elemMatch: { counter, status: { $ne: 'served' } } };
         }
@@ -309,7 +312,7 @@ module.exports.updateStation = async (req, res) => {
             return res.status(400).json({ success: false, message: 'Status must be preparing, ready or served' });
         }
 
-        const bill = await Bill.findById(req.params.id);
+        const bill = await Bill.findOne({ _id: req.params.id, hotel: req.hotelId });
         if (!bill) {
             return res.status(404).json({ success: false, message: 'Bill not found' });
         }
@@ -350,18 +353,19 @@ module.exports.serveByCode = async (req, res) => {
             return res.status(400).json({ success: false, message: 'Scan a token or enter the token number' });
         }
 
-        const settings = getBusinessSettings();
+        const settings = getBusinessSettings(req.hotel);
         let bill;
 
         if (/^\d{1,6}$/.test(code)) {
             bill = await Bill.findOne({
+                hotel: req.hotelId,
                 businessDate: getBusinessDate(new Date(), settings.timeZone),
                 tokenNumber: Number(code)
             });
         } else {
             const publicId = code.match(/receipt\/([A-Za-z0-9_-]+)/)?.[1] || code;
             if (/^[A-Za-z0-9_-]{8,64}$/.test(publicId)) {
-                bill = await Bill.findOne({ publicId });
+                bill = await Bill.findOne({ publicId, hotel: req.hotelId });
             }
         }
 
@@ -422,7 +426,7 @@ module.exports.cancelBill = async (req, res) => {
             return res.status(400).json({ success: false, message: 'A reason is required to cancel a bill' });
         }
 
-        const bill = await Bill.findById(req.params.id);
+        const bill = await Bill.findOne({ _id: req.params.id, hotel: req.hotelId });
         if (!bill) {
             return res.status(404).json({ success: false, message: 'Bill not found' });
         }
@@ -454,7 +458,7 @@ module.exports.sendWhatsappReceipt = async (req, res) => {
             return res.status(400).json({ success: false, message: 'Invalid bill ID' });
         }
 
-        const bill = await Bill.findById(req.params.id);
+        const bill = await Bill.findOne({ _id: req.params.id, hotel: req.hotelId });
         if (!bill) {
             return res.status(404).json({ success: false, message: 'Bill not found' });
         }
@@ -470,7 +474,7 @@ module.exports.sendWhatsappReceipt = async (req, res) => {
             return res.status(400).json({ success: false, message: 'Mobile number is required' });
         }
 
-        const whatsapp = await sendBillReceipt(bill, getBusinessSettings());
+        const whatsapp = await sendBillReceipt(bill, getBusinessSettings(req.hotel));
         recordWhatsappResult(bill, whatsapp);
         await bill.save();
 
@@ -490,8 +494,8 @@ module.exports.markPrinted = async (req, res) => {
             return res.status(400).json({ success: false, message: 'Invalid bill ID' });
         }
 
-        const bill = await Bill.findByIdAndUpdate(
-            req.params.id,
+        const bill = await Bill.findOneAndUpdate(
+            { _id: req.params.id, hotel: req.hotelId },
             { 'receipt.printed': true },
             { new: true }
         ).lean();
@@ -508,99 +512,18 @@ module.exports.markPrinted = async (req, res) => {
 };
 
 /**
- * Build the day summary (sales, payment mix, hours, items, counter speed) from that day's bills
- */
-const buildSummary = (date, bills, timeZone) => {
-    const active = bills.filter((bill) => bill.status !== 'cancelled');
-    const hourFormat = new Intl.DateTimeFormat('en-GB', { timeZone, hour: '2-digit', hour12: false });
-
-    const byMode = { cash: { count: 0, total: 0 }, upi: { count: 0, total: 0 }, card: { count: 0, total: 0 } };
-    const itemsMap = new Map();
-    const byHour = {};
-    const counterSpeed = new Map();
-    let taxableAmount = 0;
-    let cgst = 0;
-    let sgst = 0;
-    let total = 0;
-
-    for (const bill of active) {
-        total += bill.total;
-        taxableAmount += bill.taxableAmount;
-        cgst += bill.cgst;
-        sgst += bill.sgst;
-
-        const mode = byMode[bill.payment.mode];
-        mode.count += 1;
-        mode.total += bill.total;
-
-        const hour = hourFormat.format(new Date(bill.createdAt));
-        byHour[hour] = byHour[hour] || { count: 0, total: 0 };
-        byHour[hour].count += 1;
-        byHour[hour].total += bill.total;
-
-        // Preparation time per food counter: billed -> marked ready
-        for (const station of bill.stations) {
-            if (!station.readyAt) continue;
-            const minutes = (new Date(station.readyAt) - new Date(bill.createdAt)) / 60000;
-            if (minutes < 0) continue;
-            const entry = counterSpeed.get(station.counter) || { counter: station.counter, tokens: 0, totalMinutes: 0 };
-            entry.tokens += 1;
-            entry.totalMinutes += minutes;
-            counterSpeed.set(station.counter, entry);
-        }
-
-        for (const item of bill.items) {
-            const entry = itemsMap.get(item.name) || { name: item.name, quantity: 0, amount: 0 };
-            entry.quantity += item.quantity;
-            entry.amount += item.amount;
-            itemsMap.set(item.name, entry);
-        }
-    }
-
-    Object.values(byMode).forEach((mode) => { mode.total = round2(mode.total); });
-
-    return {
-        date,
-        billCount: active.length,
-        cancelledCount: bills.length - active.length,
-        total: round2(total),
-        taxableAmount: round2(taxableAmount),
-        cgst: round2(cgst),
-        sgst: round2(sgst),
-        averageBill: active.length ? round2(total / active.length) : 0,
-        byMode,
-        byHour: Object.entries(byHour)
-            .sort(([a], [b]) => a.localeCompare(b))
-            .map(([hour, data]) => ({ hour, count: data.count, total: round2(data.total) })),
-        items: [...itemsMap.values()]
-            .map((item) => ({ ...item, amount: round2(item.amount) }))
-            .sort((a, b) => b.quantity - a.quantity),
-        counterSpeed: [...counterSpeed.values()]
-            .map(({ counter, tokens, totalMinutes }) => ({
-                counter,
-                tokens,
-                avgMinutes: Math.round((totalMinutes / tokens) * 10) / 10
-            }))
-            .sort((a, b) => b.avgMinutes - a.avgMinutes)
-    };
-};
-
-// Only the fields a summary needs - keeps comparison queries light
-const SUMMARY_FIELDS = 'status total taxableAmount cgst sgst payment.mode createdAt stations.counter stations.readyAt items.name items.quantity items.amount';
-
-/**
  * Daily summary for the owner / shift closing
  */
 module.exports.getDailySummary = async (req, res) => {
     try {
-        const settings = getBusinessSettings();
+        const settings = getBusinessSettings(req.hotel);
         const date = req.query.date || getBusinessDate(new Date(), settings.timeZone);
 
         if (!isValidDate(date)) {
             return res.status(400).json({ success: false, message: 'Date must be in YYYY-MM-DD format' });
         }
 
-        const bills = await Bill.find({ businessDate: date }).select(SUMMARY_FIELDS).lean();
+        const bills = await Bill.find({ hotel: req.hotelId, businessDate: date }).select(SUMMARY_FIELDS).lean();
 
         res.status(200).json({ success: true, summary: buildSummary(date, bills, settings.timeZone) });
     } catch (error) {
@@ -615,7 +538,7 @@ module.exports.getDailySummary = async (req, res) => {
  */
 module.exports.getDashboard = async (req, res) => {
     try {
-        const settings = getBusinessSettings();
+        const settings = getBusinessSettings(req.hotel);
         const date = req.query.date || getBusinessDate(new Date(), settings.timeZone);
 
         if (!isValidDate(date)) {
@@ -624,8 +547,8 @@ module.exports.getDashboard = async (req, res) => {
 
         const compareDate = shiftBusinessDate(date, -7);
         const [bills, compareBills] = await Promise.all([
-            Bill.find({ businessDate: date }).sort({ tokenNumber: -1 }).limit(1000).lean(),
-            Bill.find({ businessDate: compareDate }).select(SUMMARY_FIELDS).lean()
+            Bill.find({ hotel: req.hotelId, businessDate: date }).sort({ tokenNumber: -1 }).limit(1000).lean(),
+            Bill.find({ hotel: req.hotelId, businessDate: compareDate }).select(SUMMARY_FIELDS).lean()
         ]);
 
         res.status(200).json({
@@ -641,13 +564,48 @@ module.exports.getDashboard = async (req, res) => {
     }
 };
 
+/* ---------- Public pages (no login): landing page, token TV, receipt link ---------- */
+
+const PUBLIC_CACHE_MS = 15 * 1000;
+const publicHotelCache = new Map();
+
 /**
- * Public: restaurant details + today's available menu for the website landing page
+ * The hotel a public page belongs to: /pos/public/:slug/... for a hotel's own token TV, or the
+ * showcase hotel for the QuickBite landing page (SHOWCASE_HOTEL slug, else the oldest active hotel).
+ * Disabled or unpaid hotels are hidden. Cached briefly - token TVs poll every few seconds.
+ */
+const findPublicHotel = async (slug) => {
+    const key = slug || '__showcase__';
+    const entry = publicHotelCache.get(key);
+    if (entry && entry.expiresAt > Date.now()) return entry.hotel;
+
+    let hotel = null;
+    if (slug) {
+        hotel = /^[a-z0-9-]{1,60}$/.test(slug) ? await Hotel.findOne({ slug }).lean() : null;
+    } else if (process.env.SHOWCASE_HOTEL) {
+        hotel = await Hotel.findOne({ slug: process.env.SHOWCASE_HOTEL }).lean();
+    } else {
+        const candidates = await Hotel.find({ status: 'active' }).sort({ createdAt: 1 }).limit(10).lean();
+        hotel = candidates.find((candidate) => Hotel.accessStatus(candidate).ok) || null;
+    }
+    if (hotel && !Hotel.accessStatus(hotel).ok) hotel = null;
+
+    publicHotelCache.set(key, { hotel, expiresAt: Date.now() + PUBLIC_CACHE_MS });
+    return hotel;
+};
+
+const notFound = (res) => res.status(404).json({ success: false, message: 'Restaurant not found' });
+
+/**
+ * Public: restaurant details + today's available menu (landing page / hotel page)
  */
 module.exports.getPublicInfo = async (req, res) => {
     try {
-        const settings = getBusinessSettings();
-        const menu = await MenuItem.find({ isAvailable: { $ne: false } })
+        const hotel = await findPublicHotel(req.params.slug);
+        if (!hotel) return notFound(res);
+
+        const settings = getBusinessSettings(hotel);
+        const menu = await MenuItem.find({ hotel: hotel._id, isAvailable: { $ne: false } })
             .select('name price category isVeg -_id')
             .sort({ sortOrder: 1, name: 1 })
             .lean();
@@ -658,6 +616,7 @@ module.exports.getPublicInfo = async (req, res) => {
             success: true,
             restaurant: {
                 name: settings.name,
+                slug: settings.slug,
                 address: settings.address,
                 phone: settings.phone,
                 hours: settings.hours,
@@ -676,10 +635,13 @@ module.exports.getPublicInfo = async (req, res) => {
  */
 module.exports.getDisplayBoard = async (req, res) => {
     try {
-        const settings = getBusinessSettings();
+        const hotel = await findPublicHotel(req.params.slug);
+        if (!hotel) return notFound(res);
+
+        const settings = getBusinessSettings(hotel);
         const businessDate = getBusinessDate(new Date(), settings.timeZone);
 
-        const bills = await Bill.find({ businessDate, status: { $in: ['preparing', 'ready'] } })
+        const bills = await Bill.find({ hotel: hotel._id, businessDate, status: { $in: ['preparing', 'ready'] } })
             .select('tokenNumber stations status')
             .sort({ tokenNumber: 1 })
             .lean();
@@ -738,11 +700,11 @@ module.exports.getPublicReceipt = async (req, res) => {
             return res.status(404).json({ success: false, message: 'Receipt not found' });
         }
 
-        const settings = getBusinessSettings();
+        const settings = getBusinessSettings(await Hotel.findById(bill.hotel).lean());
 
         res.status(200).json({
             success: true,
-            bill,
+            bill: { ...bill, hotel: undefined },
             settings: {
                 name: settings.name,
                 address: settings.address,

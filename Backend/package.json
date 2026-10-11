@@ -8,7 +8,7 @@
     "dev": "nodemon server.js",
     "start:prod": "NODE_ENV=production node server.js",
     "demo": "node scripts/demo.js",
-    "create-admin": "node scripts/create-admin.js",
+    "create-platform-owner": "node scripts/create-platform-owner.js",
     "test": "node --test"
   },
   "keywords": [
@@ -20,14 +20,12 @@
   "author": "",
   "license": "MIT",
   "engines": {
-    "node": ">=16.0.0",
+    "node": ">=20.0.0",
     "npm": ">=8.0.0"
   },
   "dependencies": {
     "@exortek/express-mongo-sanitize": "^1.1.1",
-    "@sendgrid/mail": "^8.1.4",
     "bcryptjs": "^3.0.2",
-    "cloudinary": "^2.8.0",
     "compression": "^1.8.1",
     "cookie-parser": "^1.4.7",
     "cors": "^2.8.5",
@@ -36,8 +34,7 @@
     "express-rate-limit": "^8.2.1",
     "helmet": "^8.1.0",
     "jsonwebtoken": "^9.0.2",
-    "mongoose": "^8.14.1",
-    "multer": "^2.0.2"
+    "mongoose": "^8.14.1"
   },
   "devDependencies": {
     "mongodb-memory-server": "^10.1.4",

@@ -7,7 +7,6 @@ import KitchenScreen from './KitchenScreen';
 import PosBills from './PosBills';
 import PosMenu from './PosMenu';
 import PosStaff from './PosStaff';
-import TokenDisplay from './TokenDisplay';
 import { usePos } from '../../utils/posContext';
 import { showToast } from '../../utils/toast';
 
@@ -32,9 +31,6 @@ AdminOnly.propTypes = {
 export default function PosApp() {
     return (
         <Routes>
-            {/* Public token TV - no login, no header */}
-            <Route path="display" element={<TokenDisplay />} />
-
             <Route element={<PosLayout />}>
                 <Route index element={<PosCounter />} />
                 <Route path="kitchen" element={<KitchenScreen />} />

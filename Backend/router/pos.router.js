@@ -6,7 +6,8 @@ const CustomerController = require('../controllers/customer.controller');
 const { authenticateToken, requireActiveRole } = require('../middleware/auth');
 const posRouter = express.Router();
 
-// Roles are checked against the database on every request, so removed staff lose access immediately
+// Roles and the hotel's status / subscription are checked on every request, so removed staff,
+// disabled hotels and expired subscriptions lose access immediately. Every query is scoped to the hotel.
 const isStaff = [authenticateToken, requireActiveRole('admin', 'staff')];
 const isAdmin = [authenticateToken, requireActiveRole('admin')];
 
@@ -16,9 +17,12 @@ posRouter.use((req, res, next) => {
     next();
 });
 
-// Public routes - landing page info, token display TV and receipt link (no money / personal data on display)
+// Public routes (no money / personal data): the QuickBite landing page shows the showcase hotel,
+// each hotel's token TV uses its own address (/pos/public/<slug>/display), plus the receipt link
 posRouter.get('/public/info', PosController.getPublicInfo);
 posRouter.get('/display', PosController.getDisplayBoard);
+posRouter.get('/public/:slug/info', PosController.getPublicInfo);
+posRouter.get('/public/:slug/display', PosController.getDisplayBoard);
 posRouter.get('/receipt/:publicId', PosController.getPublicReceipt);
 
 // Counter staff routes

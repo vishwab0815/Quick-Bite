@@ -291,3 +291,79 @@ BarList.propTypes = {
     emphasizeFirst: PropTypes.bool,
     emphasisLabel: PropTypes.string,
 };
+
+const dayLabel = (date, options) => new Intl.DateTimeFormat('en-IN', { timeZone: 'UTC', ...options }).format(new Date(`${date}T00:00:00Z`));
+
+/**
+ * Sales per day (last 30 days) - single-series columns with a per-day hover tooltip
+ */
+export const DailyColumns = ({ data }) => {
+    const [active, setActive] = useState(null);
+    const max = niceMax(Math.max(0, ...data.map((day) => day.sales)));
+    const ticks = [max, max / 2, 0];
+    const last = data.length - 1;
+
+    return (
+        <div className="relative">
+            <div className="flex">
+                <div className="relative mr-2 h-44 w-10 shrink-0 text-right text-[11px] tabular-nums text-stone-400">
+                    {ticks.map((tick, index) => (
+                        <span key={tick} className="absolute right-0 -translate-y-1/2" style={{ top: `${(index / 2) * 100}%` }}>
+                            {compactINR(tick)}
+                        </span>
+                    ))}
+                </div>
+                <div className="relative h-44 flex-1">
+                    {ticks.map((tick, index) => (
+                        <div key={tick} className="absolute inset-x-0 h-px" style={{ top: `${(index / 2) * 100}%`, background: 'var(--viz-grid)' }} />
+                    ))}
+                    <div className="absolute inset-0 flex">
+                        {data.map((day, index) => {
+                            const isActive = active === index;
+                            return (
+                                <button
+                                    key={day.date}
+                                    type="button"
+                                    onMouseEnter={() => setActive(index)}
+                                    onMouseLeave={() => setActive(null)}
+                                    onFocus={() => setActive(index)}
+                                    onBlur={() => setActive(null)}
+                                    className="relative flex h-full flex-1 items-end justify-center outline-none"
+                                    aria-label={`${dayLabel(day.date, { day: 'numeric', month: 'short' })}: ${formatINR(day.sales)}, ${day.orders} orders`}
+                                >
+                                    {day.sales > 0 && (
+                                        <span
+                                            className="w-[68%] max-w-5 rounded-t-[4px] transition-opacity"
+                                            style={{
+                                                height: `${(day.sales / max) * 100}%`,
+                                                background: index === last ? 'var(--viz-series-2)' : 'var(--viz-series-1)',
+                                                opacity: active === null || isActive ? 1 : 0.45,
+                                            }}
+                                        />
+                                    )}
+                                    {isActive && (
+                                        <span className={`pointer-events-none absolute bottom-full z-10 mb-1 whitespace-nowrap rounded-lg bg-stone-900 px-2.5 py-1.5 text-left text-xs text-white shadow-lg ${index > last - 5 ? 'right-0' : index < 5 ? 'left-0' : ''}`}>
+                                            <span className="block font-semibold">{dayLabel(day.date, { weekday: 'short', day: 'numeric', month: 'short' })}</span>
+                                            <span className="block tabular-nums">{formatINR(day.sales)} · {day.orders} order{day.orders === 1 ? '' : 's'}</span>
+                                        </span>
+                                    )}
+                                </button>
+                            );
+                        })}
+                    </div>
+                </div>
+            </div>
+            <div className="ml-12 mt-2 flex text-[11px] text-stone-400">
+                {data.map((day, index) => (
+                    <span key={day.date} className="flex-1 whitespace-nowrap text-center">
+                        {(last - index) % 7 === 0 ? (index === last ? 'Today' : dayLabel(day.date, { day: 'numeric', month: 'short' })) : ''}
+                    </span>
+                ))}
+            </div>
+        </div>
+    );
+};
+
+DailyColumns.propTypes = {
+    data: PropTypes.arrayOf(PropTypes.shape({ date: PropTypes.string, orders: PropTypes.number, sales: PropTypes.number })).isRequired,
+};

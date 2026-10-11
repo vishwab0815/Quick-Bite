@@ -2,7 +2,8 @@ const mongoose = require('mongoose');
 
 /**
  * Atomic counters used for bill numbers (per financial year)
- * and token numbers (per business day)
+ * and token numbers (per business day). Keys are prefixed with the hotel id:
+ * "<hotelId>:token:2026-10-11", "<hotelId>:bill:2026-27"
  */
 const sequenceSchema = new mongoose.Schema({
     _id: { type: String, required: true },

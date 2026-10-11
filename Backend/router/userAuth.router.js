@@ -1,15 +1,15 @@
 const express = require('express');
-const { register, login, logout, getprofile } = require('../controllers/userAuth.controller');
-const { validateRegistration, validateLogin } = require('../middleware/validation');
+const { login, logout, getprofile } = require('../controllers/userAuth.controller');
+const { validateLogin } = require('../middleware/validation');
 const { authenticateToken } = require('../middleware/auth');
 const authRouter = express.Router();
 
-// Public routes
-authRouter.post('/register', validateRegistration, register);
+// Public routes - there is no public sign-up: hotel logins are created by the
+// platform owner (console) or the hotel owner (/pos/staff)
 authRouter.post('/login', validateLogin, login);
 
 // Protected routes (require authentication)
-authRouter.post('/logout', authenticateToken, logout);
+authRouter.post('/logout', logout);
 authRouter.get('/profile', authenticateToken, getprofile);
 
 module.exports = authRouter;

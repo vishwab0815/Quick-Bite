@@ -23,11 +23,14 @@ const userSchema = new mongoose.Schema({
     role: {
         type: String,
         enum: {
-            values: ['user', 'staff', 'admin'],
+            // superadmin = QuickBite platform owner; admin = hotel owner; staff = cashier / kitchen
+            values: ['user', 'staff', 'admin', 'superadmin'],
             message: '{VALUE} is not a valid role'
         },
         default: 'user'
-    }
+    },
+    // The hotel a staff / admin login belongs to (none for the platform owner)
+    hotel: { type: mongoose.Schema.Types.ObjectId, ref: 'Hotel' }
 }, {
     timestamps: true,
     toJSON: {
@@ -39,8 +42,6 @@ const userSchema = new mongoose.Schema({
     }
 });
 
-// Index for faster queries
-userSchema.index({ email: 1 });
-userSchema.index({ role: 1 });
+userSchema.index({ hotel: 1, role: 1 });
 
 module.exports = mongoose.models.user || mongoose.model('user', userSchema);

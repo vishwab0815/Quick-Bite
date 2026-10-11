@@ -7,32 +7,65 @@ const DEFAULT_COUNTER = 'Main Kitchen';
 
 const round2 = (n) => Math.round((n + Number.EPSILON) * 100) / 100;
 
+const DEFAULT_TIME_ZONE = 'Asia/Kolkata';
+
 /**
- * Hotel / business settings, read from environment variables
+ * Hotel settings from the old single-restaurant environment variables (HOTEL_NAME, UPI_VPA, ...).
+ * Only used once, to create the first hotel when an existing database is upgraded.
  */
-const getBusinessSettings = () => {
+const settingsFromEnv = () => {
     const name = process.env.HOTEL_NAME || 'Sri Ganesh Restaurant';
     const gstRate = Number(process.env.GST_RATE ?? 5);
 
     return {
         name,
-        address: process.env.HOTEL_ADDRESS || '',
-        phone: process.env.HOTEL_PHONE || '',
-        hours: process.env.HOTEL_HOURS || '',
-        gstin: process.env.HOTEL_GSTIN || '',
-        gstScheme: process.env.GST_SCHEME === 'composition' ? 'composition' : 'regular',
-        gstRate: Number.isFinite(gstRate) && gstRate >= 0 ? gstRate : 5,
+        settings: {
+            address: process.env.HOTEL_ADDRESS || '',
+            phone: process.env.HOTEL_PHONE || '',
+            hours: process.env.HOTEL_HOURS || '',
+            gstin: process.env.HOTEL_GSTIN || '',
+            gstScheme: process.env.GST_SCHEME === 'composition' ? 'composition' : 'regular',
+            gstRate: Number.isFinite(gstRate) && gstRate >= 0 ? gstRate : 5,
+            pricesIncludeGst: process.env.PRICES_INCLUDE_GST !== 'false',
+            printCounterCoupons: process.env.PRINT_COUNTER_COUPONS !== 'false',
+            sacCode: process.env.HOTEL_SAC_CODE || '996331',
+            upiVpa: process.env.UPI_VPA || '',
+            upiPayeeName: process.env.UPI_PAYEE_NAME || name,
+            receiptFooter: process.env.RECEIPT_FOOTER || 'Thank you! Please show your token at the counter.',
+            receiptPaperWidth: process.env.RECEIPT_PAPER_WIDTH === '58' ? 58 : 80,
+            billPrefix: process.env.BILL_PREFIX || 'QB',
+            timeZone: process.env.BUSINESS_TIMEZONE || DEFAULT_TIME_ZONE,
+        },
+    };
+};
+
+/**
+ * Billing settings for one hotel (its record in the database)
+ */
+const getBusinessSettings = (hotel) => {
+    const settings = hotel?.settings || {};
+    const name = hotel?.name || 'QuickBite';
+
+    return {
+        name,
+        slug: hotel?.slug || '',
+        address: settings.address || '',
+        phone: settings.phone || '',
+        hours: settings.hours || '',
+        gstin: settings.gstin || '',
+        gstScheme: settings.gstScheme === 'composition' ? 'composition' : 'regular',
+        gstRate: Number.isFinite(settings.gstRate) && settings.gstRate >= 0 ? settings.gstRate : 5,
         // Menu prices are final by default - GST is shown on the bill but never added on top
-        pricesIncludeGst: process.env.PRICES_INCLUDE_GST !== 'false',
+        pricesIncludeGst: settings.pricesIncludeGst !== false,
         // Print one token slip per food counter with every bill
-        printCounterCoupons: process.env.PRINT_COUNTER_COUPONS !== 'false',
-        sacCode: process.env.HOTEL_SAC_CODE || '996331',
-        upiVpa: process.env.UPI_VPA || '',
-        upiPayeeName: process.env.UPI_PAYEE_NAME || name,
-        receiptFooter: process.env.RECEIPT_FOOTER || 'Thank you! Please show your token at the counter.',
-        receiptPaperWidth: process.env.RECEIPT_PAPER_WIDTH === '58' ? 58 : 80,
-        billPrefix: process.env.BILL_PREFIX || 'QB',
-        timeZone: process.env.BUSINESS_TIMEZONE || 'Asia/Kolkata',
+        printCounterCoupons: settings.printCounterCoupons !== false,
+        sacCode: settings.sacCode || '996331',
+        upiVpa: settings.upiVpa || '',
+        upiPayeeName: settings.upiPayeeName || name,
+        receiptFooter: settings.receiptFooter || 'Thank you! Please show your token at the counter.',
+        receiptPaperWidth: settings.receiptPaperWidth === 58 ? 58 : 80,
+        billPrefix: settings.billPrefix || 'QB',
+        timeZone: settings.timeZone || DEFAULT_TIME_ZONE,
     };
 };
 
@@ -71,7 +104,7 @@ const computeTotals = (lines, { gstScheme, gstRate, pricesIncludeGst }) => {
 /**
  * Business date (YYYY-MM-DD) in the hotel's time zone - tokens reset daily
  */
-const getBusinessDate = (date = new Date(), timeZone = getBusinessSettings().timeZone) => {
+const getBusinessDate = (date = new Date(), timeZone = DEFAULT_TIME_ZONE) => {
     // en-CA formats dates as YYYY-MM-DD
     return new Intl.DateTimeFormat('en-CA', {
         timeZone,
@@ -103,6 +136,16 @@ const shiftBusinessDate = (businessDate, days) => {
  * Normalize an Indian mobile number to WhatsApp format (91XXXXXXXXXX)
  * Returns null when the number is not valid
  */
+/**
+ * URL-friendly hotel id from its name: "Sri Ganesh Restaurant" -> "sri-ganesh-restaurant"
+ */
+const slugify = (text) => String(text || '')
+    .toLowerCase()
+    .normalize('NFKD')
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .slice(0, 50) || 'hotel';
+
 const normalizeIndianPhone = (phone) => {
     if (!phone) return null;
     let digits = String(phone).replace(/\D/g, '');
@@ -117,6 +160,8 @@ module.exports = {
     DEFAULT_COUNTER,
     round2,
     getBusinessSettings,
+    settingsFromEnv,
+    slugify,
     computeTotals,
     getBusinessDate,
     getFinancialYear,
