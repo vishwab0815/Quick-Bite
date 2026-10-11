@@ -515,6 +515,7 @@ npm run dev              # Start development server with nodemon
 npm start                # Start production server
 npm run seed             # Seed database (wipes data!) with logins, food items and sample counter menu
 npm test                 # API tests against an in-memory MongoDB
+npm run demo             # Try the app without MongoDB: in-memory DB + dummy data (wiped on stop)
 ```
 
 ### Frontend

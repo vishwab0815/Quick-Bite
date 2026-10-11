@@ -8,6 +8,7 @@
     "dev": "nodemon server.js",
     "start:prod": "NODE_ENV=production node server.js",
     "seed": "node seedDatabase.js",
+    "demo": "node scripts/demo.js",
     "test": "node --test"
   },
   "keywords": [
