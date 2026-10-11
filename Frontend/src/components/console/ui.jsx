@@ -131,6 +131,16 @@ export const DataTable = ({ columns, rows, rowKey, onRowClick, rowClassName }) =
     const titleColumn = columns.find((column) => column.card === 'title') || columns[0];
     const asideColumns = columns.filter((column) => column.card === 'aside');
     const detailColumns = columns.filter((column) => column !== titleColumn && !['aside', 'hide'].includes(column.card));
+    // Which details land in the card's right-hand column (full-width rows restart the pairing)
+    let slot = 0;
+    const onRight = detailColumns.map((column) => {
+        if (column.card === 'full') {
+            slot = 0;
+            return false;
+        }
+        slot += 1;
+        return slot % 2 === 0;
+    });
     const open = (row) => onRowClick?.(row);
     const keyOpen = (row) => (event) => { if (event.key === 'Enter') open(row); };
 
@@ -156,8 +166,8 @@ export const DataTable = ({ columns, rows, rowKey, onRowClick, rowClassName }) =
                         </div>
                         {detailColumns.length > 0 && (
                             <dl className="mt-3 grid grid-cols-2 gap-x-4 gap-y-3 border-t border-stone-100 pt-3 text-sm">
-                                {detailColumns.map((column) => (
-                                    <div key={column.label} className={column.card === 'full' ? 'col-span-2' : 'min-w-0'}>
+                                {detailColumns.map((column, index) => (
+                                    <div key={column.label} className={column.card === 'full' ? 'col-span-2' : `min-w-0 ${onRight[index] ? 'text-right' : ''}`}>
                                         {column.cardLabel !== false && <dt className="text-[11px] font-semibold uppercase tracking-wide text-stone-400">{column.label}</dt>}
                                         <dd className="mt-0.5 break-words">{column.render(row)}</dd>
                                     </div>
