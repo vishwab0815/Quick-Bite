@@ -5,6 +5,7 @@ import { FiArrowRight, FiBarChart2, FiEye, FiEyeOff, FiLock, FiShoppingBag } fro
 import { demoHref, demoIsExternal } from '../utils/sales';
 
 const API = import.meta.env.VITE_API_URL;
+const DEMO_ATTEMPTS = 4;
 
 // Where each kind of login lands
 const homeFor = (role) => (role === 'superadmin' ? '/console' : '/pos');
@@ -51,16 +52,32 @@ export default function Signin() {
     };
 
     // One click into the sample restaurant - for showing QuickBite to a client
+    // One click into the sample restaurant. A sleeping free-plan server can take up to a
+    // minute to wake, so connection failures are retried quietly before showing an error.
     const openDemo = async (role) => {
         setDemoLoading(role);
         setError('');
-        try {
-            await axios.post(`${API}/api/auth/demo`, { role }, { withCredentials: true });
-            navigate('/pos', { replace: true });
-        } catch (err) {
-            setError(err.response?.data?.message || 'Could not open the demo. Please try again.');
-            setDemoLoading('');
+        for (let attempt = 1; attempt <= DEMO_ATTEMPTS; attempt++) {
+            try {
+                await axios.post(`${API}/api/auth/demo`, { role }, { withCredentials: true, timeout: 60000 });
+                navigate('/pos', { replace: true });
+                return;
+            } catch (err) {
+                const status = err.response?.status;
+                const wakingUp = !err.response || status >= 502;
+                if (wakingUp && attempt < DEMO_ATTEMPTS) {
+                    setDemoLoading(`${role}:waking`);
+                    await new Promise((resolve) => setTimeout(resolve, 4000));
+                    continue;
+                }
+                setError(
+                    status === 429 ? 'Too many demo sign-ins from this network. Please wait a few minutes and try again.'
+                        : !err.response ? 'Could not reach QuickBite. Check your internet connection and try again.'
+                            : err.response.data?.message || 'Could not open the demo. Please try again.'
+                );
+            }
         }
+        setDemoLoading('');
     };
 
     const demos = [
@@ -184,7 +201,7 @@ export default function Signin() {
                                             <Icon />
                                         </span>
                                         <span className="mt-3 flex items-center gap-1.5 font-semibold">
-                                            {demoLoading === demo.role ? 'Opening…' : demo.title}
+                                            {demoLoading.startsWith(demo.role) ? (demoLoading.endsWith(':waking') ? 'Waking up…' : 'Opening…') : demo.title}
                                             <FiArrowRight className="text-ink/40 transition-transform group-hover:translate-x-0.5" />
                                         </span>
                                         <span className="mt-0.5 block text-xs leading-snug text-ink/55">{demo.text}</span>
