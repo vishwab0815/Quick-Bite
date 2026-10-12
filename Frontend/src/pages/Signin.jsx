@@ -3,9 +3,9 @@ import axios from 'axios';
 import { Link, useNavigate } from 'react-router-dom';
 import { FiArrowRight, FiBarChart2, FiEye, FiEyeOff, FiLock, FiShoppingBag } from 'react-icons/fi';
 import { demoHref, demoIsExternal } from '../utils/sales';
+import { useDemoLogin } from '../utils/useDemoLogin';
 
 const API = import.meta.env.VITE_API_URL;
-const DEMO_ATTEMPTS = 4;
 
 // Where each kind of login lands
 const homeFor = (role) => (role === 'superadmin' ? '/console' : '/pos');
@@ -16,7 +16,8 @@ export default function Signin() {
     const [showPassword, setShowPassword] = useState(false);
     const [error, setError] = useState('');
     const [loading, setLoading] = useState(false);
-    const [demoLoading, setDemoLoading] = useState('');
+    // One click into the sample restaurant - for showing QuickBite to a client
+    const { openDemo, demoRole, waking, demoError, clearDemoError } = useDemoLogin({ replace: true });
 
     // Already signed in on this device - go straight in
     useEffect(() => {
@@ -31,12 +32,14 @@ export default function Signin() {
     const update = (event) => {
         setForm({ ...form, [event.target.name]: event.target.value });
         if (error) setError('');
+        if (demoError) clearDemoError();
     };
 
     const submit = async (event) => {
         event.preventDefault();
         setLoading(true);
         setError('');
+        clearDemoError();
         try {
             const res = await axios.post(`${API}/api/auth/login`, form, { withCredentials: true });
             navigate(homeFor(res.data.user?.role), { replace: true });
@@ -51,34 +54,7 @@ export default function Signin() {
         }
     };
 
-    // One click into the sample restaurant - for showing QuickBite to a client
-    // One click into the sample restaurant. A sleeping free-plan server can take up to a
-    // minute to wake, so connection failures are retried quietly before showing an error.
-    const openDemo = async (role) => {
-        setDemoLoading(role);
-        setError('');
-        for (let attempt = 1; attempt <= DEMO_ATTEMPTS; attempt++) {
-            try {
-                await axios.post(`${API}/api/auth/demo`, { role }, { withCredentials: true, timeout: 60000 });
-                navigate('/pos', { replace: true });
-                return;
-            } catch (err) {
-                const status = err.response?.status;
-                const wakingUp = !err.response || status >= 502;
-                if (wakingUp && attempt < DEMO_ATTEMPTS) {
-                    setDemoLoading(`${role}:waking`);
-                    await new Promise((resolve) => setTimeout(resolve, 4000));
-                    continue;
-                }
-                setError(
-                    status === 429 ? 'Too many demo sign-ins from this network. Please wait a few minutes and try again.'
-                        : !err.response ? 'Could not reach QuickBite. Check your internet connection and try again.'
-                            : err.response.data?.message || 'Could not open the demo. Please try again.'
-                );
-            }
-        }
-        setDemoLoading('');
-    };
+    const shownError = error || demoError;
 
     const demos = [
         { role: 'admin', title: 'Hotel owner', text: 'Dashboard, menu & staff', icon: FiBarChart2 },
@@ -163,9 +139,9 @@ export default function Signin() {
                             </span>
                         </label>
 
-                        {error && (
+                        {shownError && (
                             <p role="alert" className="flex items-start gap-2 rounded-2xl bg-red-50 px-4 py-3 text-sm font-medium text-red-700 ring-1 ring-red-200">
-                                <FiLock className="mt-0.5 shrink-0" /> {error}
+                                <FiLock className="mt-0.5 shrink-0" /> {shownError}
                             </p>
                         )}
 
@@ -194,14 +170,14 @@ export default function Signin() {
                                         key={demo.role}
                                         type="button"
                                         onClick={() => openDemo(demo.role)}
-                                        disabled={Boolean(demoLoading)}
+                                        disabled={Boolean(demoRole)}
                                         className="group rounded-2xl border border-ink/10 bg-white p-4 text-left transition hover:border-ink/30 hover:shadow-[0_10px_30px_-18px_rgba(15,14,12,0.5)] disabled:opacity-60"
                                     >
                                         <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-saffron/10 text-saffron-deep">
                                             <Icon />
                                         </span>
                                         <span className="mt-3 flex items-center gap-1.5 font-semibold">
-                                            {demoLoading.startsWith(demo.role) ? (demoLoading.endsWith(':waking') ? 'Waking up…' : 'Opening…') : demo.title}
+                                            {demoRole === demo.role ? (waking ? 'Waking up…' : 'Opening…') : demo.title}
                                             <FiArrowRight className="text-ink/40 transition-transform group-hover:translate-x-0.5" />
                                         </span>
                                         <span className="mt-0.5 block text-xs leading-snug text-ink/55">{demo.text}</span>
