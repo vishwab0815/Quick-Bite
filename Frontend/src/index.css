@@ -14,6 +14,12 @@
   --color-saffron-deep: #c2410c; /* saffron for small text on paper (AA contrast) */
   --color-leaf: #22c07a;
   --color-turmeric: #ffb020;
+
+  /* Hotel app (counter, kitchen, dashboard) */
+  --color-canvas: #f6f4ef;
+  --color-line: #e8e3da;
+  --shadow-card: 0 1px 2px rgba(28, 25, 23, 0.04), 0 1px 3px rgba(28, 25, 23, 0.04);
+  --shadow-lift: 0 12px 32px -12px rgba(28, 25, 23, 0.22);
 }
 
 /* Counter billing screens - premium font, always light, independent of the website's global styles.
@@ -79,6 +85,38 @@
   }
 }
 
+/* Hotel app motion: sheets slide up, dialogs and badges pop in */
+@keyframes qb-sheet-up {
+  from { transform: translateY(24px); opacity: 0; }
+  to { transform: none; opacity: 1; }
+}
+
+@keyframes qb-pop {
+  0% { transform: scale(0.6); opacity: 0; }
+  70% { transform: scale(1.08); opacity: 1; }
+  100% { transform: scale(1); }
+}
+
+@keyframes qb-fade {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.qb-sheet { animation: qb-sheet-up 260ms cubic-bezier(0.2, 0.9, 0.3, 1) both; }
+.qb-pop { animation: qb-pop 320ms cubic-bezier(0.2, 0.9, 0.3, 1.2) both; }
+.qb-fade { animation: qb-fade 180ms ease-out both; }
+
+/* Success tick on the token screen draws itself */
+@keyframes qb-draw {
+  to { stroke-dashoffset: 0; }
+}
+
+.qb-tick path {
+  stroke-dasharray: 40;
+  stroke-dashoffset: 40;
+  animation: qb-draw 420ms 120ms cubic-bezier(0.65, 0, 0.35, 1) forwards;
+}
+
 /* Counter screens fade in softly when switching tabs */
 @keyframes pos-page-enter {
   from {
@@ -97,8 +135,16 @@
 
 @media (prefers-reduced-motion: reduce) {
   .pos-page,
-  .pos-countdown {
+  .pos-countdown,
+  .qb-sheet,
+  .qb-pop,
+  .qb-fade {
     animation: none;
+  }
+
+  .qb-tick path {
+    animation: none;
+    stroke-dashoffset: 0;
   }
 }
 

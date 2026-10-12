@@ -1,0 +1,10 @@
+Dish photos: Pexels (https://www.pexels.com) - free for commercial use, no attribution required
+(https://www.pexels.com/license/). Cropped to 4:3 and converted to WebP. Source photo IDs:
+
+masala-dosa 20422138, rava-dosa 20422133, cone-dosa 20422121, uttapam 20422130, idli 20422128,
+vada 20422135, idli-vada 8312083, upma 20408458, poha 36715858, appam 38684630, breakfast 9619560,
+meals 9266190, chapati-meal 35008222, thali 9557675, sambar-rice 38192678, curd-rice 29684991,
+lemon-rice 4595316, tamarind-rice 4595312, biryani 12392831, parotta 39901225, poori 31150256,
+kesari 39572208, ice-cream 36576770, filter-coffee 16128085, tea 37186989, badam-milk 38260645,
+lassi 6808666, spread 35539315
+Backgrounds: hero-feast (9266190), hero-dosa (20422138), hero-breakfast (9619560)

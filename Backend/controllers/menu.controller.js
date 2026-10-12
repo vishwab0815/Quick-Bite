@@ -44,6 +44,13 @@ const parseMenuInput = (body = {}, { partial = false } = {}) => {
         value.category = category || 'General';
     }
 
+    if (body.image !== undefined) {
+        if (typeof body.image !== 'string' || !/^[a-z0-9-]{0,40}$/.test(body.image)) {
+            return { error: 'Invalid photo' };
+        }
+        value.image = body.image;
+    }
+
     for (const field of ['isVeg', 'isAvailable']) {
         if (body[field] !== undefined) {
             if (typeof body[field] !== 'boolean') {

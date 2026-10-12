@@ -1,6 +1,10 @@
 import { useEffect, useRef, useState } from 'react';
-import { FiCamera, FiVolume2, FiVolumeX, FiCheck, FiRotateCcw } from 'react-icons/fi';
+import {
+    PiScanBold, PiSpeakerHighBold, PiSpeakerSlashBold, PiCheckBold, PiArrowCounterClockwiseBold,
+    PiCookingPotDuotone, PiCheckCircleFill, PiWarningCircleFill, PiBellRingingDuotone,
+} from 'react-icons/pi';
 import Skeleton from '../../components/pos/Skeleton';
+import { Button, DishPhoto, EmptyState, IconButton } from '../../components/pos/ui';
 import { showToast } from '../../utils/toast';
 import { posApi, loadPref, savePref, playBeep } from '../../utils/pos';
 import { usePos } from '../../utils/posContext';
@@ -107,46 +111,46 @@ export default function KitchenScreen() {
     const renderTicket = (ticket) => {
         const status = ticketStatus(ticket);
         const minutes = (now - new Date(ticket.createdAt).getTime()) / 60000;
+        const late = status === 'preparing' && minutes >= LATE_MINUTES;
         const timerColor = status === 'ready'
             ? 'bg-emerald-100 text-emerald-800'
-            : minutes >= LATE_MINUTES
+            : late
                 ? 'bg-rose-600 text-white animate-pulse'
                 : minutes >= WARN_MINUTES
                     ? 'bg-amber-400 text-stone-900'
-                    : 'bg-stone-100 text-stone-700';
+                    : 'bg-white text-stone-700 ring-1 ring-line';
 
         return (
-            <div
+            <article
                 key={ticket._id}
-                className={`flex flex-col rounded-2xl border bg-white p-4 shadow-[0_1px_2px_rgba(28,25,23,0.05)] transition-colors ${
-                    status === 'ready' ? 'border-emerald-400' : minutes >= LATE_MINUTES ? 'border-rose-400' : 'border-stone-200'
+                className={`qb-fade flex flex-col overflow-hidden rounded-3xl border bg-white shadow-[var(--shadow-card)] ${
+                    status === 'ready' ? 'border-emerald-300' : late ? 'border-rose-300' : 'border-line'
                 }`}
             >
-                <div className="mb-2 flex items-start justify-between">
-                    <span className="text-3xl font-bold tracking-tight text-stone-900">#{ticket.tokenNumber}</span>
-                    <span className={`rounded-lg px-2 py-1 font-mono text-sm font-bold ${timerColor}`}>
-                        {elapsedLabel(ticket.createdAt, now)}
-                    </span>
-                </div>
+                <header className={`flex items-center justify-between px-5 py-3.5 ${status === 'ready' ? 'bg-emerald-50' : late ? 'bg-rose-50' : 'bg-stone-50'}`}>
+                    <span className="font-display text-[34px] font-extrabold leading-none tracking-tight text-stone-900">#{ticket.tokenNumber}</span>
+                    <span className={`rounded-xl px-2.5 py-1 font-mono text-sm font-bold tabular-nums ${timerColor}`}>{elapsedLabel(ticket.createdAt, now)}</span>
+                </header>
 
-                <ul className="mb-3 flex-1 space-y-1">
+                <ul className="flex-1 space-y-2.5 px-5 py-4">
                     {ticket.items.map((item) => (
-                        <li key={`${item.itemId}-${item.name}`} className="flex justify-between gap-2 text-base font-semibold text-stone-800">
-                            <span>{item.name}</span>
-                            <span className="text-orange-600">× {item.quantity}</span>
+                        <li key={`${item.itemId}-${item.name}`} className="flex items-center gap-3">
+                            <DishPhoto item={{ name: item.name }} className="h-9 w-9 shrink-0" rounded="rounded-lg" />
+                            <span className="min-w-0 flex-1 text-[16px] font-semibold leading-snug text-stone-900">{item.name}</span>
+                            <span className="font-display text-lg font-bold text-saffron-deep">×{item.quantity}</span>
                         </li>
                     ))}
                 </ul>
 
                 {!counterParam && ticket.stations.length > 1 && (
-                    <div className="mb-2 flex flex-wrap gap-1">
+                    <div className="flex flex-wrap gap-1.5 px-5 pb-3">
                         {ticket.stations.map((station) => (
                             <span
                                 key={station.counter}
-                                className={`rounded px-1.5 py-0.5 text-xs font-semibold ${
-                                    station.status === 'ready' ? 'bg-emerald-100 text-emerald-700'
-                                        : station.status === 'served' ? 'bg-stone-200 text-stone-500 line-through'
-                                            : 'bg-orange-100 text-orange-700'
+                                className={`rounded-lg px-2 py-0.5 text-xs font-semibold ${
+                                    station.status === 'ready' ? 'bg-emerald-100 text-emerald-800'
+                                        : station.status === 'served' ? 'bg-stone-100 text-stone-400 line-through'
+                                            : 'bg-orange-100 text-orange-800'
                                 }`}
                             >
                                 {station.counter}
@@ -155,104 +159,97 @@ export default function KitchenScreen() {
                     </div>
                 )}
 
-                {status === 'preparing' ? (
-                    <button
-                        onClick={() => updateStatus(ticket, 'ready')}
-                        disabled={busyId === ticket._id}
-                        className="flex items-center justify-center gap-2 rounded-xl bg-stone-900 py-2.5 font-semibold text-white transition hover:bg-stone-800 disabled:opacity-50"
-                    >
-                        <FiCheck /> Ready
-                    </button>
-                ) : (
-                    <div className="grid grid-cols-[auto_1fr] gap-2">
-                        <button
-                            onClick={() => updateStatus(ticket, 'preparing')}
-                            disabled={busyId === ticket._id}
-                            className="rounded-lg border border-stone-200 px-3 text-stone-500 hover:bg-stone-50 disabled:opacity-50"
-                            title="Back to preparing"
-                        >
-                            <FiRotateCcw />
-                        </button>
-                        <button
-                            onClick={() => updateStatus(ticket, 'served')}
-                            disabled={busyId === ticket._id}
-                            className="rounded-xl bg-emerald-600 py-2.5 font-semibold text-white transition hover:bg-emerald-700 disabled:opacity-50"
-                        >
-                            Served
-                        </button>
-                    </div>
-                )}
-            </div>
+                <div className="border-t border-line p-3">
+                    {status === 'preparing' ? (
+                        <Button onClick={() => updateStatus(ticket, 'ready')} disabled={busyId === ticket._id} className="h-12 w-full rounded-2xl text-base">
+                            <PiCheckBold /> Ready
+                        </Button>
+                    ) : (
+                        <div className="flex gap-2">
+                            <IconButton label="Back to preparing" onClick={() => updateStatus(ticket, 'preparing')} disabled={busyId === ticket._id} className="h-12 w-12 rounded-2xl ring-1 ring-line">
+                                <PiArrowCounterClockwiseBold />
+                            </IconButton>
+                            <Button variant="success" onClick={() => updateStatus(ticket, 'served')} disabled={busyId === ticket._id} className="h-12 flex-1 rounded-2xl text-base">
+                                Served
+                            </Button>
+                        </div>
+                    )}
+                </div>
+            </article>
         );
     };
 
+    const columnTitle = (dot, label, count) => (
+        <h2 className="mb-4 flex items-center gap-2 text-[13px] font-bold uppercase tracking-[0.12em] text-stone-600">
+            <span className={`h-2.5 w-2.5 rounded-full ${dot}`} /> {label}
+            <span className="rounded-full bg-white px-2 py-0.5 text-xs tabular-nums text-stone-500 ring-1 ring-line">{count}</span>
+        </h2>
+    );
+
     return (
         <div className="flex min-h-full flex-col">
-            <div className="sticky top-0 z-10 flex flex-wrap items-center gap-2 border-b border-stone-200/80 bg-white/90 px-3 py-2.5 backdrop-blur-md sm:px-5">
-                <div className="flex w-full gap-1.5 overflow-x-auto [scrollbar-width:none] sm:w-auto">
+            <div className="sticky top-0 z-10 flex flex-wrap items-center gap-3 border-b border-line bg-canvas/90 px-4 py-3 backdrop-blur-md sm:px-6">
+                <div className="flex w-full gap-2 overflow-x-auto [scrollbar-width:none] sm:w-auto">
                     {['All', ...settings.counters].map((name) => (
                         <button
                             key={name}
+                            type="button"
                             onClick={() => setCounter(name)}
-                            className={`whitespace-nowrap rounded-full px-4 py-2 text-sm font-semibold transition-colors ${
-                                counter === name ? 'bg-stone-900 text-white shadow-sm' : 'bg-white text-stone-600 ring-1 ring-stone-200 hover:text-stone-900'
+                            className={`h-10 shrink-0 whitespace-nowrap rounded-full px-4 text-[13px] font-semibold transition-colors ${
+                                counter === name ? 'bg-ink text-white' : 'bg-white text-stone-600 ring-1 ring-line hover:text-stone-900'
                             }`}
                         >
-                            {name}
+                            {name === 'All' ? 'All counters' : name}
                         </button>
                     ))}
                 </div>
 
-                <form onSubmit={handleScan} className="flex w-full items-center gap-2 sm:ml-auto sm:w-auto sm:min-w-[300px] sm:max-w-md sm:flex-1">
+                <form onSubmit={handleScan} className="flex w-full items-center gap-2 sm:ml-auto sm:w-auto sm:min-w-[320px] sm:max-w-md sm:flex-1">
                     <div className="relative flex-1">
-                        <FiCamera className="absolute left-3.5 top-1/2 -translate-y-1/2 text-stone-400" />
+                        <PiScanBold className="pointer-events-none absolute left-3.5 top-1/2 -translate-y-1/2 text-lg text-stone-400" />
                         <input
                             ref={scanRef}
                             value={scanCode}
-                            onChange={(e) => setScanCode(e.target.value)}
-                            placeholder="Scan coupon QR or type token no."
-                            className="w-full rounded-full border border-stone-200 bg-stone-50 py-2 pl-10 pr-4 text-sm outline-none transition focus:border-orange-400 focus:bg-white focus:ring-4 focus:ring-orange-100"
+                            onChange={(event) => setScanCode(event.target.value)}
+                            placeholder="Scan token QR or type token no."
+                            aria-label="Scan token QR or type token number"
+                            className="h-11 w-full rounded-xl border border-line bg-white pl-11 pr-4 text-sm outline-none transition focus:border-stone-900 focus:ring-4 focus:ring-stone-900/5"
                             autoFocus
                         />
                     </div>
-                    <button type="submit" className="rounded-full bg-emerald-600 px-5 py-2 text-sm font-semibold text-white transition hover:bg-emerald-700">
-                        Serve
-                    </button>
+                    <Button type="submit" variant="success">Serve</Button>
                 </form>
 
-                <button
-                    onClick={() => setSoundOn((value) => !value)}
-                    className="rounded-full p-2.5 text-stone-500 transition hover:bg-stone-100 hover:text-stone-900"
-                    title={soundOn ? 'Mute new-order beep' : 'Unmute new-order beep'}
-                >
-                    {soundOn ? <FiVolume2 /> : <FiVolumeX />}
-                </button>
+                <IconButton label={soundOn ? 'Mute new-order beep' : 'Unmute new-order beep'} onClick={() => setSoundOn((value) => !value)} className="h-11 w-11 bg-white ring-1 ring-line">
+                    {soundOn ? <PiSpeakerHighBold /> : <PiSpeakerSlashBold />}
+                </IconButton>
             </div>
 
             {flash && (
-                <div className={`mx-3 mt-3 rounded-2xl px-4 py-3 text-center text-base font-semibold text-white shadow-sm sm:mx-5 ${flash.type === 'success' ? 'bg-emerald-600' : 'bg-rose-600'}`}>
-                    {flash.type === 'success' ? '✓ ' : '✕ '}{flash.text}
+                <div className={`qb-pop mx-4 mt-4 flex items-center justify-center gap-2 rounded-2xl px-4 py-3.5 text-base font-semibold text-white shadow-lg sm:mx-6 ${flash.type === 'success' ? 'bg-emerald-600' : 'bg-rose-600'}`}>
+                    {flash.type === 'success' ? <PiCheckCircleFill className="text-xl" /> : <PiWarningCircleFill className="text-xl" />} {flash.text}
                 </div>
             )}
 
-            <div className="grid flex-1 gap-5 p-3 sm:p-5 lg:grid-cols-[2fr_1fr]">
+            <div className="grid flex-1 gap-6 p-4 sm:p-6 lg:grid-cols-[2fr_1fr]">
                 <section>
-                    <h2 className="mb-3 text-xs font-semibold uppercase tracking-wider text-stone-500">
-                        Preparing · {preparing.length}
-                    </h2>
-                    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3">
-                        {!ticketsData && Array.from({ length: 3 }, (_, index) => <Skeleton key={index} className="h-40" />)}
+                    {columnTitle('bg-amber-400', 'Preparing', preparing.length)}
+                    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
+                        {!ticketsData && Array.from({ length: 3 }, (_, index) => <Skeleton key={index} className="h-56 rounded-3xl" />)}
                         {preparing.map(renderTicket)}
                     </div>
-                    {ticketsData && preparing.length === 0 && <p className="py-10 text-center text-sm text-stone-400">No pending orders</p>}
+                    {ticketsData && preparing.length === 0 && (
+                        <EmptyState icon={PiCookingPotDuotone} title="All caught up">New tokens appear here the moment they are billed.</EmptyState>
+                    )}
                 </section>
                 <section>
-                    <h2 className="mb-3 text-xs font-semibold uppercase tracking-wider text-emerald-700">
-                        Ready for pickup · {ready.length}
-                    </h2>
-                    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-1">
+                    {columnTitle('bg-emerald-500', 'Ready for pickup', ready.length)}
+                    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-1">
                         {ready.map(renderTicket)}
                     </div>
+                    {ticketsData && ready.length === 0 && (
+                        <EmptyState icon={PiBellRingingDuotone} title="Nothing waiting">Tap Ready on a token and it moves here.</EmptyState>
+                    )}
                 </section>
             </div>
         </div>

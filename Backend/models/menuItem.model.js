@@ -41,6 +41,14 @@ const menuItemSchema = new mongoose.Schema({
         type: Boolean,
         default: true
     },
+    // Photo chosen by the owner from the built-in dish photo library (empty = matched by name)
+    image: {
+        type: String,
+        trim: true,
+        maxlength: 40,
+        match: [/^[a-z0-9-]*$/, 'Invalid photo'],
+        default: ''
+    },
     // Counter staff can mark an item sold out for the day
     isAvailable: {
         type: Boolean,

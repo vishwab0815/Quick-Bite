@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { useParams } from 'react-router-dom';
-import { FiVolume2 } from 'react-icons/fi';
+import { PiSpeakerHighBold, PiCookingPotDuotone, PiBellRingingDuotone } from 'react-icons/pi';
 import { posApi, playBeep } from '../../utils/pos';
 
 const POLL_MS = 3000;
@@ -92,60 +92,72 @@ export default function TokenDisplay() {
         .slice(0, MAX_READY);
 
     return (
-        <div className="pos-app flex min-h-screen flex-col bg-gradient-to-br from-stone-950 via-stone-900 to-stone-950 p-4 text-white sm:p-6">
-            <header className="mb-6 flex items-center justify-between">
-                <h1 className="bg-gradient-to-r from-orange-400 to-pink-400 bg-clip-text text-4xl font-black text-transparent">
-                    {board.hotelName || 'QuickBite'}
-                </h1>
+        <div className="pos-app grain relative flex min-h-screen flex-col overflow-hidden bg-ink p-5 text-white sm:p-8">
+            <div className="pointer-events-none absolute -left-40 -top-40 h-[520px] w-[520px] rounded-full bg-saffron/15 blur-[120px]" />
+            <header className="relative mb-8 flex flex-wrap items-center justify-between gap-4">
                 <div className="flex items-center gap-4">
-                    {offline && <span className="rounded-lg bg-red-600 px-3 py-1 text-sm font-bold">Reconnecting…</span>}
+                    <span className="flex h-14 w-14 items-center justify-center rounded-2xl bg-saffron font-display text-2xl font-extrabold text-ink">
+                        {(board.hotelName || 'Q').charAt(0)}
+                    </span>
+                    <div>
+                        <h1 className="font-display text-3xl font-bold tracking-tight sm:text-4xl">{board.hotelName || 'QuickBite'}</h1>
+                        <p className="text-sm font-medium uppercase tracking-[0.25em] text-stone-400">Now serving</p>
+                    </div>
+                </div>
+                <div className="flex items-center gap-4">
+                    {offline && <span className="rounded-xl bg-rose-600 px-3 py-1.5 text-sm font-bold">Reconnecting…</span>}
                     {!soundOn && (
                         <button
+                            type="button"
                             onClick={() => {
                                 setSoundOn(true);
                                 playBeep(660, 0.1);
                             }}
-                            className="flex items-center gap-2 rounded-lg bg-white/10 px-3 py-2 text-sm font-semibold hover:bg-white/20"
+                            className="flex items-center gap-2 rounded-xl bg-white/10 px-4 py-2.5 text-sm font-semibold transition hover:bg-white/20"
                         >
-                            <FiVolume2 /> Enable announcements
+                            <PiSpeakerHighBold /> Turn on announcements
                         </button>
                     )}
-                    <span className="font-mono text-3xl font-bold text-stone-300">
+                    <span className="font-display text-4xl font-bold tabular-nums text-stone-200">
                         {clock.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' })}
                     </span>
                 </div>
             </header>
 
-            <div className="grid flex-1 gap-6 lg:grid-cols-[1fr_2fr]">
-                <section className="rounded-3xl bg-white/5 p-6">
-                    <h2 className="mb-4 text-2xl font-bold uppercase tracking-widest text-amber-400">Preparing</h2>
+            <div className="relative grid flex-1 gap-6 lg:grid-cols-[1fr_2fr]">
+                <section className="rounded-[32px] bg-white/[0.04] p-6 ring-1 ring-white/10 sm:p-8">
+                    <h2 className="mb-6 flex items-center gap-3 text-xl font-bold uppercase tracking-[0.2em] text-amber-300">
+                        <PiCookingPotDuotone className="text-3xl" /> Preparing
+                    </h2>
                     <div className="flex flex-wrap gap-3">
                         {board.preparing.map((token) => (
-                            <span key={token} className="rounded-xl bg-white/10 px-4 py-2 text-4xl font-black text-stone-200">
+                            <span key={token} className="flex h-20 min-w-[96px] items-center justify-center rounded-2xl bg-white/[0.08] px-4 font-display text-5xl font-bold tabular-nums text-stone-200 ring-1 ring-white/10">
                                 {token}
                             </span>
                         ))}
-                        {board.preparing.length === 0 && <p className="text-xl text-stone-500">—</p>}
+                        {board.preparing.length === 0 && <p className="text-xl text-stone-500">No orders cooking</p>}
                     </div>
                 </section>
 
-                <section className="rounded-3xl bg-green-500/10 p-6">
-                    <h2 className="mb-4 text-2xl font-bold uppercase tracking-widest text-green-400">Ready · Please collect</h2>
+                <section className="rounded-[32px] bg-emerald-500/[0.08] p-6 ring-1 ring-emerald-400/20 sm:p-8">
+                    <h2 className="mb-6 flex items-center gap-3 text-xl font-bold uppercase tracking-[0.2em] text-emerald-300">
+                        <PiBellRingingDuotone className="text-3xl" /> Ready · please collect
+                    </h2>
                     <div className="grid grid-cols-2 gap-4 md:grid-cols-3">
                         {ready.map((entry) => (
                             <div
                                 key={`${entry.tokenNumber}-${entry.counters.join()}`}
-                                className={`rounded-2xl p-4 text-center transition ${
+                                className={`rounded-3xl p-5 text-center transition-colors duration-500 ${
                                     highlight.has(entry.tokenNumber)
-                                        ? 'animate-pulse bg-green-500 text-stone-950'
-                                        : 'bg-green-500/20 text-green-100'
+                                        ? 'qb-pop bg-leaf text-ink shadow-[0_0_60px_-10px_rgba(34,192,122,0.8)]'
+                                        : 'bg-emerald-400/15 text-emerald-50'
                                 }`}
                             >
-                                <p className="text-7xl font-black leading-none">{entry.tokenNumber}</p>
-                                <p className="mt-2 text-lg font-semibold">{entry.counters.join(' · ')}</p>
+                                <p className="font-display text-[88px] font-extrabold leading-none tracking-tight tabular-nums">{entry.tokenNumber}</p>
+                                <p className="mt-3 text-lg font-semibold">{entry.counters.join(' · ')}</p>
                             </div>
                         ))}
-                        {ready.length === 0 && <p className="text-xl text-stone-500">—</p>}
+                        {ready.length === 0 && <p className="text-xl text-stone-500">Tokens appear here when ready</p>}
                     </div>
                 </section>
             </div>

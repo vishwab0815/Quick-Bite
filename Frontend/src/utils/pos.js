@@ -32,6 +32,11 @@ export const STAFF_ROLES = ['admin', 'staff'];
 export const formatINR = (amount) =>
     `₹${Number(amount || 0).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
+// Menu prices read better without paise when they are whole rupees: ₹80, ₹42.50
+export const formatPrice = (amount) => (Number.isInteger(Number(amount))
+    ? `₹${Number(amount).toLocaleString('en-IN')}`
+    : formatINR(amount));
+
 const round2 = (n) => Math.round((n + Number.EPSILON) * 100) / 100;
 
 /**

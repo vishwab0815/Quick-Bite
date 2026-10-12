@@ -73,7 +73,11 @@ export default function Signin() {
     return (
         <div className="qb-landing grid min-h-[100dvh] bg-paper text-ink lg:grid-cols-[1.05fr_1fr]">
             {/* Brand panel */}
-            <aside className="hero-glow grain relative hidden flex-col justify-between overflow-hidden bg-ink p-12 text-paper lg:flex">
+            <aside className="grain relative hidden flex-col justify-between overflow-hidden bg-ink p-12 text-paper lg:flex">
+                {/* A South Indian feast behind a dark gradient, so the words stay readable */}
+                <img src="/food/hero-feast.webp" alt="" className="absolute inset-0 h-full w-full object-cover" />
+                <div className="absolute inset-0 bg-gradient-to-t from-ink via-ink/75 to-ink/30" />
+                <div className="absolute inset-0 bg-gradient-to-r from-ink/60 to-transparent" />
                 <Link to="/" className="relative flex items-center gap-2.5">
                     <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-saffron font-extrabold text-ink">Q</span>
                     <span className="text-lg font-bold tracking-tight">QuickBite</span>
@@ -83,16 +87,21 @@ export default function Signin() {
                         Rush hour,<br />
                         <span className="font-accent font-normal italic text-saffron">handled.</span>
                     </p>
-                    <p className="mt-6 max-w-sm text-stone-400">Bills in seconds, tokens on screen and every rupee on one live dashboard.</p>
+                    <p className="mt-6 max-w-sm text-stone-300">Bills in seconds, tokens on screen and every rupee on one live dashboard.</p>
                 </div>
-                <p className="relative font-code text-[11px] uppercase tracking-[0.2em] text-stone-500">Counter billing & tokens</p>
+                <p className="relative font-code text-[11px] uppercase tracking-[0.2em] text-stone-400">Counter billing & tokens</p>
             </aside>
 
             {/* Form */}
-            <main className="flex flex-col px-5 py-8 sm:px-10">
-                <Link to="/" className="flex items-center gap-2.5 lg:hidden">
-                    <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-saffron font-extrabold text-ink">Q</span>
-                    <span className="text-lg font-bold tracking-tight">QuickBite</span>
+            <main className="flex flex-col px-5 py-6 sm:px-10 sm:py-8">
+                {/* Phones: food banner with the logo */}
+                <Link to="/" className="relative -mx-5 -mt-6 mb-2 flex h-40 items-end overflow-hidden px-5 pb-4 text-paper sm:-mx-10 sm:-mt-8 sm:px-10 lg:hidden">
+                    <img src="/food/hero-dosa.webp" alt="" className="absolute inset-0 h-full w-full object-cover" />
+                    <span className="absolute inset-0 bg-gradient-to-t from-ink/85 via-ink/30 to-transparent" />
+                    <span className="relative flex items-center gap-2.5">
+                        <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-saffron font-extrabold text-ink">Q</span>
+                        <span className="text-lg font-bold tracking-tight">QuickBite</span>
+                    </span>
                 </Link>
 
                 <div className="mx-auto my-auto w-full max-w-sm py-12">
