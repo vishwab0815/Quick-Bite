@@ -21,6 +21,7 @@ const {
 const PAYMENT_MODES = ['cash', 'upi', 'card'];
 const MAX_LINES = 50;
 const MAX_QUANTITY = 99;
+const WEEK_MS = 7 * 24 * 60 * 60 * 1000;
 
 const isValidDate = (date) => /^\d{4}-\d{2}-\d{2}$/.test(date);
 
@@ -535,21 +536,25 @@ module.exports.getDailySummary = async (req, res) => {
 
 /**
  * Owner dashboard in one round trip: the day's bills, its summary and the
- * same weekday last week for comparison
+ * same weekday last week for comparison. While today is still running it is
+ * compared with last week up to this time of day, not with last week's whole day.
  */
 module.exports.getDashboard = async (req, res) => {
     try {
         const settings = getBusinessSettings(req.hotel);
-        const date = req.query.date || getBusinessDate(new Date(), settings.timeZone);
+        const today = getBusinessDate(new Date(), settings.timeZone);
+        const date = req.query.date || today;
 
         if (!isValidDate(date)) {
             return res.status(400).json({ success: false, message: 'Date must be in YYYY-MM-DD format' });
         }
 
         const compareDate = shiftBusinessDate(date, -7);
+        const compareQuery = { hotel: req.hotelId, businessDate: compareDate };
+        if (date === today) compareQuery.createdAt = { $lte: new Date(Date.now() - WEEK_MS) };
         const [bills, compareBills] = await Promise.all([
             Bill.find({ hotel: req.hotelId, businessDate: date }).sort({ tokenNumber: -1 }).limit(1000).lean(),
-            Bill.find({ hotel: req.hotelId, businessDate: compareDate }).select(SUMMARY_FIELDS).lean()
+            Bill.find(compareQuery).select(SUMMARY_FIELDS).lean()
         ]);
 
         res.status(200).json({

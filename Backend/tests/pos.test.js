@@ -216,6 +216,26 @@ describe('counter billing', () => {
         assert.equal(again.status, 304);
     });
 
+    it('compares today with last week up to the same time of day, not its whole day', async () => {
+        const { date, compare } = (await cashier.get('/pos/reports/dashboard')).body;
+        const sample = await Bill.findOne({ hotel: hotel._id, businessDate: date }).lean();
+        const lastWeekAt = (offsetMs, tokenNumber) => {
+            const { _id, ...bill } = sample;
+            const createdAt = new Date(Date.now() - 7 * DAY_MS + offsetMs);
+            return { ...bill, businessDate: compare.date, tokenNumber, billNumber: `LW-${tokenNumber}`, publicId: `last-week-${tokenNumber}`, createdAt, updatedAt: createdAt };
+        };
+        await Bill.collection.insertMany([lastWeekAt(-60 * 60000, 1), lastWeekAt(60 * 60000, 2)]);
+
+        try {
+            const today = (await cashier.get('/pos/reports/dashboard')).body;
+            assert.equal(today.compare.billCount, 1, 'only last week’s bills up to this time');
+            const lastWeek = (await cashier.get(`/pos/reports/dashboard?date=${compare.date}`)).body;
+            assert.equal(lastWeek.summary.billCount, 2, 'a past day still shows the whole day');
+        } finally {
+            await Bill.deleteMany({ hotel: hotel._id, businessDate: compare.date });
+        }
+    });
+
     it('public landing info shows the restaurant and available dishes only, no private data', async () => {
         await cashier.patch(`/pos/menu/${coffee._id}/availability`).send({ isAvailable: false });
         const res = await request(app).get('/pos/public/info');
@@ -558,7 +578,8 @@ describe('client demo (Try the demo buttons)', () => {
         assert.equal(settings.isDemo, true);
         assert.equal((await owner.get('/pos/menu')).body.items.length, 20);
         const dashboard = (await owner.get('/pos/reports/dashboard')).body;
-        assert.ok(dashboard.compare.billCount > 50, 'last week has sample sales to compare with');
+        const lastWeek = (await owner.get(`/pos/reports/dashboard?date=${dashboard.compare.date}`)).body;
+        assert.ok(lastWeek.summary.billCount > 50, 'last week has sample sales to compare with');
         assert.ok(dashboard.bills.every((bill) => String(bill.hotel) !== String(hotel._id)), 'never shows a real hotel');
 
         const cashier = request.agent(app);
