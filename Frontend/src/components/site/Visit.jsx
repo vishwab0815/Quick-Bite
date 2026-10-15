@@ -127,7 +127,7 @@ const Visit = ({ restaurant, board, onlineOrdering }) => {
     return (
         <section ref={sectionRef} id="visit" data-chapter="Visit" className="relative overflow-hidden bg-ink text-paper">
             <div className="pointer-events-none absolute inset-0 opacity-30" aria-hidden="true">
-                <img src="/site/visit.webp" alt="" loading="lazy" decoding="async" className="h-full w-full object-cover" />
+                <img src="/site/hero.webp" alt="" loading="lazy" decoding="async" className="h-full w-full object-cover" />
                 <div className="absolute inset-0 bg-gradient-to-r from-ink via-ink/80 to-ink/60" />
             </div>
 

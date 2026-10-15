@@ -184,9 +184,11 @@ describe('online orders (Razorpay)', () => {
         assert.equal(await Bill.countDocuments(), 0, 'no bill or token before payment');
     });
 
-    it('rejects a sold-out dish, a missing name or a bad mobile number', async () => {
+    it('rejects a sold-out dish or a bad mobile number; the name is optional', async () => {
         assert.equal((await startOrder({ items: [{ itemId: String(soldOut._id), quantity: 1 }] })).body.message, 'Kesari Bath is sold out');
-        assert.equal((await startOrder({ customer: { name: '', phone: '9876543210' } })).status, 400);
+        const unnamed = await startOrder({ customer: { name: '', phone: '9876543210' } });
+        assert.equal(unnamed.status, 201);
+        assert.equal((await OnlineOrder.findOne({ publicId: unnamed.body.order.publicId })).customer.name, 'Guest');
         assert.equal((await startOrder({ customer: { name: 'Meena', phone: '12345' } })).status, 400);
     });
 

@@ -13,7 +13,7 @@ const Label = ({ children, className = '' }) => (
 Label.propTypes = { children: PropTypes.node, className: PropTypes.string };
 
 /**
- * Lunch: the banana-leaf feast, uncovered across the whole screen.
+ * Lunch: rice and sambar on a steel plate, across the whole screen.
  */
 export const OotaChapter = () => {
     const sectionRef = useRef(null);
@@ -27,9 +27,9 @@ export const OotaChapter = () => {
         <section ref={sectionRef} id="oota" data-chapter="Oota" className="relative h-[100svh] min-h-[600px] overflow-hidden bg-ink">
             <div ref={imageRef} className="absolute -inset-y-[6%] inset-x-0 will-change-transform">
                 <RevealImage
-                    sources={[{ media: '(max-aspect-ratio: 4/5)', srcSet: '/site/feast-m.webp' }]}
-                    src="/site/feast-d.webp"
-                    alt="A full meal on a banana leaf with rice, curries, sweets and flowers"
+                    sources={[{ media: '(max-aspect-ratio: 4/5)', srcSet: '/site/oota-m.webp' }]}
+                    src="/site/oota-d.webp"
+                    alt="Rice and sambar served on a steel plate"
                     className="ri--fade absolute inset-0"
                     imgClassName="h-full w-full object-cover"
                 />
@@ -39,7 +39,7 @@ export const OotaChapter = () => {
                 <RevealFade><Label className="text-gold">Lunch</Label></RevealFade>
                 <RevealFade delay={120} className="mt-5 font-kn text-2xl text-gold sm:text-3xl" aria-hidden="true">ಊಟ</RevealFade>
                 <RevealWords as="h2" delay={200} text="Oota." className="font-accent text-[clamp(5rem,17vw,16rem)] leading-[0.82] text-paper" />
-                <RevealWords delay={500} step={50} text="Served the old way - on a *banana* *leaf.*" className="mt-6 font-accent text-[clamp(1.6rem,3vw,2.6rem)] text-paper/85" />
+                <RevealWords delay={500} step={50} text="Rice, sambar and the day’s palya - *lunch,* *the* *Udupi* *way.*" className="mt-6 font-accent text-[clamp(1.6rem,3vw,2.6rem)] text-paper/85" />
             </div>
         </section>
     );

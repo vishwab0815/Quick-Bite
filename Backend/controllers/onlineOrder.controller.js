@@ -170,8 +170,8 @@ module.exports.createOrder = async (req, res) => {
         if (!hotel) return fail(res, 404, 'Online ordering is not available right now');
 
         const { items, customer = {}, source } = req.body;
-        const name = String(customer.name || '').trim().replace(/[<>]/g, '').slice(0, 60);
-        if (name.length < 2) return fail(res, 400, 'Please enter your name');
+        // The name is optional - the mobile number is what the token is sent to
+        const name = String(customer.name || '').trim().replace(/[<>]/g, '').slice(0, 60) || 'Guest';
         const phone = normalizeIndianPhone(customer.phone);
         if (!phone) return fail(res, 400, 'Enter a valid 10-digit mobile number');
 

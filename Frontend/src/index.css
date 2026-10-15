@@ -202,27 +202,66 @@ html.lenis body {
   overflow: clip;
 }
 
-/* Opening curtain: lifts away to reveal the page */
+/* Opening: the two halves of the curtain part; the content fades as they go */
 .site-loader {
-  transition: transform 1.1s cubic-bezier(0.76, 0, 0.24, 1);
+  pointer-events: none;
 }
 
-.site-loader.is-leaving {
+.site-loader__half {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 50.5%;
+  background: var(--color-ink);
+  transition: transform 1.25s cubic-bezier(0.76, 0, 0.24, 1);
+}
+
+.site-loader__half--top {
+  top: 0;
+}
+
+.site-loader__half--bottom {
+  bottom: 0;
+}
+
+.site-loader.is-parting .site-loader__half--top {
   transform: translateY(-100%);
 }
 
-.site-loader__frame,
-.site-loader__meta {
-  transition: opacity 0.45s ease, transform 0.8s cubic-bezier(0.76, 0, 0.24, 1);
+.site-loader.is-parting .site-loader__half--bottom {
+  transform: translateY(100%);
 }
 
-.site-loader.is-leaving .site-loader__frame {
-  opacity: 0;
-  transform: translate(-50%, -62%) scale(0.92);
+.site-loader__content {
+  transition: opacity 0.45s ease, transform 0.6s cubic-bezier(0.76, 0, 0.24, 1);
 }
 
-.site-loader.is-leaving .site-loader__meta {
+.site-loader.is-parting .site-loader__content {
   opacity: 0;
+  transform: scale(0.96);
+}
+
+/* The name shimmers in gold */
+.site-loader__word {
+  background: linear-gradient(100deg, #b98a2f 0%, #f3d48a 40%, #e6a83c 55%, #b98a2f 100%);
+  background-size: 220% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  animation: site-shimmer 2.6s ease-in-out infinite;
+}
+
+@keyframes site-shimmer {
+  0% {
+    background-position: 110% 0;
+  }
+  100% {
+    background-position: -110% 0;
+  }
+}
+
+.site-loader__arch {
+  border-radius: 999px 999px 10px 10px;
 }
 
 /* Words rise from behind a mask, one after another (.is-in on the text or an ancestor) */
@@ -247,6 +286,13 @@ html.lenis body {
 .rw.is-in .rw__word,
 .rl.is-in .rl__char {
   transform: none;
+}
+
+/* Kannada has deep descenders - its masks leave more room below */
+.font-kn .rw__mask,
+.font-kn.rw .rw__mask {
+  padding-bottom: 0.45em;
+  margin-bottom: -0.45em;
 }
 
 /* Blocks fade and lift in */
