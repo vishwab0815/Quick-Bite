@@ -267,25 +267,28 @@ export default function OrderPage() {
                             <span className="font-accent text-4xl tabular-nums">{formatPrice(total)}</span>
                         </p>
 
-                        <div className="mt-6 grid gap-3">
-                            <label className="block">
-                                <span className="mb-1.5 block text-sm font-semibold">Your name</span>
-                                <input value={customer.name} onChange={(event) => setCustomer({ ...customer, name: event.target.value })} autoComplete="name" maxLength={60} className="w-full rounded-2xl border border-ink/15 bg-white px-4 py-3.5 outline-none focus:border-ink focus:ring-4 focus:ring-ink/5" />
-                            </label>
-                            <label className="block">
-                                <span className="mb-1.5 block text-sm font-semibold">Mobile number</span>
-                                <span className="flex rounded-2xl border border-ink/15 bg-white focus-within:border-ink focus-within:ring-4 focus-within:ring-ink/5">
-                                    <span className="flex items-center pl-4 text-ink/50">+91</span>
-                                    <input value={customer.phone} onChange={(event) => setCustomer({ ...customer, phone: event.target.value })} inputMode="numeric" autoComplete="tel-national" maxLength={14} className="w-full rounded-2xl bg-transparent px-3 py-3.5 outline-none" />
+                        <div className="mt-8 grid gap-7">
+                            <label className="site-field">
+                                <span className="site-field__label">Your name</span>
+                                <span className="site-field__box">
+                                    <input value={customer.name} onChange={(event) => setCustomer({ ...customer, name: event.target.value })} autoComplete="name" maxLength={60} placeholder="Name" />
                                 </span>
-                                <span className="mt-1.5 block text-xs text-ink/50">Your token and bill come on WhatsApp.</span>
+                            </label>
+                            <label className="site-field">
+                                <span className="site-field__label">Mobile number</span>
+                                <span className="site-field__box">
+                                    <span className="site-field__prefix">+91</span>
+                                    <input value={customer.phone} onChange={(event) => setCustomer({ ...customer, phone: event.target.value.replace(/[^\d ]/g, '') })} inputMode="numeric" autoComplete="tel-national" maxLength={12} placeholder="98765 43210" />
+                                </span>
+                                <span className="site-field__hint">Your token and bill arrive on WhatsApp.</span>
                             </label>
                         </div>
 
                         {error && <p role="alert" className="mt-4 rounded-2xl bg-red-50 px-4 py-3 text-sm font-medium text-red-700 ring-1 ring-red-200">{error}</p>}
 
-                        <button type="submit" disabled={paying || count === 0} className="mt-6 w-full rounded-full bg-ink py-4 font-semibold text-paper transition-transform active:scale-[0.99] disabled:opacity-60">
-                            {paying ? 'Opening payment…' : `Pay ${formatPrice(total)}${restaurant?.pricesIncludeGst ? '' : ' + GST'}`}
+                        <button type="submit" disabled={paying || count === 0} className="mt-8 flex w-full items-center justify-between rounded-full bg-ink py-4 pl-7 pr-5 font-semibold text-paper transition-transform active:scale-[0.99] disabled:opacity-60">
+                            <span>{paying ? 'Opening payment…' : 'Pay now'}</span>
+                            <span className="rounded-full bg-gold px-4 py-1.5 font-code text-sm text-ink">{formatPrice(total)}{restaurant?.pricesIncludeGst ? '' : ' + GST'}</span>
                         </button>
                         <p className="mt-3 flex items-center justify-center gap-1.5 text-xs text-ink/50"><PiShieldCheckDuotone className="text-base text-leaf" /> UPI or card · secured by Razorpay</p>
                     </form>

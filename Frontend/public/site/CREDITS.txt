@@ -3,6 +3,7 @@ no attribution required (https://www.pexels.com/license/). Source photo IDs:
 
 Opening screen (hero, hero-m): golden dosas on a banana leaf 5560763
 Feast (feast-d, feast-m, flowers): banana-leaf meal 9266190
-Morning (morning-d, morning-m): idli, vade, sambar and filter coffee 14831540
+Morning: vadas in a clay bowl 12865862 (morning-intro), idli on black 20422128 (course-idli),
+  medu vade on a dark plate 37420984 (course-vade), filter coffee crop 14831540 (course-kaapi)
 Dishes: masala-dosa 12392915, ghee-roast 20422123, upma 20408455, vada-kaapi 40047851, oota 14132112
 Visit background: 12392923

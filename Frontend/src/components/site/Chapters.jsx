@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'react';
 import PropTypes from 'prop-types';
 import { PiArrowUpRight } from 'react-icons/pi';
-import { applyBeats, clamp01, prefersReducedMotion, smoothstep, useInView, useScrollProgress } from './motion';
+import { clamp01, prefersReducedMotion, useInView, useScrollProgress } from './motion';
 import { RevealFade, RevealImage, RevealWords } from './Reveal';
 
 const Label = ({ children, className = '' }) => (
@@ -11,68 +11,6 @@ const Label = ({ children, className = '' }) => (
 );
 
 Label.propTypes = { children: PropTypes.node, className: PropTypes.string };
-
-/**
- * Morning: a small window onto idli, vade and sambar opens to fill the screen as you
- * scroll, then the view eases in towards the filter coffee in the same photo.
- */
-export const MorningWindow = () => {
-    const sectionRef = useRef(null);
-    const stageRef = useRef(null);
-    const windowRef = useRef(null);
-    const photoRef = useRef(null);
-    const beatsRef = useRef([]);
-
-    useEffect(() => {
-        beatsRef.current = [...(stageRef.current?.querySelectorAll('[data-beat]') || [])];
-    }, []);
-
-    useScrollProgress(sectionRef, (progress) => {
-        const open = smoothstep(0.04, 0.5, progress);
-        const closer = smoothstep(0.62, 1, progress);
-        if (windowRef.current) {
-            windowRef.current.style.clipPath = `inset(${((1 - open) * 28).toFixed(2)}% ${((1 - open) * 33).toFixed(2)}% round ${((1 - open) * 10).toFixed(1)}px)`;
-        }
-        if (photoRef.current) photoRef.current.style.transform = `scale(${(1.3 - open * 0.3 + closer * 0.45).toFixed(3)})`;
-        applyBeats(beatsRef.current, progress);
-    });
-
-    return (
-        <section ref={sectionRef} id="morning" data-chapter="Morning" className="relative bg-ink" style={{ height: '280svh' }}>
-            <div ref={stageRef} className="sticky top-0 h-[100svh] overflow-hidden">
-                <div ref={windowRef} className="absolute inset-0 overflow-hidden" style={{ clipPath: 'inset(28% 33% round 10px)' }}>
-                    <picture>
-                        <source media="(max-aspect-ratio: 4/5)" srcSet="/site/morning-m.webp" />
-                        <img
-                            ref={photoRef}
-                            src="/site/morning-d.webp"
-                            alt="Idli, vade, sambar and filter coffee on a banana leaf"
-                            loading="lazy"
-                            decoding="async"
-                            className="absolute inset-0 h-full w-full origin-[28%_18%] object-cover will-change-transform"
-                        />
-                    </picture>
-                    <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(15,14,12,0.7)_0%,rgba(15,14,12,0.15)_55%,rgba(15,14,12,0)_100%)]" />
-                </div>
-
-                <div data-beat="0,0.3" className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center text-center text-paper [text-shadow:0_6px_40px_rgba(0,0,0,0.55)]">
-                    <Label>Morning</Label>
-                    <p className="mt-4 font-kn text-2xl" aria-hidden="true">ಬೆಳಗ್ಗೆ</p>
-                    <RevealWords controlled as="h2" text="Morning." className="font-accent text-[clamp(5rem,16vw,15rem)] leading-[0.85]" />
-                </div>
-                <div data-beat="0.36,0.62" className="absolute inset-0 flex items-center px-5 sm:px-12">
-                    <RevealWords controlled text={'Idli. Vade.\n*Sambar.*'} className="font-accent text-[clamp(3.4rem,10vw,9rem)] leading-[0.9] text-paper" />
-                </div>
-                <div data-beat="0.68,1" className="absolute inset-0 flex items-end px-5 pb-16 sm:px-12">
-                    <div>
-                        <RevealWords controlled text={'And a strong\nfilter *kaapi.*'} className="font-accent text-[clamp(3.4rem,10vw,9rem)] leading-[0.9] text-paper" />
-                        <RevealWords controlled delay={350} step={40} text="Brewed slow, poured from a height." className="mt-5 text-paper/70" />
-                    </div>
-                </div>
-            </div>
-        </section>
-    );
-};
 
 /**
  * Lunch: the banana-leaf feast, uncovered across the whole screen.

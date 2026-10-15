@@ -309,6 +309,86 @@ html.lenis body {
   transform: none;
 }
 
+/* Morning: the active course opens up, the rest wait dimmed */
+.course-row__name {
+  transition: color 0.6s ease, transform 0.8s cubic-bezier(0.22, 1, 0.36, 1);
+  transform-origin: left center;
+}
+
+.course-row__more {
+  display: grid;
+  grid-template-rows: 0fr;
+  opacity: 0;
+  transition: grid-template-rows 0.8s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.5s ease;
+}
+
+.course-row__more > * {
+  overflow: hidden;
+}
+
+.course-row.is-on .course-row__name {
+  color: var(--color-paper);
+}
+
+.course-row.is-on .course-row__more {
+  grid-template-rows: 1fr;
+  opacity: 1;
+}
+
+/* Checkout: quiet underlined fields with a gold focus line */
+.site-field {
+  display: block;
+}
+
+.site-field__label {
+  display: block;
+  font-family: var(--font-code);
+  font-size: 10px;
+  letter-spacing: 0.3em;
+  text-transform: uppercase;
+  color: rgba(15, 14, 12, 0.55);
+}
+
+.site-field__box {
+  display: flex;
+  align-items: baseline;
+  gap: 0.6rem;
+  margin-top: 0.5rem;
+  border-bottom: 1px solid rgba(15, 14, 12, 0.25);
+  transition: border-color 0.3s ease;
+}
+
+.site-field__box:focus-within {
+  border-color: var(--color-gold);
+}
+
+.site-field__box input {
+  width: 100%;
+  background: transparent;
+  padding: 0.6rem 0 0.75rem;
+  font-family: var(--font-accent);
+  font-size: 1.75rem;
+  line-height: 1.1;
+  color: var(--color-ink);
+  outline: none;
+}
+
+.site-field__box input::placeholder {
+  color: rgba(15, 14, 12, 0.3);
+}
+
+.site-field__prefix {
+  font-family: var(--font-accent);
+  font-size: 1.5rem;
+  color: rgba(15, 14, 12, 0.45);
+}
+
+.site-field__hint {
+  margin-top: 0.5rem;
+  font-size: 0.75rem;
+  color: rgba(15, 14, 12, 0.5);
+}
+
 .site-bob {
   animation: site-bob 1.8s ease-in-out infinite;
 }

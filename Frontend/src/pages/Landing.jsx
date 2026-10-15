@@ -4,7 +4,8 @@ import { PiArrowUpRight } from 'react-icons/pi';
 import Preloader from '../components/site/Preloader';
 import Cursor from '../components/site/Cursor';
 import { Hero, Statement } from '../components/site/Hero';
-import { MorningWindow, OotaChapter, OrderChapter, StackedDishes } from '../components/site/Chapters';
+import { OotaChapter, OrderChapter, StackedDishes } from '../components/site/Chapters';
+import Morning from '../components/site/Morning';
 import MenuSection from '../components/site/MenuSection';
 import Visit from '../components/site/Visit';
 import { prefersReducedMotion } from '../components/site/motion';
@@ -160,7 +161,7 @@ export default function Landing() {
                     onMenu={goTo('menu')}
                 />
                 <Statement />
-                <MorningWindow />
+                <Morning />
                 <OotaChapter />
                 <StackedDishes />
                 {onlineOrdering && <OrderChapter />}
