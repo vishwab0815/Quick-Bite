@@ -7,3 +7,5 @@ Morning: vadas in a clay bowl 12865862 (morning-intro), idli on black 20422128 (
   medu vade on a dark plate 37420984 (course-vade), filter coffee crop 14831540 (course-kaapi)
 Dishes: masala-dosa 12392915, ghee-roast 20422123, upma 20408455, vada-kaapi 40047851, oota 14132112
 Visit background: the opening photo (5560763)
+3D light map (3d/studio.webp): "Studio Small 09" HDRI by Poly Haven, CC0 (https://polyhaven.com/a/studio_small_09),
+  tone-mapped and reduced for reflections on the 3D chai glass.

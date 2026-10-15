@@ -241,7 +241,7 @@ html.lenis body {
   transform: scale(0.96);
 }
 
-/* The name shimmers in gold */
+/* The name shimmers in gold, and blooms in once the rings have drawn */
 .site-loader__word {
   background: linear-gradient(100deg, #b98a2f 0%, #f3d48a 40%, #e6a83c 55%, #b98a2f 100%);
   background-size: 220% 100%;
@@ -249,6 +249,19 @@ html.lenis body {
   background-clip: text;
   color: transparent;
   animation: site-shimmer 2.6s ease-in-out infinite;
+}
+
+.site-loader__core {
+  opacity: 0;
+  transform: scale(0.85);
+  animation: site-core-in 1.2s cubic-bezier(0.22, 1, 0.36, 1) 1.1s forwards;
+}
+
+@keyframes site-core-in {
+  to {
+    opacity: 1;
+    transform: none;
+  }
 }
 
 @keyframes site-shimmer {
@@ -260,8 +273,100 @@ html.lenis body {
   }
 }
 
-.site-loader__arch {
-  border-radius: 999px 999px 10px 10px;
+/* Mandala: every ring draws itself on, then turns at its own pace */
+.mandala [pathLength] {
+  stroke-dasharray: 1;
+  stroke-dashoffset: 1;
+  animation: mandala-draw 1.8s cubic-bezier(0.65, 0, 0.35, 1) forwards;
+}
+
+.mandala line,
+.mandala circle[r="1.1"],
+.mandala circle[r="0.9"] {
+  opacity: 0;
+  animation: mandala-fade 0.9s ease forwards;
+}
+
+.mandala__ring {
+  transform-origin: 0 0;
+  transform-box: view-box;
+}
+
+.mandala__ring--1 {
+  animation: mandala-turn 90s linear infinite;
+}
+
+.mandala__ring--1 [pathLength] {
+  animation-delay: 0.1s;
+}
+
+.mandala__ring--1 line {
+  animation-delay: 1.2s;
+}
+
+.mandala__ring--2 {
+  animation: mandala-turn 70s linear infinite reverse;
+}
+
+.mandala__ring--2 [pathLength] {
+  animation-delay: 0.35s;
+}
+
+.mandala__ring--3 {
+  animation: mandala-turn 70s linear infinite reverse;
+}
+
+.mandala__ring--3 circle {
+  animation-delay: 1.4s;
+}
+
+.mandala__ring--4 {
+  animation: mandala-turn 55s linear infinite;
+}
+
+.mandala__ring--4 [pathLength] {
+  animation-delay: 0.6s;
+}
+
+.mandala__ring--5 {
+  animation: mandala-turn 45s linear infinite reverse;
+}
+
+.mandala__ring--5 [pathLength] {
+  animation-delay: 0.85s;
+}
+
+.mandala__ring--6 circle {
+  animation-delay: 1.9s;
+}
+
+.mandala__core [pathLength] {
+  animation-delay: 1.05s;
+}
+
+@keyframes mandala-draw {
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+@keyframes mandala-fade {
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes mandala-turn {
+  to {
+    rotate: 360deg;
+  }
+}
+
+/* When the page is ready, the mandala flares out as the curtain parts */
+.site-loader.is-parting .mandala {
+  transition: transform 1.2s cubic-bezier(0.76, 0, 0.24, 1), opacity 0.9s ease;
+  transform: scale(1.6) rotate(12deg);
+  opacity: 0;
 }
 
 /* Words rise from behind a mask, one after another (.is-in on the text or an ancestor) */
@@ -345,7 +450,21 @@ html.lenis body {
   opacity: 1;
 }
 
-/* WebGL scenes fill their host */
+/* WebGL layers: the back one sits under the words, the front one over them (cubes pass through) */
+.kaapi-scene {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.kaapi-scene--back {
+  z-index: 0;
+}
+
+.kaapi-scene--front {
+  z-index: 20;
+}
+
 .kaapi-scene canvas {
   display: block;
   width: 100% !important;
@@ -935,6 +1054,17 @@ html.lenis body {
   .ri__clip,
   .dish-photo {
     clip-path: none;
+  }
+
+  .mandala [pathLength] {
+    stroke-dashoffset: 0;
+  }
+
+  .mandala line,
+  .mandala circle,
+  .site-loader__core {
+    opacity: 1;
+    transform: none;
   }
 
   .site-marquee__track,

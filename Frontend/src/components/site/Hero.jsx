@@ -2,7 +2,7 @@ import { Suspense, lazy, useRef } from 'react';
 import PropTypes from 'prop-types';
 import { PiArrowDownLight, PiArrowUpRight } from 'react-icons/pi';
 import { RESTAURANT } from '../../site/restaurant';
-import { prefersReducedMotion, useInView, useScrollProgress } from './motion';
+import { prefersReducedMotion, useInView, useMediaQuery, useScrollProgress } from './motion';
 
 const KaapiScene = lazy(() => import('./KaapiScene'));
 import { RevealFade, RevealImage, RevealLetters, RevealWords } from './Reveal';
@@ -96,19 +96,21 @@ Hero.propTypes = {
 export const Statement = () => {
     const sectionRef = useRef(null);
     const near = useInView(sectionRef, { threshold: 0, rootMargin: '60% 0px' });
+    const wide = useMediaQuery('(min-width: 768px)');
 
     return (
         <section ref={sectionRef} data-chapter="Offering" className="relative flex min-h-[100svh] items-center justify-center overflow-hidden bg-ink px-5 py-28 text-center sm:px-10">
-            {/* The filter-kaapi set, modelled in 3D, with gold cubes orbiting it */}
-            <div className="kaapi-host absolute inset-x-0 top-0 h-[36svh] md:inset-y-0 md:left-auto md:right-0 md:h-auto md:w-[46%]" aria-hidden="true">
+            {/* The chai glass, modelled in 3D, with gold cubes drifting across the whole screen.
+                On phones the scene sits in the top part of the screen above the words. */}
+            <div className="kaapi-host absolute inset-x-0 top-0 h-[40svh] md:inset-0 md:h-auto" aria-hidden="true">
                 {near && !prefersReducedMotion() && (
                     <Suspense fallback={null}>
-                        <KaapiScene className="h-full w-full" />
+                        <KaapiScene wide={wide} />
                     </Suspense>
                 )}
             </div>
 
-            <div className="relative max-w-5xl pt-[30svh] md:pt-0 md:pr-[30%] md:text-left">
+            <div className="relative z-10 max-w-5xl pt-[34svh] md:pt-0 md:pr-[34%] md:text-left">
                 <RevealFade className="font-kn text-2xl text-gold sm:text-3xl" aria-hidden="true">{RESTAURANT.wordKn}</RevealFade>
                 <RevealFade delay={120} className="mt-3 font-code text-[10px] uppercase tracking-[0.4em] text-paper/50 sm:text-[11px]">
                     naivedya · an offering
