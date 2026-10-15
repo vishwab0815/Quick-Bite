@@ -21,6 +21,21 @@ export const RESTAURANT = {
 };
 
 /**
+ * Google Maps links for the restaurant. The owner's address (from settings) makes the search
+ * exact; until then the name and area are used.
+ */
+export const mapLinks = (address) => {
+    const place = `${RESTAURANT.name}, ${address || `${RESTAURANT.area}, ${RESTAURANT.city}`}`;
+    const query = encodeURIComponent(place);
+    return {
+        place,
+        open: `https://www.google.com/maps/search/?api=1&query=${query}`,
+        directions: `https://www.google.com/maps/dir/?api=1&destination=${query}`,
+        embed: `https://www.google.com/maps?q=${query}&z=16&output=embed`,
+    };
+};
+
+/**
  * Public endpoints for this restaurant (menu, contact details, live tokens).
  * Null until VITE_RESTAURANT_SLUG is set, so the site never shows another restaurant's data.
  */

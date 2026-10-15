@@ -389,6 +389,251 @@ html.lenis body {
   color: rgba(15, 14, 12, 0.5);
 }
 
+/* ---------- Visit: 3D map card ---------- */
+.map-stage {
+  position: relative;
+  perspective: 1400px;
+}
+
+.map-card {
+  position: relative;
+  aspect-ratio: 4 / 4.6;
+  max-height: 72vh;
+  width: 100%;
+  transform-style: preserve-3d;
+  transition: transform 0.6s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+@media (min-width: 1024px) {
+  .map-card {
+    aspect-ratio: 4 / 4.2;
+  }
+}
+
+.map-card__frame {
+  position: absolute;
+  inset: -14px;
+  border: 1px solid rgba(230, 168, 60, 0.4);
+  transform: translateZ(-30px);
+}
+
+.map-card__corner {
+  position: absolute;
+  width: 72px;
+  height: 72px;
+  border-color: rgba(230, 168, 60, 0.8);
+  border-style: solid;
+  transform: translateZ(50px);
+}
+
+.map-card__corner--tl {
+  top: -26px;
+  left: -26px;
+  border-width: 1px 0 0 1px;
+}
+
+.map-card__corner--br {
+  right: -26px;
+  bottom: -26px;
+  border-width: 0 1px 1px 0;
+}
+
+.map-card__map {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  border-radius: 6px;
+  background: #15120f;
+  box-shadow: 0 60px 120px -40px rgba(0, 0, 0, 0.9), 0 0 0 1px rgba(255, 255, 255, 0.06);
+}
+
+/* Google's map, restyled dark and warm: inverted, de-saturated, then tinted */
+.map-card__iframe {
+  position: absolute;
+  inset: -1px;
+  width: calc(100% + 2px);
+  height: calc(100% + 2px);
+  border: 0;
+  pointer-events: none;
+  opacity: 0;
+  filter: invert(0.92) hue-rotate(185deg) saturate(0.35) brightness(0.82) contrast(1.08);
+  transition: opacity 1.2s ease;
+}
+
+.map-card__iframe.is-loaded {
+  opacity: 1;
+}
+
+.map-card__tint {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(60% 50% at 50% 48%, transparent 30%, rgba(15, 14, 12, 0.55) 100%),
+    linear-gradient(180deg, rgba(230, 168, 60, 0.08), rgba(15, 14, 12, 0.2));
+  mix-blend-mode: multiply;
+}
+
+.map-card__glare {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0;
+  background: radial-gradient(400px circle at var(--glare-x, 50%) var(--glare-y, 50%), rgba(255, 255, 255, 0.12), transparent 60%);
+  transition: opacity 0.4s ease;
+}
+
+.map-card.can-tilt:hover .map-card__glare {
+  opacity: 1;
+}
+
+/* The pin, hovering above the map */
+.map-pin {
+  position: absolute;
+  left: 50%;
+  top: 48%;
+  width: 0;
+  height: 0;
+  transform: translateZ(70px);
+}
+
+.map-pin__head {
+  position: absolute;
+  left: -22px;
+  top: -52px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  font-size: 44px;
+  color: var(--color-gold);
+  filter: drop-shadow(0 18px 18px rgba(0, 0, 0, 0.6));
+  animation: map-pin-bob 2.8s ease-in-out infinite;
+}
+
+.map-pin__shadow {
+  position: absolute;
+  left: -14px;
+  top: -4px;
+  width: 28px;
+  height: 8px;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.55);
+  filter: blur(3px);
+  animation: map-pin-shadow 2.8s ease-in-out infinite;
+}
+
+.map-pin__ring {
+  position: absolute;
+  left: -40px;
+  top: -40px;
+  width: 80px;
+  height: 80px;
+  border-radius: 999px;
+  border: 1px solid rgba(230, 168, 60, 0.7);
+  transform: translateZ(-70px) rotateX(70deg);
+  animation: map-pin-ring 2.8s ease-out infinite;
+}
+
+.map-pin__ring--late {
+  animation-delay: 1.4s;
+}
+
+@keyframes map-pin-bob {
+  50% {
+    transform: translateY(-10px);
+  }
+}
+
+@keyframes map-pin-shadow {
+  50% {
+    transform: scale(0.7);
+    opacity: 0.35;
+  }
+}
+
+@keyframes map-pin-ring {
+  from {
+    transform: translateZ(-70px) rotateX(70deg) scale(0.2);
+    opacity: 0.9;
+  }
+  to {
+    transform: translateZ(-70px) rotateX(70deg) scale(1.6);
+    opacity: 0;
+  }
+}
+
+/* The place card, floating at the foot of the map */
+.map-place {
+  position: absolute;
+  left: 18px;
+  right: 18px;
+  bottom: 18px;
+  padding: 18px 20px;
+  border-radius: 8px;
+  background: rgba(15, 14, 12, 0.82);
+  backdrop-filter: blur(14px);
+  box-shadow: 0 30px 60px -20px rgba(0, 0, 0, 0.8), 0 0 0 1px rgba(255, 255, 255, 0.08);
+  transform: translateZ(60px);
+}
+
+@media (min-width: 640px) {
+  .map-place {
+    right: auto;
+    max-width: 320px;
+  }
+}
+
+/* Small gold shapes drifting at different depths (--drift from scroll, -1..1) */
+.map-float {
+  position: absolute;
+  display: block;
+  pointer-events: none;
+  background: linear-gradient(135deg, var(--color-gold), #8a5a12);
+  box-shadow: 0 20px 40px -10px rgba(0, 0, 0, 0.7);
+  animation: map-float-spin 14s linear infinite;
+}
+
+.map-float--1 {
+  width: 22px;
+  height: 22px;
+  left: -8%;
+  top: 12%;
+  transform: translateY(calc(var(--drift, 0) * -90px));
+}
+
+.map-float--2 {
+  width: 14px;
+  height: 14px;
+  right: -6%;
+  top: 30%;
+  animation-duration: 20s;
+  animation-direction: reverse;
+  transform: translateY(calc(var(--drift, 0) * 60px));
+}
+
+.map-float--3 {
+  width: 30px;
+  height: 30px;
+  right: 8%;
+  bottom: -9%;
+  opacity: 0.8;
+  animation-duration: 24s;
+  transform: translateY(calc(var(--drift, 0) * -40px));
+}
+
+@keyframes map-float-spin {
+  from {
+    rotate: x 60deg;
+    transform: rotate(0deg);
+  }
+  to {
+    rotate: x 60deg;
+    transform: rotate(360deg);
+  }
+}
+
 .site-bob {
   animation: site-bob 1.8s ease-in-out infinite;
 }
@@ -520,7 +765,11 @@ html.lenis body {
   }
 
   .site-marquee__track,
-  .site-bob {
+  .site-bob,
+  .map-pin__head,
+  .map-pin__shadow,
+  .map-pin__ring,
+  .map-float {
     animation: none;
   }
 }
