@@ -1,7 +1,7 @@
 const mongoose = require('mongoose');
 
 /**
- * A restaurant using QuickBite (one tenant). Every bill, menu item, customer and
+ * A restaurant on the platform (one tenant). Every bill, menu item, customer and
  * staff login belongs to exactly one hotel. The platform owner (superadmin)
  * enables / disables hotels and records subscription payments.
  */
@@ -84,12 +84,12 @@ hotelSchema.statics.accessStatus = function (hotel, now = new Date()) {
         return { ok: false, code: 'HOTEL_NOT_FOUND', message: 'This hotel account no longer exists.' };
     }
     if (hotel.status !== 'active') {
-        return { ok: false, code: 'HOTEL_DISABLED', message: 'This hotel has been disabled. Please contact QuickBite support.' };
+        return { ok: false, code: 'HOTEL_DISABLED', message: 'This hotel has been switched off. Please contact support.' };
     }
     const graceDays = hotel.subscription?.graceDays ?? DEFAULT_GRACE_DAYS;
     const lastDay = new Date(hotel.subscription.paidUntil).getTime() + graceDays * DAY_MS;
     if (lastDay < now.getTime()) {
-        return { ok: false, code: 'SUBSCRIPTION_EXPIRED', message: 'The QuickBite subscription has expired. Please renew to continue billing.' };
+        return { ok: false, code: 'SUBSCRIPTION_EXPIRED', message: 'The subscription has expired. Please renew to continue billing.' };
     }
     return { ok: true };
 };

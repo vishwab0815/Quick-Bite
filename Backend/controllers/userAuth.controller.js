@@ -63,7 +63,7 @@ const login = async (req, res) => {
         }
 
         if (!ALLOWED_ROLES.includes(user.role)) {
-            return res.status(403).json({ success: false, message: 'This account does not have access to QuickBite.' });
+            return res.status(403).json({ success: false, message: 'This account does not have access to the billing system.' });
         }
 
         let hotel = null;

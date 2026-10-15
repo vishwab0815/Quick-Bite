@@ -44,7 +44,7 @@ const settingsFromEnv = () => {
  */
 const getBusinessSettings = (hotel) => {
     const settings = hotel?.settings || {};
-    const name = hotel?.name || 'QuickBite';
+    const name = hotel?.name || 'Restaurant';
 
     return {
         name,

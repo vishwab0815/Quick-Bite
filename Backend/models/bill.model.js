@@ -56,7 +56,18 @@ const billSchema = new mongoose.Schema({
         mode: { type: String, enum: ['cash', 'upi', 'card'], required: true },
         cashReceived: Number,
         changeReturned: Number,
-        reference: String
+        reference: String,
+        // Paid online through Razorpay (website / QR / kiosk orders)
+        gateway: { type: String, enum: ['razorpay'] },
+        gatewayOrderId: String,
+        gatewayPaymentId: String,
+        method: String,
+        refund: {
+            id: String,
+            status: String,
+            amount: Number,
+            at: Date
+        }
     },
     customer: {
         name: String,
@@ -77,9 +88,18 @@ const billSchema = new mongoose.Schema({
         whatsapp: {
             status: {
                 type: String,
-                enum: ['not_requested', 'sent', 'link', 'failed'],
+                enum: ['not_requested', 'sent', 'link', 'failed', 'delivered', 'read'],
                 default: 'not_requested'
             },
+            messageId: String,
+            error: String,
+            sentAt: Date,
+            deliveredAt: Date,
+            readAt: Date
+        },
+        // "Your token is ready" message, sent once when the whole order is ready
+        readyNotice: {
+            status: { type: String, enum: ['sent', 'failed', 'delivered', 'read'] },
             messageId: String,
             error: String,
             sentAt: Date
@@ -96,6 +116,10 @@ billSchema.index({ hotel: 1, billNumber: 1 }, { unique: true });
 billSchema.index({ hotel: 1, businessDate: 1, tokenNumber: 1 }, { unique: true });
 billSchema.index({ hotel: 1, businessDate: 1, status: 1 });
 billSchema.index({ hotel: 1, createdAt: -1 });
+// Webhook lookups: payment refunds and WhatsApp delivery receipts
+billSchema.index({ 'payment.gatewayPaymentId': 1 }, { sparse: true });
+billSchema.index({ 'receipt.whatsapp.messageId': 1 }, { sparse: true });
+billSchema.index({ 'receipt.readyNotice.messageId': 1 }, { sparse: true });
 
 /**
  * Derive the overall bill status from its stations

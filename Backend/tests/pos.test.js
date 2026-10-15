@@ -243,7 +243,7 @@ describe('counter billing', () => {
         assert.equal(res.headers['cache-control'], 'public, max-age=60');
         assert.equal(res.body.restaurant.name, 'Test Hotel');
         assert.deepEqual(res.body.menu.map((item) => item.name), ['Masala Dosa']);
-        assert.deepEqual(Object.keys(res.body.menu[0]).sort(), ['category', 'isVeg', 'name', 'price']);
+        assert.deepEqual(Object.keys(res.body.menu[0]).sort(), ['_id', 'category', 'image', 'isVeg', 'name', 'price']);
         const body = JSON.stringify(res.body);
         assert.ok(!body.includes('okaxis') && !body.includes('gstin'), 'no UPI ID or GSTIN on the public page');
         await cashier.patch(`/pos/menu/${coffee._id}/availability`).send({ isAvailable: true });

@@ -1,26 +1,22 @@
-const crypto = require('crypto');
 const Bill = require('../models/bill.model');
-const Sequence = require('../models/sequence.model');
 const MenuItem = require('../models/menuItem.model');
-const Customer = require('../models/customer.model');
 const Hotel = require('../models/hotel.model');
 const { isValidObjectId } = require('../middleware/validation');
 const { buildSummary, SUMMARY_FIELDS } = require('../utils/reports');
-const { sendBillReceipt, getWhatsappMode, getReceiptBaseUrl } = require('../config/whatsapp');
+const { OrderError, priceOrderLines, issueBill } = require('../utils/orders');
+const { sendBillReceipt, sendReadyNotice, getWhatsappMode, getReceiptBaseUrl } = require('../config/whatsapp');
+const razorpay = require('../config/razorpay');
 const {
     DEFAULT_COUNTER,
     round2,
     getBusinessSettings,
     computeTotals,
     getBusinessDate,
-    getFinancialYear,
     shiftBusinessDate,
     normalizeIndianPhone
 } = require('../utils/billing');
 
 const PAYMENT_MODES = ['cash', 'upi', 'card'];
-const MAX_LINES = 50;
-const MAX_QUANTITY = 99;
 const WEEK_MS = 7 * 24 * 60 * 60 * 1000;
 
 const isValidDate = (date) => /^\d{4}-\d{2}-\d{2}$/.test(date);
@@ -32,6 +28,24 @@ const recordWhatsappResult = (bill, result) => {
         error: result.error,
         sentAt: result.status === 'sent' ? new Date() : undefined
     };
+};
+
+const notifyReady = (bill, settings) => {
+    sendReadyNotice(bill, settings)
+        .then((result) => {
+            if (result.status === 'skipped') return null;
+            return Bill.updateOne({ _id: bill._id }, {
+                $set: {
+                    'receipt.readyNotice': {
+                        status: result.status,
+                        messageId: result.messageId,
+                        error: result.error,
+                        sentAt: new Date()
+                    }
+                }
+            });
+        })
+        .catch((error) => console.error('❌ Error recording WhatsApp ready notice:', error.message));
 };
 
 /**
@@ -66,49 +80,7 @@ module.exports.createBill = async (req, res) => {
         const { items, payment = {}, customer = {}, sendWhatsapp = false, source = 'counter' } = req.body;
         const settings = getBusinessSettings(req.hotel);
 
-        // Validate and merge order lines
-        if (!Array.isArray(items) || items.length === 0) {
-            return res.status(400).json({ success: false, message: 'Add at least one item to the bill' });
-        }
-        if (items.length > MAX_LINES) {
-            return res.status(400).json({ success: false, message: `A bill can have at most ${MAX_LINES} lines` });
-        }
-
-        const quantities = new Map();
-        for (const line of items) {
-            const quantity = Number(line?.quantity);
-            if (!isValidObjectId(line?.itemId) || !Number.isInteger(quantity) || quantity < 1) {
-                return res.status(400).json({ success: false, message: 'Each item needs a valid itemId and quantity' });
-            }
-            const merged = (quantities.get(line.itemId) || 0) + quantity;
-            if (merged > MAX_QUANTITY) {
-                return res.status(400).json({ success: false, message: `Quantity cannot exceed ${MAX_QUANTITY}` });
-            }
-            quantities.set(line.itemId, merged);
-        }
-
-        const menuItems = await MenuItem.find({ _id: { $in: [...quantities.keys()] }, hotel: req.hotelId }).lean();
-        const menuById = new Map(menuItems.map((menuItem) => [String(menuItem._id), menuItem]));
-
-        const lines = [];
-        for (const [itemId, quantity] of quantities) {
-            const menuItem = menuById.get(itemId);
-            if (!menuItem) {
-                return res.status(400).json({ success: false, message: 'Some items are no longer on the menu' });
-            }
-            if (menuItem.isAvailable === false) {
-                return res.status(400).json({ success: false, message: `${menuItem.name} is sold out` });
-            }
-            lines.push({
-                itemId: menuItem._id,
-                name: menuItem.name,
-                price: menuItem.price,
-                quantity,
-                amount: round2(menuItem.price * quantity),
-                counter: menuItem.counter || DEFAULT_COUNTER
-            });
-        }
-
+        const lines = await priceOrderLines(req.hotelId, items);
         const totals = computeTotals(lines, settings);
 
         // Validate payment
@@ -150,43 +122,17 @@ module.exports.createBill = async (req, res) => {
             return res.status(400).json({ success: false, message: 'Mobile number is required to send the WhatsApp receipt' });
         }
 
-        // Numbering: token resets daily, bill number runs per financial year
-        const businessDate = getBusinessDate(new Date(), settings.timeZone);
-        const financialYear = getFinancialYear(businessDate);
-        const tokenNumber = await Sequence.next(`${req.hotelId}:token:${businessDate}`);
-        const billSeq = await Sequence.next(`${req.hotelId}:bill:${financialYear}`);
-        const billNumber = `${settings.billPrefix}/${financialYear}/${String(billSeq).padStart(6, '0')}`;
-
-        const counters = [...new Set(lines.map((line) => line.counter))];
-
-        const bill = new Bill({
-            hotel: req.hotelId,
-            billNumber,
-            tokenNumber,
-            businessDate,
-            publicId: crypto.randomBytes(12).toString('base64url'),
-            items: lines,
-            stations: counters.map((counter) => ({ counter })),
-            ...totals,
-            gstScheme: settings.gstScheme,
-            gstRate: settings.gstScheme === 'regular' ? settings.gstRate : 0,
-            pricesIncludeGst: settings.pricesIncludeGst,
+        const bill = await issueBill({
+            hotelId: req.hotelId,
+            settings,
+            lines,
+            totals,
             payment: billPayment,
             customer: billCustomer,
-            source: ['counter', 'kiosk', 'qr'].includes(source) ? source : 'counter',
+            source,
             createdBy: req.user?.id
         });
-
-        await bill.save();
-
-        console.log(`✅ Bill ${billNumber} created - token #${tokenNumber}, ₹${totals.total} (${payment.mode})`);
-
-        // Remember the customer for next time (never blocks the bill)
-        if (billCustomer.phone) {
-            Customer.recordVisit(bill).catch((error) => {
-                console.error('❌ Error recording customer visit:', error.message);
-            });
-        }
+        const { tokenNumber } = bill;
 
         // Send after saving so the receipt link in the message always works
         let whatsapp = null;
@@ -203,6 +149,9 @@ module.exports.createBill = async (req, res) => {
             whatsapp
         });
     } catch (error) {
+        if (error instanceof OrderError) {
+            return res.status(error.status).json({ success: false, message: error.message });
+        }
         console.error('❌ Error creating bill:', error);
         res.status(500).json({ success: false, message: 'Failed to create bill' });
     }
@@ -330,9 +279,15 @@ module.exports.updateStation = async (req, res) => {
             return res.status(404).json({ success: false, message: `Token #${bill.tokenNumber} has no items for ${counter}` });
         }
 
+        const wasReady = bill.status !== 'preparing';
         stations.forEach((station) => applyStationStatus(station, status));
         bill.refreshStatus();
         await bill.save();
+
+        // Tell the customer on WhatsApp the moment the whole order is ready (once, in the background)
+        if (!wasReady && bill.status === 'ready' && bill.customer?.phone && !bill.receipt?.readyNotice?.status) {
+            notifyReady(bill, getBusinessSettings(req.hotel));
+        }
 
         res.status(200).json({ success: true, bill });
     } catch (error) {
@@ -436,6 +391,22 @@ module.exports.cancelBill = async (req, res) => {
             return res.status(409).json({ success: false, message: 'Bill is already cancelled' });
         }
 
+        // Paid online: give the money back through Razorpay before cancelling
+        if (bill.payment?.gateway === 'razorpay' && bill.payment.gatewayPaymentId && !bill.payment.refund?.id) {
+            try {
+                const refund = await razorpay.refundPayment(bill.payment.gatewayPaymentId, {
+                    notes: { bill: bill.billNumber, reason: reason.slice(0, 200) }
+                });
+                bill.payment.refund = { id: refund.id, status: refund.status, amount: refund.amount / 100, at: new Date() };
+            } catch (error) {
+                console.error(`❌ Refund failed for bill ${bill.billNumber}:`, error.message);
+                return res.status(502).json({
+                    success: false,
+                    message: `The refund could not be started (${error.message}). The bill was not cancelled - please try again.`
+                });
+            }
+        }
+
         bill.status = 'cancelled';
         bill.cancelledAt = new Date();
         bill.cancelledBy = req.user?.id;
@@ -444,7 +415,11 @@ module.exports.cancelBill = async (req, res) => {
 
         console.log(`✅ Bill ${bill.billNumber} cancelled: ${reason}`);
 
-        res.status(200).json({ success: true, message: 'Bill cancelled', bill });
+        res.status(200).json({
+            success: true,
+            message: bill.payment?.refund?.id ? `Bill cancelled - ₹${bill.payment.refund.amount} refunded to the customer` : 'Bill cancelled',
+            bill
+        });
     } catch (error) {
         console.error('❌ Error cancelling bill:', error);
         res.status(500).json({ success: false, message: 'Failed to cancel bill' });
@@ -577,7 +552,7 @@ const publicHotelCache = new Map();
 
 /**
  * The hotel a public page belongs to: /pos/public/:slug/... for a hotel's own token TV, or the
- * showcase hotel for the QuickBite landing page (SHOWCASE_HOTEL slug, else the oldest active hotel).
+ * showcase hotel for the public website (SHOWCASE_HOTEL slug, else the oldest active hotel).
  * Disabled or unpaid hotels are hidden. Cached briefly - token TVs poll every few seconds.
  */
 const findPublicHotel = async (slug) => {
@@ -612,7 +587,7 @@ module.exports.getPublicInfo = async (req, res) => {
 
         const settings = getBusinessSettings(hotel);
         const menu = await MenuItem.find({ hotel: hotel._id, isAvailable: { $ne: false } })
-            .select('name price category isVeg -_id')
+            .select('name price category isVeg image')
             .sort({ sortOrder: 1, name: 1 })
             .lean();
 
@@ -626,7 +601,8 @@ module.exports.getPublicInfo = async (req, res) => {
                 address: settings.address,
                 phone: settings.phone,
                 hours: settings.hours,
-                pricesIncludeGst: settings.gstScheme === 'composition' || settings.pricesIncludeGst
+                pricesIncludeGst: settings.gstScheme === 'composition' || settings.pricesIncludeGst,
+                onlineOrdering: razorpay.acceptsOnlineOrders(hotel)
             },
             menu
         });
@@ -699,7 +675,7 @@ module.exports.getPublicReceipt = async (req, res) => {
         }
 
         const bill = await Bill.findOne({ publicId })
-            .select('-createdBy -cancelledBy -receipt -customer.phone -payment.reference')
+            .select('-createdBy -cancelledBy -receipt -customer.phone -payment.reference -payment.gatewayOrderId -payment.gatewayPaymentId -payment.refund.id')
             .lean();
 
         if (!bill) {

@@ -87,6 +87,8 @@ app.use(cors({
 
 // Middleware
 // Small body limit: the largest request (a 500-item menu import) is well under 1 MB
+// Webhooks are verified against their exact bytes, so keep those bodies raw
+app.use(['/pos/payments/razorpay/webhook', '/pos/whatsapp/webhook'], express.raw({ type: '*/*', limit: '1mb' }));
 app.use(express.json({ limit: '1mb' }));
 app.use(express.urlencoded({ extended: true, limit: '1mb' }));
 app.use(cookieParser());
@@ -123,7 +125,7 @@ app.use((req, res, next) => {
 app.use('/api/auth/login', authLimiter);
 app.use('/api/auth', authRouter);
 app.use('/pos', posRouter); // Counter billing, kitchen screens & token display (polled - kept off the /api limiter)
-app.use('/platform', platformRouter); // QuickBite owner console - superadmin only, invisible (404) to everyone else
+app.use('/platform', platformRouter); // Platform owner console - superadmin only, invisible (404) to everyone else
 
 
 // 404 handler - must be after all routes

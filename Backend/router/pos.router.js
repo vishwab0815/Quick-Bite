@@ -3,6 +3,8 @@ const PosController = require('../controllers/pos.controller');
 const MenuController = require('../controllers/menu.controller');
 const StaffController = require('../controllers/staff.controller');
 const CustomerController = require('../controllers/customer.controller');
+const OnlineOrderController = require('../controllers/onlineOrder.controller');
+const rateLimit = require('express-rate-limit');
 const { authenticateToken, requireActiveRole } = require('../middleware/auth');
 const posRouter = express.Router();
 
@@ -22,13 +24,30 @@ posRouter.use((req, res, next) => {
     next();
 });
 
-// Public routes (no money / personal data): the QuickBite landing page shows the showcase hotel,
+// Public routes (no money / personal data): the restaurant website shows its hotel,
 // each hotel's token TV uses its own address (/pos/public/<slug>/display), plus the receipt link
 posRouter.get('/public/info', PosController.getPublicInfo);
 posRouter.get('/display', PosController.getDisplayBoard);
 posRouter.get('/public/:slug/info', PosController.getPublicInfo);
 posRouter.get('/public/:slug/display', PosController.getDisplayBoard);
 posRouter.get('/receipt/:publicId', PosController.getPublicReceipt);
+
+// Online orders paid through Razorpay (website / table QR / kiosk) - customers order and pay themselves
+const publicLimiter = (max) => rateLimit({
+    windowMs: 15 * 60 * 1000,
+    max,
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: { success: false, message: 'Too many attempts from this network. Please wait a few minutes and try again.' }
+});
+posRouter.post('/public/:slug/orders', publicLimiter(30), OnlineOrderController.createOrder);
+posRouter.post('/public/orders/:publicId/verify', publicLimiter(60), OnlineOrderController.verifyPayment);
+posRouter.get('/public/orders/:publicId', OnlineOrderController.getOrder);
+
+// Webhooks (signed - their raw bodies are kept in app.js so the signatures can be checked)
+posRouter.post('/payments/razorpay/webhook', OnlineOrderController.razorpayWebhook);
+posRouter.get('/whatsapp/webhook', OnlineOrderController.whatsappWebhookVerify);
+posRouter.post('/whatsapp/webhook', OnlineOrderController.whatsappWebhook);
 
 // Counter staff routes
 posRouter.get('/settings', isStaff, PosController.getSettings);
