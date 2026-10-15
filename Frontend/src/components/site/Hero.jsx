@@ -58,6 +58,7 @@ export const Hero = ({ revealed, onlineOrdering, hasMenu, hours, onMenu }) => {
                     show={revealed}
                     delay={800}
                     step={45}
+                    mode="soft"
                     text={'The Udupi way of eating -\ncrisp dosas, soft idlis, strong *kaapi.*'}
                     className="mt-7 max-w-xl font-accent text-[clamp(1.5rem,2.6vw,2.4rem)] leading-[1.15] text-paper/85"
                 />
@@ -118,12 +119,15 @@ export const Statement = () => {
                 <RevealWords
                     as="h2"
                     delay={200}
+                    by="chars"
+                    step={90}
                     text={'Every plate here\nbegins as an *offering.*'}
                     className="mt-10 font-accent text-[clamp(3rem,8vw,7.5rem)] leading-[0.98] text-paper"
                 />
                 <RevealWords
-                    delay={700}
+                    delay={900}
                     step={35}
+                    mode="soft"
                     text="Food is first offered with devotion, then shared with everyone at the table."
                     className="mx-auto mt-10 max-w-xl text-base leading-relaxed text-paper/60 sm:text-lg md:mx-0"
                 />

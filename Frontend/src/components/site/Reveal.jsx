@@ -8,15 +8,16 @@ import { useInView } from './motion';
  * - `controlled`: no observer of its own - it plays when an ancestor gets the class "is-in"
  *   (used inside pinned scroll scenes); `show` forces it on (e.g. after the opening)
  */
-export const RevealWords = ({ text, as = 'p', className = '', delay = 0, step = 70, controlled = false, show }) => {
+export const RevealWords = ({ text, as = 'p', className = '', delay = 0, step = 70, controlled = false, show, by = 'word', mode = 'rise' }) => {
     const Tag = as;
     const ref = useRef(null);
     const seen = useInView(ref, { disabled: controlled || show !== undefined });
     const on = show !== undefined ? show : seen;
+    const chars = by === 'chars';
     let index = 0;
 
     return (
-        <Tag ref={ref} className={`rw ${!controlled && on ? 'is-in' : ''} ${className}`} aria-label={text.replace(/\*/g, '').replace(/\n/g, ' ')}>
+        <Tag ref={ref} className={`rw ${chars ? 'rw--chars' : ''} ${mode === 'soft' ? 'rw--soft' : ''} ${!controlled && on ? 'is-in' : ''} ${className}`} aria-label={text.replace(/\*/g, '').replace(/\n/g, ' ')}>
             {text.split('\n').map((line, lineIndex) => (
                 <Fragment key={lineIndex}>
                     {lineIndex > 0 && <br />}
@@ -27,7 +28,11 @@ export const RevealWords = ({ text, as = 'p', className = '', delay = 0, step = 
                             <Fragment key={wordIndex}>
                                 <span className="rw__mask" aria-hidden="true">
                                     <span className={`rw__word ${accent ? 'italic text-gold' : ''}`} style={{ transitionDelay: `${delay + current * step}ms` }}>
-                                        {word.replace(/\*/g, '')}
+                                        {chars
+                                            ? [...word.replace(/\*/g, '')].map((char, charIndex) => (
+                                                <span key={charIndex} className="rw__char" style={{ transitionDelay: `${delay + current * step + charIndex * 28}ms` }}>{char}</span>
+                                            ))
+                                            : word.replace(/\*/g, '')}
                                     </span>
                                 </span>{' '}
                             </Fragment>
@@ -47,6 +52,8 @@ RevealWords.propTypes = {
     step: PropTypes.number,
     controlled: PropTypes.bool,
     show: PropTypes.bool,
+    by: PropTypes.oneOf(['word', 'chars']),
+    mode: PropTypes.oneOf(['rise', 'soft']),
 };
 
 /** Letters that rise one after another (for the big name) */

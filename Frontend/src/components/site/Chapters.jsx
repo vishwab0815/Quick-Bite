@@ -38,8 +38,8 @@ export const OotaChapter = () => {
             <div className="relative flex h-full flex-col justify-end px-5 pb-14 sm:px-12 sm:pb-20">
                 <RevealFade><Label className="text-gold">Lunch</Label></RevealFade>
                 <RevealFade delay={120} className="mt-5 font-kn text-2xl text-gold sm:text-3xl" aria-hidden="true">ಊಟ</RevealFade>
-                <RevealWords as="h2" delay={200} text="Oota." className="font-accent text-[clamp(5rem,17vw,16rem)] leading-[0.82] text-paper" />
-                <RevealWords delay={500} step={50} text="Everything on one plate - *lunch,* *done* *properly.*" className="mt-6 font-accent text-[clamp(1.6rem,3vw,2.6rem)] text-paper/85" />
+                <RevealWords as="h2" delay={200} by="chars" step={90} text="Oota." className="font-accent text-[clamp(5rem,17vw,16rem)] leading-[0.82] text-paper" />
+                <RevealWords delay={500} step={50} mode="soft" text="Everything on one plate - *lunch,* *done* *properly.*" className="mt-6 font-accent text-[clamp(1.6rem,3vw,2.6rem)] text-paper/85" />
             </div>
         </section>
     );
@@ -62,9 +62,9 @@ const DishCard = ({ dish, index, count }) => {
             </div>
             <div className={`flex flex-1 flex-col justify-center px-5 py-8 sm:px-12 md:order-1 ${inView ? 'is-in' : ''}`}>
                 <p className="font-code text-[11px] tracking-[0.35em] text-paper/45">{String(index + 1).padStart(2, '0')} / {String(count).padStart(2, '0')}</p>
-                <RevealWords controlled as="h3" text={dish.name} step={90} className="mt-5 font-accent text-[clamp(3.6rem,8.5vw,9rem)] leading-[0.86] text-paper" />
+                <RevealWords controlled as="h3" by="chars" text={dish.name} step={90} className="mt-5 font-accent text-[clamp(3.6rem,8.5vw,9rem)] leading-[0.86] text-paper" />
                 {dish.kn && <p className="dish-fade mt-4 font-kn text-xl text-gold sm:text-2xl" style={{ transitionDelay: '250ms' }}>{dish.kn}</p>}
-                <RevealWords controlled delay={350} step={30} text={dish.line} className="mt-6 max-w-sm text-paper/65 sm:text-lg" />
+                <RevealWords controlled delay={350} step={30} mode="soft" text={dish.line} className="mt-6 max-w-sm text-paper/65 sm:text-lg" />
             </div>
             <div data-shade className="pointer-events-none absolute inset-0 bg-ink opacity-0" />
         </div>
@@ -119,8 +119,8 @@ export const StackedDishes = () => {
         <section id="table" data-chapter="The table" className="relative bg-ink">
             <div className="flex min-h-[100svh] flex-col justify-center px-5 py-28 sm:px-12">
                 <RevealFade><Label className="text-gold">The table</Label></RevealFade>
-                <RevealWords as="h2" delay={150} text={'From the tawa,\nto your *table.*'} className="mt-8 font-accent text-[clamp(3.6rem,10vw,10rem)] leading-[0.88] text-paper" />
-                <RevealWords delay={600} step={35} text="A few of the dishes we are known for. Scroll on." className="mt-8 max-w-md text-paper/60 sm:text-lg" />
+                <RevealWords as="h2" delay={150} by="chars" step={70} text={'From the tawa,\nto your *table.*'} className="mt-8 font-accent text-[clamp(3.6rem,10vw,10rem)] leading-[0.88] text-paper" />
+                <RevealWords delay={600} step={35} mode="soft" text="A few of the dishes we are known for. Scroll on." className="mt-8 max-w-md text-paper/60 sm:text-lg" />
             </div>
             <ol ref={listRef}>
                 {DISHES.map((dish, index) => (
@@ -147,7 +147,7 @@ export const OrderChapter = () => (
         <div className="grid flex-1 items-center gap-12 px-5 py-28 sm:px-12 lg:grid-cols-[1.1fr_0.9fr]">
             <div>
                 <RevealFade><Label className="text-saffron-deep">Order online</Label></RevealFade>
-                <RevealWords as="h2" delay={150} text={'Order ahead.\nCollect with your *token.*'} className="mt-8 font-accent text-[clamp(3.4rem,8vw,8rem)] leading-[0.9]" />
+                <RevealWords as="h2" delay={150} by="chars" step={60} text={'Order ahead.\nCollect with your *token.*'} className="mt-8 font-accent text-[clamp(3.4rem,8vw,8rem)] leading-[0.9]" />
                 <ol className="mt-12 max-w-lg border-t border-ink/15">
                     {STEPS.map(([title, text], index) => (
                         <RevealFade as="li" key={title} delay={400 + index * 140} className="flex gap-6 border-b border-ink/15 py-5">

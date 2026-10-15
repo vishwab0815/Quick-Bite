@@ -72,8 +72,8 @@ const PinnedMorning = () => {
                     <div className="absolute inset-x-0 bottom-0 px-5 pb-16 sm:px-12 sm:pb-24">
                         <RevealFade><Label className="text-gold">Morning</Label></RevealFade>
                         <RevealFade delay={120} className="mt-5 font-kn text-2xl text-gold sm:text-3xl" aria-hidden="true">ಬೆಳಗ್ಗೆ</RevealFade>
-                        <RevealWords as="h2" delay={200} text="Morning." className="font-accent text-[clamp(5rem,15vw,15rem)] leading-[0.85] text-paper" />
-                        <RevealWords delay={550} step={45} text={'Three things we have done every morning,\nthe *same* *way,* since the first day.'} className="mt-6 max-w-xl font-accent text-[clamp(1.4rem,2.4vw,2.2rem)] leading-[1.2] text-paper/80" />
+                        <RevealWords as="h2" delay={200} by="chars" step={90} text="Morning." className="font-accent text-[clamp(5rem,15vw,15rem)] leading-[0.85] text-paper" />
+                        <RevealWords delay={550} step={45} mode="soft" text={'Three things we have done every morning,\nthe *same* *way,* since the first day.'} className="mt-6 max-w-xl font-accent text-[clamp(1.4rem,2.4vw,2.2rem)] leading-[1.2] text-paper/80" />
                     </div>
                 </div>
 
@@ -139,7 +139,7 @@ const StackedMorning = () => (
             <div className="relative">
                 <RevealFade><Label className="text-gold">Morning</Label></RevealFade>
                 <RevealFade delay={120} className="mt-5 font-kn text-2xl text-gold" aria-hidden="true">ಬೆಳಗ್ಗೆ</RevealFade>
-                <RevealWords as="h2" delay={200} text="Morning." className="font-accent text-[clamp(4.5rem,22vw,8rem)] leading-[0.85] text-paper" />
+                <RevealWords as="h2" delay={200} by="chars" step={90} text="Morning." className="font-accent text-[clamp(4.5rem,22vw,8rem)] leading-[0.85] text-paper" />
                 <RevealWords delay={550} step={45} text={'Three things, the *same* *way,*\nsince the first day.'} className="mt-5 font-accent text-2xl leading-[1.2] text-paper/80" />
             </div>
         </div>
@@ -148,7 +148,7 @@ const StackedMorning = () => (
                 <RevealImage src={course.src} alt={course.name} className="relative mx-auto aspect-[3/4] w-full max-w-sm" imgClassName="h-full w-full object-cover" />
                 <div className="mt-8">
                     <p className="font-code text-[11px] tracking-[0.3em] text-paper/45">0{index + 1} / 0{COURSES.length}</p>
-                    <RevealWords as="h3" delay={100} text={course.name} className="mt-3 font-accent text-[clamp(3rem,13vw,5rem)] leading-[0.9] text-paper" />
+                    <RevealWords as="h3" delay={100} by="chars" text={course.name} className="mt-3 font-accent text-[clamp(3rem,13vw,5rem)] leading-[0.9] text-paper" />
                     <RevealFade delay={300} className="mt-3 font-kn text-lg text-gold">{course.kn}</RevealFade>
                     <RevealWords delay={400} step={35} text={course.line} className="mt-3 text-paper/65" />
                 </div>

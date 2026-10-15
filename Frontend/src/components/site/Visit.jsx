@@ -137,7 +137,7 @@ const Visit = ({ restaurant, board, onlineOrdering }) => {
                         <span className="h-px w-8 bg-current opacity-70" /> Visit
                     </RevealFade>
                     <RevealWords as="h2" delay={150} text="ಬನ್ನಿ" className="mt-6 font-kn text-[clamp(4rem,12vw,9.5rem)] leading-[1.05] text-paper" />
-                    <RevealWords delay={450} text="Come, sit, *eat.*" className="font-accent text-3xl text-paper/85 sm:text-5xl" />
+                    <RevealWords delay={450} by="chars" step={110} text="Come, sit, *eat.*" className="font-accent text-3xl text-paper/85 sm:text-5xl" />
 
                     <div className="mt-10 border-b border-paper/10">
                         <Detail icon={PiMapPinFill} label="Where" delay={550}>

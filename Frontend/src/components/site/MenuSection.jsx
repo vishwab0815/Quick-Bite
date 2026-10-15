@@ -77,7 +77,7 @@ const MenuSection = ({ menu, pricesIncludeGst, onlineOrdering }) => {
                         <RevealFade className="flex items-center gap-3 font-code text-[10px] uppercase tracking-[0.4em] text-saffron-deep sm:text-[11px]">
                             <span className="h-px w-8 bg-current opacity-70" /> Today
                         </RevealFade>
-                        <RevealWords as="h2" delay={150} text="Today’s *menu.*" className="mt-6 font-accent text-[clamp(3.5rem,8vw,8.5rem)] leading-[0.85]" />
+                        <RevealWords as="h2" delay={150} by="chars" step={80} text="Today’s *menu.*" className="mt-6 font-accent text-[clamp(3.5rem,8vw,8.5rem)] leading-[0.85]" />
                     </div>
                     <div className="flex flex-col items-start gap-4 sm:items-end">
                         <p className="flex items-center gap-2 font-code text-[11px] uppercase tracking-[0.3em] text-ink/50">

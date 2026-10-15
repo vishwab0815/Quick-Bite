@@ -2,7 +2,7 @@
 
 @theme {
   --font-pos: "Plus Jakarta Sans", ui-sans-serif, system-ui, sans-serif;
-  --font-accent: "Instrument Serif", ui-serif, Georgia, serif;
+  --font-accent: "Cormorant Garamond", "Instrument Serif", ui-serif, Georgia, serif;
   --font-display: "Bricolage Grotesque", "Plus Jakarta Sans", ui-sans-serif, system-ui, sans-serif;
   --font-code: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
 
@@ -281,8 +281,8 @@ html.lenis body {
 }
 
 .mandala line,
-.mandala circle[r="1.1"],
-.mandala circle[r="0.9"] {
+.mandala circle[r="0.9"],
+.mandala circle[r="0.8"] {
   opacity: 0;
   animation: mandala-fade 0.9s ease forwards;
 }
@@ -338,10 +338,6 @@ html.lenis body {
 
 .mandala__ring--6 circle {
   animation-delay: 1.9s;
-}
-
-.mandala__core [pathLength] {
-  animation-delay: 1.05s;
 }
 
 @keyframes mandala-draw {
@@ -1003,6 +999,50 @@ html.lenis body {
   transition-delay: 0.45s;
 }
 
+/* Headlines in Cormorant: a hair tighter; italics a touch heavier so the gold words hold up */
+.qb-site .font-accent {
+  font-weight: 400;
+  letter-spacing: -0.01em;
+}
+
+.qb-site .font-accent em,
+.qb-site .font-accent .italic {
+  font-style: italic;
+  font-weight: 500;
+}
+
+/* Letters rising one by one (big English headings) */
+.rw--chars .rw__word {
+  display: inline-flex;
+}
+
+.rw--chars .rw__char {
+  display: inline-block;
+  transform: translateY(110%) rotate(3deg);
+  transform-origin: left bottom;
+  transition: transform 0.95s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.is-in .rw--chars .rw__char,
+.rw--chars.is-in .rw__char {
+  transform: none;
+}
+
+/* Paragraphs drift in from a soft blur */
+.rw--soft .rw__word {
+  transform: translateY(40%);
+  filter: blur(6px);
+  opacity: 0;
+  transition: transform 0.9s cubic-bezier(0.22, 1, 0.36, 1), filter 0.9s ease, opacity 0.7s ease;
+}
+
+.is-in .rw--soft .rw__word,
+.rw--soft.is-in .rw__word {
+  transform: none;
+  filter: none;
+  opacity: 1;
+}
+
 /* Links underline from the left on hover */
 .site-link {
   background: linear-gradient(currentColor, currentColor) 0 100% / 0 1px no-repeat;
@@ -1033,6 +1073,7 @@ html.lenis body {
   .site-loader,
   .site-loader__frame,
   .rw__word,
+  .rw__char,
   .rl__char,
   .rf,
   .ri__clip,
@@ -1043,12 +1084,14 @@ html.lenis body {
   }
 
   .rw__word,
+  .rw__char,
   .rl__char,
   .rf,
   .ri__img,
   .dish-fade {
     opacity: 1;
     transform: none;
+    filter: none;
   }
 
   .ri__clip,

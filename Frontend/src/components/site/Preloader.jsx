@@ -62,9 +62,9 @@ const Preloader = ({ heroSrc, onReveal, onDone }) => {
             <div className="site-loader__content absolute inset-0 flex flex-col items-center justify-center px-6">
                 <div className="relative flex h-[min(72vw,440px)] w-[min(72vw,440px)] items-center justify-center text-gold">
                     <Mandala className="absolute inset-0 h-full w-full" />
-                    <div className="site-loader__core relative text-center">
-                        <p className="font-code text-[9px] uppercase tracking-[0.45em] text-paper/50">Udupi Sri Krishna</p>
-                        <p className="site-loader__word mt-2 font-kn text-[clamp(1.6rem,6vw,2.6rem)] leading-[1.3]">{RESTAURANT.wordKn}</p>
+                    <div className="site-loader__core relative w-[72%] text-center">
+                        <p className="font-code text-[8px] uppercase tracking-[0.4em] text-paper/50 sm:text-[9px]">Udupi Sri Krishna</p>
+                        <p className="site-loader__word mt-1.5 font-kn text-[clamp(1.4rem,5.2vw,2.1rem)] leading-[1.3]">{RESTAURANT.wordKn}</p>
                     </div>
                 </div>
                 <div className="mt-8 flex w-[min(320px,64vw)] items-center gap-4">
