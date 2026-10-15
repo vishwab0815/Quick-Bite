@@ -71,7 +71,7 @@ export default function Signin() {
             {/* Brand panel */}
             <aside className="grain relative hidden flex-col justify-between overflow-hidden bg-ink p-12 text-paper lg:flex">
                 {/* Idli, vade and kaapi on a leaf, behind a dark gradient so the words stay readable */}
-                <img src="/site/morning-m.webp" alt="" className="absolute inset-0 h-full w-full object-cover" />
+                <img src="/site/morning-intro-m.webp" alt="" className="absolute inset-0 h-full w-full object-cover" />
                 <div className="absolute inset-0 bg-gradient-to-t from-ink via-ink/75 to-ink/30" />
                 <div className="absolute inset-0 bg-gradient-to-r from-ink/60 to-transparent" />
                 <Link to="/" className="relative flex items-center gap-3">
@@ -90,7 +90,7 @@ export default function Signin() {
             <main className="flex flex-col px-5 py-6 sm:px-10 sm:py-8">
                 {/* Phones: food banner with the logo */}
                 <Link to="/" className="relative -mx-5 -mt-6 mb-2 flex h-40 items-end overflow-hidden px-5 pb-4 text-paper sm:-mx-10 sm:-mt-8 sm:px-10 lg:hidden">
-                    <img src="/site/morning-d.webp" alt="" className="absolute inset-0 h-full w-full object-cover" />
+                    <img src="/site/morning-intro.webp" alt="" className="absolute inset-0 h-full w-full object-cover" />
                     <span className="absolute inset-0 bg-gradient-to-t from-ink/85 via-ink/30 to-transparent" />
                     <span className="relative flex items-center gap-3">
                         <BrandMark />
