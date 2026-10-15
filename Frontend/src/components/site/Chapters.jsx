@@ -13,7 +13,7 @@ const Label = ({ children, className = '' }) => (
 Label.propTypes = { children: PropTypes.node, className: PropTypes.string };
 
 /**
- * Lunch: rice and sambar on a steel plate, across the whole screen.
+ * Lunch: the full thali, across the whole screen.
  */
 export const OotaChapter = () => {
     const sectionRef = useRef(null);
@@ -29,7 +29,7 @@ export const OotaChapter = () => {
                 <RevealImage
                     sources={[{ media: '(max-aspect-ratio: 4/5)', srcSet: '/site/oota-m.webp' }]}
                     src="/site/oota-d.webp"
-                    alt="Rice and sambar served on a steel plate"
+                    alt="A full lunch thali on a steel plate"
                     className="ri--fade absolute inset-0"
                     imgClassName="h-full w-full object-cover"
                 />
@@ -39,7 +39,7 @@ export const OotaChapter = () => {
                 <RevealFade><Label className="text-gold">Lunch</Label></RevealFade>
                 <RevealFade delay={120} className="mt-5 font-kn text-2xl text-gold sm:text-3xl" aria-hidden="true">ಊಟ</RevealFade>
                 <RevealWords as="h2" delay={200} text="Oota." className="font-accent text-[clamp(5rem,17vw,16rem)] leading-[0.82] text-paper" />
-                <RevealWords delay={500} step={50} text="Rice, sambar and the day’s palya - *lunch,* *the* *Udupi* *way.*" className="mt-6 font-accent text-[clamp(1.6rem,3vw,2.6rem)] text-paper/85" />
+                <RevealWords delay={500} step={50} text="Everything on one plate - *lunch,* *done* *properly.*" className="mt-6 font-accent text-[clamp(1.6rem,3vw,2.6rem)] text-paper/85" />
             </div>
         </section>
     );

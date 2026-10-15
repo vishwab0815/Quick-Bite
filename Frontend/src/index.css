@@ -775,6 +775,115 @@ html.lenis body {
   opacity: 1;
 }
 
+/* Navigation: clear over the opening, then a frosted bar; slips away on the way down */
+.site-nav {
+  transition: transform 0.5s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.site-nav.is-hidden {
+  transform: translateY(-130%);
+}
+
+.site-nav__bar {
+  transition: background-color 0.5s ease, box-shadow 0.5s ease, backdrop-filter 0.5s ease;
+}
+
+.site-nav.is-scrolled .site-nav__bar {
+  background: rgba(15, 14, 12, 0.72);
+  backdrop-filter: blur(18px) saturate(1.2);
+  -webkit-backdrop-filter: blur(18px) saturate(1.2);
+  box-shadow: 0 10px 40px -20px rgba(0, 0, 0, 0.8), inset 0 0 0 1px rgba(255, 255, 255, 0.08);
+}
+
+.site-nav__link {
+  position: relative;
+  padding: 0.55rem 0.9rem;
+  border-radius: 999px;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: rgba(243, 238, 229, 0.78);
+  text-shadow: 0 1px 12px rgba(0, 0, 0, 0.6);
+  transition: color 0.3s ease, background-color 0.3s ease;
+}
+
+.site-nav__link:hover {
+  color: #fff;
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.site-nav__link::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  bottom: 3px;
+  width: 4px;
+  height: 4px;
+  margin-left: -2px;
+  border-radius: 999px;
+  background: var(--color-gold);
+  opacity: 0;
+  transform: scale(0.4);
+  transition: opacity 0.3s ease, transform 0.3s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.site-nav__link.is-current {
+  color: #fff;
+}
+
+.site-nav__link.is-current::after {
+  opacity: 1;
+  transform: none;
+}
+
+.site-nav__cta {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  border-radius: 999px;
+  padding: 0.7rem 1.1rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--color-ink);
+  background: var(--color-gold);
+  box-shadow: 0 10px 30px -14px rgba(230, 168, 60, 0.9);
+  transition: transform 0.35s cubic-bezier(0.22, 1, 0.36, 1), box-shadow 0.35s ease;
+}
+
+.site-nav__cta:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 14px 34px -14px rgba(230, 168, 60, 1);
+}
+
+/* The phone menu slides down over the page */
+.site-menu {
+  clip-path: inset(0 0 100% 0);
+  visibility: hidden;
+  transition: clip-path 0.7s cubic-bezier(0.76, 0, 0.24, 1), visibility 0s linear 0.7s;
+}
+
+.site-menu.is-open {
+  clip-path: inset(0 0 0 0);
+  visibility: visible;
+  transition: clip-path 0.7s cubic-bezier(0.76, 0, 0.24, 1), visibility 0s;
+}
+
+.site-menu__link,
+.site-menu__foot {
+  opacity: 0;
+  transform: translateY(18px);
+  transition: opacity 0.5s ease, transform 0.6s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.site-menu.is-open .site-menu__link,
+.site-menu.is-open .site-menu__foot {
+  opacity: 1;
+  transform: none;
+}
+
+.site-menu.is-open .site-menu__foot {
+  transition-delay: 0.45s;
+}
+
 /* Links underline from the left on hover */
 .site-link {
   background: linear-gradient(currentColor, currentColor) 0 100% / 0 1px no-repeat;

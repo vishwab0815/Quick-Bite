@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import Lenis from 'lenis';
-import { PiArrowUpRight } from 'react-icons/pi';
+import Nav from '../components/site/Nav';
 import Preloader from '../components/site/Preloader';
 import Cursor from '../components/site/Cursor';
 import { Hero, Statement } from '../components/site/Hero';
@@ -122,28 +122,7 @@ export default function Landing() {
             <Cursor />
             <div ref={progressRef} className="fixed inset-x-0 top-0 z-[60] h-px origin-left bg-gold" style={{ transform: 'scaleX(0)' }} aria-hidden="true" />
 
-            {/* ---------- Navigation: light text that inverts over any photo ---------- */}
-            <header className="pointer-events-none fixed inset-x-0 top-0 z-50 mix-blend-difference">
-                <div className="flex items-center justify-between px-5 py-5 text-white sm:px-10 sm:py-7">
-                    <a href="#top" onClick={goTo('top')} className="pointer-events-auto leading-none" aria-label={`${RESTAURANT.name} - back to top`}>
-                        <span className="font-accent text-[26px] sm:text-[30px]">{RESTAURANT.word}</span>
-                    </a>
-                    <nav className={`pointer-events-auto flex items-center gap-5 text-[13px] sm:gap-8 ${onlineOrdering ? 'mr-[124px] sm:mr-[148px]' : ''}`} aria-label="Sections">
-                        {menu.length > 0 && <a href="#menu" onClick={goTo('menu')} className="site-link hidden sm:inline">Menu</a>}
-                        <a href="#visit" onClick={goTo('visit')} className="site-link">Visit</a>
-                        {!onlineOrdering && (
-                            <a href={RESTAURANT.mapsUrl} target="_blank" rel="noreferrer" className="site-link hidden items-center gap-1 sm:inline-flex">
-                                Directions <PiArrowUpRight />
-                            </a>
-                        )}
-                    </nav>
-                </div>
-            </header>
-            {onlineOrdering && (
-                <a href="/order" className="fixed right-5 top-[14px] z-50 rounded-full bg-gold px-4 py-2 text-[13px] font-semibold text-ink transition-transform hover:-translate-y-0.5 sm:right-10 sm:top-[22px]" data-cursor="Order">
-                    Order online
-                </a>
-            )}
+            <Nav chapter={chapter.name} hasMenu={menu.length > 0} onlineOrdering={onlineOrdering} restaurant={restaurant} goTo={goTo} />
 
             {/* Chapter marker */}
             <p className={`pointer-events-none fixed bottom-6 left-5 z-50 hidden items-center gap-3 font-code text-[10px] uppercase tracking-[0.35em] text-white mix-blend-difference transition-opacity duration-500 sm:left-10 md:flex ${chapter.name === 'Welcome' ? 'opacity-0' : 'opacity-100'}`} aria-hidden="true">
