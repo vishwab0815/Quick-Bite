@@ -4,15 +4,15 @@ import { RESTAURANT } from '../../site/restaurant';
 import { prefersReducedMotion } from './motion';
 
 // Dishes that flicker through the little frame while the page gets ready
-const FLICKER = ['/site/flowers.webp', '/site/masala-dosa.webp', '/site/vada-kaapi.webp', '/site/kaapi.webp', '/site/upma.webp', '/site/oota.webp'];
+const FLICKER = ['/site/flowers.webp', '/site/masala-dosa.webp', '/site/vada-kaapi.webp', '/site/ghee-roast.webp', '/site/upma.webp', '/site/oota.webp'];
 const MIN_MS = 1900;
 const MAX_MS = 4500;
-const EXPAND_MS = 1250;
+const LIFT_MS = 1150;
 const FLICKER_MS = 170;
 
 /**
- * Opening: dishes flicker in a small frame with a counter; then the frame opens up to the
- * full screen and becomes the hero photo underneath, so the page starts seamlessly.
+ * Opening curtain: dishes flicker in a small frame with a counter while the page gets ready,
+ * then the curtain lifts and the opening screen plays its entrance.
  */
 const Preloader = ({ heroSrc, onReveal, onDone }) => {
     const [loaded, setLoaded] = useState(0);
@@ -49,32 +49,25 @@ const Preloader = ({ heroSrc, onReveal, onDone }) => {
 
     useEffect(() => {
         if (phase === 'loading' && (shown >= 0.99 || prefersReducedMotion())) {
-            setPhase('expanding');
+            setPhase('leaving');
             onReveal();
         }
     }, [phase, shown, onReveal]);
 
     useEffect(() => {
-        if (phase !== 'expanding') return undefined;
+        if (phase !== 'leaving') return undefined;
         const timer = setTimeout(() => {
             setPhase('gone');
             onDone();
-        }, prefersReducedMotion() ? 0 : EXPAND_MS);
+        }, prefersReducedMotion() ? 0 : LIFT_MS);
         return () => clearTimeout(timer);
     }, [phase, onDone]);
 
     if (phase === 'gone') return null;
-    const expanding = phase === 'expanding';
-
     return (
-        <div className={`site-loader fixed inset-0 z-[100] bg-ink text-paper ${expanding ? 'is-expanding' : ''}`} aria-hidden="true">
-            <div className="site-loader__frame absolute inset-0 overflow-hidden">
-                <img
-                    key={expanding ? 'hero' : 'flicker'}
-                    src={expanding ? heroSrc : FLICKER[index % FLICKER.length]}
-                    alt=""
-                    className="site-loader__img h-full w-full object-cover"
-                />
+        <div className={`site-loader fixed inset-0 z-[100] bg-ink text-paper ${phase === 'leaving' ? 'is-leaving' : ''}`} aria-hidden="true">
+            <div className="site-loader__frame absolute left-1/2 top-1/2 aspect-[4/5] w-[44vw] max-w-[260px] -translate-x-1/2 -translate-y-1/2 overflow-hidden rounded-[4px] sm:w-[22vw]">
+                <img src={FLICKER[index % FLICKER.length]} alt="" className="h-full w-full object-cover" />
             </div>
             <div className="site-loader__meta pointer-events-none absolute inset-x-0 bottom-0 flex items-end justify-between px-5 pb-6 sm:px-10 sm:pb-8">
                 <div>

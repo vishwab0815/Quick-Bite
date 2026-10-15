@@ -1,8 +1,8 @@
 Restaurant website photography: Pexels (https://www.pexels.com) - free for commercial use,
 no attribution required (https://www.pexels.com/license/). Source photo IDs:
 
-Scroll films (rendered frame by frame from still photos, no video footage):
-  seq/feast    - banana-leaf feast 9266190
-  seq/morning  - idli, vade, sambar and filter coffee 14831540
-Gallery: masala-dosa 12392915, ghee-roast 20422123, upma 20408455, vada-kaapi 40047851, oota 14132112
+Opening screen (hero, hero-m): golden dosas on a banana leaf 5560763
+Feast (feast-d, feast-m, flowers): banana-leaf meal 9266190
+Morning (morning-d, morning-m): idli, vade, sambar and filter coffee 14831540
+Dishes: masala-dosa 12392915, ghee-roast 20422123, upma 20408455, vada-kaapi 40047851, oota 14132112
 Visit background: 12392923

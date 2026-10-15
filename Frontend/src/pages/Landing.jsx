@@ -4,7 +4,7 @@ import { PiArrowUpRight } from 'react-icons/pi';
 import Preloader from '../components/site/Preloader';
 import Cursor from '../components/site/Cursor';
 import { Hero, Statement } from '../components/site/Hero';
-import { Marquee, MorningWindow, StackedDishes } from '../components/site/Chapters';
+import { MorningWindow, OotaChapter, OrderChapter, StackedDishes } from '../components/site/Chapters';
 import MenuSection from '../components/site/MenuSection';
 import Visit from '../components/site/Visit';
 import { prefersReducedMotion } from '../components/site/motion';
@@ -12,20 +12,19 @@ import { RESTAURANT, publicPaths } from '../site/restaurant';
 import { posApi } from '../utils/pos';
 
 const LIVE_REFRESH_MS = 15000;
-const CHAPTERS = ['Offering', 'Morning', 'The table', 'Menu', 'Visit'];
-const heroSrc = () => (window.matchMedia('(max-aspect-ratio: 4/5)').matches ? '/site/feast-m.webp' : '/site/feast-d.webp');
+const heroSrc = () => (window.matchMedia('(max-width: 767px)').matches ? '/site/hero-m.webp' : '/site/hero.webp');
 
 /**
- * Udupi Sri Krishna Naivedya - the restaurant's own website, told in five chapters with
- * photographs: the offering, morning, the table, today's menu (live from the counter)
- * and how to visit. Customers can order and pay online when it is switched on.
+ * Udupi Sri Krishna Naivedya - the restaurant's own website. Every chapter fills the screen:
+ * welcome, the offering, morning, lunch on a leaf, the table, ordering online (when it is
+ * switched on), today's menu (live from the counter) and how to visit.
  */
 export default function Landing() {
     const [info, setInfo] = useState(null);
     const [board, setBoard] = useState(null);
     const [loading, setLoading] = useState(true);
     const [revealed, setRevealed] = useState(false);
-    const [chapter, setChapter] = useState(0);
+    const [chapter, setChapter] = useState({ number: 1, name: 'Welcome' });
     const [hero] = useState(heroSrc);
     const lenisRef = useRef(null);
     const progressRef = useRef(null);
@@ -84,8 +83,11 @@ export default function Landing() {
             if (progressRef.current) progressRef.current.style.transform = `scaleX(${max > 0 ? window.scrollY / max : 0})`;
             const middle = window.innerHeight / 2;
             const sections = [...(pageRef.current?.querySelectorAll('[data-chapter]') || [])];
-            const current = sections.findLast((section) => section.getBoundingClientRect().top <= middle);
-            if (current) setChapter(CHAPTERS.indexOf(current.dataset.chapter));
+            const index = sections.findLastIndex((section) => section.getBoundingClientRect().top <= middle);
+            if (index >= 0) {
+                const name = sections[index].dataset.chapter;
+                setChapter((current) => (current.name === name ? current : { number: index + 1, name }));
+            }
         };
         const onScroll = () => {
             if (!frame) frame = requestAnimationFrame(update);
@@ -143,20 +145,25 @@ export default function Landing() {
             )}
 
             {/* Chapter marker */}
-            <p className="pointer-events-none fixed bottom-6 left-5 z-50 hidden items-center gap-3 font-code text-[10px] uppercase tracking-[0.35em] text-white mix-blend-difference sm:left-10 md:flex" aria-hidden="true">
-                <span className="tabular-nums">{String(chapter + 1).padStart(2, '0')}</span>
+            <p className={`pointer-events-none fixed bottom-6 left-5 z-50 hidden items-center gap-3 font-code text-[10px] uppercase tracking-[0.35em] text-white mix-blend-difference transition-opacity duration-500 sm:left-10 md:flex ${chapter.name === 'Welcome' ? 'opacity-0' : 'opacity-100'}`} aria-hidden="true">
+                <span className="tabular-nums">{String(chapter.number).padStart(2, '0')}</span>
                 <span className="h-px w-10 bg-white/60" />
-                <span key={chapter} className="qb-fade">{CHAPTERS[chapter]}</span>
+                <span key={chapter.name} className="qb-fade">{chapter.name}</span>
             </p>
 
             <main>
-                <Hero revealed={revealed} onlineOrdering={onlineOrdering} />
-                <Statement text="Every plate here begins as an *offering.*" />
+                <Hero
+                    revealed={revealed}
+                    onlineOrdering={onlineOrdering}
+                    hasMenu={menu.length > 0}
+                    hours={restaurant?.hours}
+                    onMenu={goTo('menu')}
+                />
+                <Statement />
                 <MorningWindow />
+                <OotaChapter />
                 <StackedDishes />
-                {onlineOrdering
-                    ? <Marquee words={['Order ahead', 'Pay by UPI', 'Skip the queue']} href="/order" cursor="Order" label="Order online" />
-                    : <Marquee words={[RESTAURANT.word, RESTAURANT.area]} />}
+                {onlineOrdering && <OrderChapter />}
                 {menu.length > 0 && <MenuSection menu={menu} pricesIncludeGst={Boolean(restaurant?.pricesIncludeGst)} onlineOrdering={onlineOrdering} />}
                 <Visit restaurant={restaurant} board={board} onlineOrdering={onlineOrdering} />
             </main>

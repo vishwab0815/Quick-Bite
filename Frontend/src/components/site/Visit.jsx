@@ -4,6 +4,7 @@ import { Link } from 'react-router-dom';
 import { PiArrowUpRight, PiPhone } from 'react-icons/pi';
 import { RESTAURANT } from '../../site/restaurant';
 import { smoothstep, useScrollProgress } from './motion';
+import { RevealFade, RevealWords } from './Reveal';
 
 const Detail = ({ label, children }) => (
     <div>
@@ -41,11 +42,13 @@ const Visit = ({ restaurant, board, onlineOrdering }) => {
             <div className="absolute inset-0 -z-10 bg-gradient-to-t from-ink via-ink/80 to-ink/40" aria-hidden="true" />
 
             <div className="mx-auto flex min-h-[100svh] max-w-6xl flex-col justify-end px-5 pb-16 pt-40 sm:px-10">
-                <p className="font-code text-[11px] uppercase tracking-[0.4em] text-gold">05</p>
-                <h2 className="mt-6 font-kn text-[clamp(4.5rem,16vw,13rem)] leading-[0.9] text-paper">ಬನ್ನಿ</h2>
-                <p className="mt-2 font-accent text-3xl italic text-paper/70 sm:text-4xl">Come, sit, eat.</p>
+                <RevealFade className="flex items-center gap-3 font-code text-[10px] uppercase tracking-[0.4em] text-gold sm:text-[11px]">
+                    <span className="h-px w-8 bg-current opacity-70" /> Visit
+                </RevealFade>
+                <RevealWords as="h2" delay={150} text="ಬನ್ನಿ" className="mt-6 font-kn text-[clamp(4.5rem,16vw,13rem)] leading-[1.05] text-paper" />
+                <RevealWords delay={450} text="Come, sit, *eat.*" className="mt-1 font-accent text-3xl text-paper/80 sm:text-5xl" />
 
-                <div className="mt-16 grid gap-10 border-t border-paper/15 pt-10 sm:grid-cols-3">
+                <RevealFade delay={600} className="mt-16 grid gap-10 border-t border-paper/15 pt-10 sm:grid-cols-3">
                     <Detail label="Where">{restaurant?.address || `${RESTAURANT.area}, ${RESTAURANT.city}`}</Detail>
                     {restaurant?.hours && <Detail label="Open">{restaurant.hours}</Detail>}
                     {phone && (
@@ -53,9 +56,9 @@ const Visit = ({ restaurant, board, onlineOrdering }) => {
                             <a href={`tel:${phone.replace(/[^\d+]/g, '')}`} className="site-link">{phone}</a>
                         </Detail>
                     )}
-                </div>
+                </RevealFade>
 
-                <div className="mt-12 flex flex-wrap items-center gap-3">
+                <RevealFade delay={750} className="mt-12 flex flex-wrap items-center gap-3">
                     {onlineOrdering && (
                         <a href="/order" className="site-button bg-paper text-ink" data-cursor="Order">Order online <PiArrowUpRight /></a>
                     )}
@@ -73,7 +76,7 @@ const Visit = ({ restaurant, board, onlineOrdering }) => {
                             <span className="font-accent text-2xl normal-case tracking-normal text-paper">{ready.join(' · ')}</span>
                         </p>
                     )}
-                </div>
+                </RevealFade>
             </div>
 
             <footer className="relative border-t border-paper/10">

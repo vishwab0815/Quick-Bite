@@ -73,7 +73,7 @@ export default function OrderStatus() {
 
     return (
         <div className="qb-site relative min-h-[100dvh] overflow-hidden bg-ink text-paper">
-            <img src={ready ? '/site/kaapi.webp' : '/site/morning-m.webp'} alt="" className="absolute inset-0 h-full w-full object-cover opacity-30 transition-opacity duration-700" />
+            <img src={ready ? '/site/hero-m.webp' : '/site/morning-m.webp'} alt="" className="absolute inset-0 h-full w-full object-cover opacity-30 transition-opacity duration-700" />
             <div className="absolute inset-0 bg-gradient-to-b from-ink/70 via-ink/80 to-ink" />
 
             <div className="relative mx-auto flex min-h-[100dvh] max-w-xl flex-col px-5 pb-10 pt-6">

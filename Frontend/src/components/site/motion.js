@@ -97,7 +97,31 @@ export const applyBeats = (nodes, progress) => {
         const kept = to >= 1 ? 1 : 1 - smoothstep(to - fade, to, progress);
         const opacity = shown * kept;
         node.style.opacity = opacity.toFixed(3);
-        node.style.transform = `translate3d(0, ${((1 - shown) * 56 - (1 - kept) * 56).toFixed(1)}px, 0)`;
+        node.style.transform = `translate3d(0, ${(-(1 - kept) * 40).toFixed(1)}px, 0)`;
         node.style.visibility = opacity < 0.01 ? 'hidden' : 'visible';
+        // Words inside play their rise while the beat is on screen
+        node.classList.toggle('is-in', opacity > 0.35);
     }
+};
+
+/** True once the element is well inside the screen (then stays true) */
+export const useInView = (ref, { threshold = 0.3, rootMargin = '0px 0px -8% 0px', disabled = false } = {}) => {
+    const [inView, setInView] = useState(false);
+    useEffect(() => {
+        if (disabled || inView) return undefined;
+        const node = ref.current;
+        if (!node || typeof IntersectionObserver === 'undefined') {
+            setInView(true);
+            return undefined;
+        }
+        const observer = new IntersectionObserver(([entry]) => {
+            if (entry.isIntersecting) {
+                setInView(true);
+                observer.disconnect();
+            }
+        }, { threshold, rootMargin });
+        observer.observe(node);
+        return () => observer.disconnect();
+    }, [ref, threshold, rootMargin, disabled, inView]);
+    return inView;
 };

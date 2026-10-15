@@ -147,7 +147,7 @@ export default function OrderPage() {
     if (!open) {
         return (
             <div className="qb-site relative flex min-h-[100dvh] flex-col justify-end overflow-hidden bg-ink px-5 pb-14 text-paper sm:px-10">
-                <img src="/site/kaapi.webp" alt="" className="absolute inset-0 h-full w-full object-cover opacity-40" />
+                <img src="/site/hero-m.webp" alt="" className="absolute inset-0 h-full w-full object-cover opacity-40" />
                 <div className="absolute inset-0 bg-gradient-to-t from-ink via-ink/70 to-transparent" />
                 <div className="relative">
                     <p className="font-kn text-xl text-gold">{RESTAURANT.wordKn}</p>

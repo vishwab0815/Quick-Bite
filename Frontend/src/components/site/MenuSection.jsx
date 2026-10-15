@@ -3,6 +3,7 @@ import PropTypes from 'prop-types';
 import { formatPrice } from '../../utils/pos';
 import { dishPhoto } from '../../utils/foodPhotos';
 import { prefersReducedMotion, useMediaQuery } from './motion';
+import { RevealFade, RevealWords } from './Reveal';
 
 const FIRST_VIEW = 14;
 
@@ -63,7 +64,7 @@ const MenuSection = ({ menu, pricesIncludeGst, onlineOrdering }) => {
     }, [follow]);
 
     return (
-        <section id="menu" data-chapter="Menu" className="relative bg-paper px-5 py-28 text-ink sm:px-10 lg:py-40" onPointerLeave={() => setPhoto(null)}>
+        <section id="menu" data-chapter="Menu" className="relative flex min-h-[100svh] flex-col justify-center bg-paper px-5 py-28 text-ink sm:px-12 lg:py-36" onPointerLeave={() => setPhoto(null)}>
             {follow && (
                 <div ref={floatRef} className={`site-menu-float pointer-events-none fixed left-0 top-0 z-40 h-56 w-44 overflow-hidden rounded-[4px] shadow-2xl ${photo ? 'is-on' : ''}`} aria-hidden="true">
                     {photo && <img src={photo} alt="" className="h-full w-full object-cover" />}
@@ -73,10 +74,10 @@ const MenuSection = ({ menu, pricesIncludeGst, onlineOrdering }) => {
             <div className="mx-auto max-w-6xl">
                 <div className="flex flex-wrap items-end justify-between gap-6">
                     <div>
-                        <p className="font-code text-[11px] uppercase tracking-[0.4em] text-saffron-deep">04</p>
-                        <h2 className="mt-6 font-accent text-[clamp(3.5rem,8vw,8.5rem)] leading-[0.85]">
-                            Today’s <em>menu.</em>
-                        </h2>
+                        <RevealFade className="flex items-center gap-3 font-code text-[10px] uppercase tracking-[0.4em] text-saffron-deep sm:text-[11px]">
+                            <span className="h-px w-8 bg-current opacity-70" /> Today
+                        </RevealFade>
+                        <RevealWords as="h2" delay={150} text="Today’s *menu.*" className="mt-6 font-accent text-[clamp(3.5rem,8vw,8.5rem)] leading-[0.85]" />
                     </div>
                     <div className="flex flex-col items-start gap-4 sm:items-end">
                         <p className="flex items-center gap-2 font-code text-[11px] uppercase tracking-[0.3em] text-ink/50">
@@ -87,8 +88,8 @@ const MenuSection = ({ menu, pricesIncludeGst, onlineOrdering }) => {
                 </div>
 
                 <div className="mt-16 grid gap-x-16 gap-y-14 md:grid-cols-2">
-                    {groups.map(([category, items]) => (
-                        <div key={category}>
+                    {groups.map(([category, items], groupIndex) => (
+                        <RevealFade key={category} delay={groupIndex * 120}>
                             <h3 className="border-b border-ink/15 pb-3 font-code text-[11px] uppercase tracking-[0.35em] text-ink/50">{category}</h3>
                             <ul className="mt-2">
                                 {items.map((item) => {
@@ -109,7 +110,7 @@ const MenuSection = ({ menu, pricesIncludeGst, onlineOrdering }) => {
                                     );
                                 })}
                             </ul>
-                        </div>
+                        </RevealFade>
                     ))}
                 </div>
 
