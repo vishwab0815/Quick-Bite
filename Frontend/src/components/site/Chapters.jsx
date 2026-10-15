@@ -30,7 +30,7 @@ export const OotaChapter = () => {
                     sources={[{ media: '(max-aspect-ratio: 4/5)', srcSet: '/site/feast-m.webp' }]}
                     src="/site/feast-d.webp"
                     alt="A full meal on a banana leaf with rice, curries, sweets and flowers"
-                    className="ri--slow absolute inset-0"
+                    className="ri--fade absolute inset-0"
                     imgClassName="h-full w-full object-cover"
                 />
             </div>

@@ -1,8 +1,10 @@
-import { useRef } from 'react';
+import { Suspense, lazy, useRef } from 'react';
 import PropTypes from 'prop-types';
 import { PiArrowDownLight, PiArrowUpRight } from 'react-icons/pi';
 import { RESTAURANT } from '../../site/restaurant';
-import { useScrollProgress } from './motion';
+import { prefersReducedMotion, useInView, useScrollProgress } from './motion';
+
+const KaapiScene = lazy(() => import('./KaapiScene'));
 import { RevealFade, RevealImage, RevealLetters, RevealWords } from './Reveal';
 
 /**
@@ -88,47 +90,25 @@ Hero.propTypes = {
 };
 
 /**
- * One full screen, one thought: what "naivedya" means. Two dishes float in depth beside the
- * words and lean with the pointer; gold rings turn slowly behind the headline.
+ * One full screen, one thought: what "naivedya" means - beside a filter-kaapi set modelled
+ * in 3D, with gold cubes orbiting it (see KaapiScene).
  */
 export const Statement = () => {
     const sectionRef = useRef(null);
-    const stageRef = useRef(null);
-
-    useScrollProgress(sectionRef, (progress) => {
-        stageRef.current?.style.setProperty('--drift', ((progress - 0.5) * 2).toFixed(3));
-    }, 'pass');
-
-    // The cards lean towards the pointer (mouse only)
-    const onMove = (event) => {
-        if (event.pointerType !== 'mouse' || !stageRef.current) return;
-        const rect = stageRef.current.getBoundingClientRect();
-        stageRef.current.style.setProperty('--mx', ((event.clientX - rect.left) / rect.width - 0.5).toFixed(3));
-        stageRef.current.style.setProperty('--my', ((event.clientY - rect.top) / rect.height - 0.5).toFixed(3));
-    };
-    const onLeave = () => {
-        stageRef.current?.style.setProperty('--mx', '0');
-        stageRef.current?.style.setProperty('--my', '0');
-    };
+    const near = useInView(sectionRef, { threshold: 0, rootMargin: '60% 0px' });
 
     return (
         <section ref={sectionRef} data-chapter="Offering" className="relative flex min-h-[100svh] items-center justify-center overflow-hidden bg-ink px-5 py-28 text-center sm:px-10">
-            <div ref={stageRef} onPointerMove={onMove} onPointerLeave={onLeave} className="offer-stage absolute inset-0" aria-hidden="true">
-                <span className="offer-ring offer-ring--1" />
-                <span className="offer-ring offer-ring--2" />
-                <div className="offer-card offer-card--left hidden md:block">
-                    <RevealImage src="/site/masala-dosa.webp" alt="" className="h-full w-full" imgClassName="h-full w-full object-cover" />
-                    <span className="offer-card__edge" />
-                </div>
-                <div className="offer-card offer-card--right hidden md:block">
-                    <RevealImage src="/site/ghee-roast.webp" alt="" delay={150} className="h-full w-full" imgClassName="h-full w-full object-cover" />
-                    <span className="offer-card__edge" />
-                </div>
-                <span className="offer-dot offer-dot--1" />
-                <span className="offer-dot offer-dot--2" />
+            {/* The filter-kaapi set, modelled in 3D, with gold cubes orbiting it */}
+            <div className="kaapi-host absolute inset-x-0 top-0 h-[36svh] md:inset-y-0 md:left-auto md:right-0 md:h-auto md:w-[46%]" aria-hidden="true">
+                {near && !prefersReducedMotion() && (
+                    <Suspense fallback={null}>
+                        <KaapiScene className="h-full w-full" />
+                    </Suspense>
+                )}
             </div>
 
-            <div className="relative max-w-5xl">
+            <div className="relative max-w-5xl pt-[30svh] md:pt-0 md:pr-[30%] md:text-left">
                 <RevealFade className="font-kn text-2xl text-gold sm:text-3xl" aria-hidden="true">{RESTAURANT.wordKn}</RevealFade>
                 <RevealFade delay={120} className="mt-3 font-code text-[10px] uppercase tracking-[0.4em] text-paper/50 sm:text-[11px]">
                     naivedya · an offering
@@ -143,7 +123,7 @@ export const Statement = () => {
                     delay={700}
                     step={35}
                     text="Food is first offered with devotion, then shared with everyone at the table."
-                    className="mx-auto mt-10 max-w-xl text-base leading-relaxed text-paper/60 sm:text-lg"
+                    className="mx-auto mt-10 max-w-xl text-base leading-relaxed text-paper/60 sm:text-lg md:mx-0"
                 />
             </div>
         </section>

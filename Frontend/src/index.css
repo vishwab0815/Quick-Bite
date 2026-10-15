@@ -288,6 +288,24 @@ html.lenis body {
   transition-duration: 2.6s;
 }
 
+/* Full-bleed photos that simply fade and settle */
+.ri--fade .ri__clip {
+  clip-path: none;
+  opacity: 0;
+  transition: opacity 1.4s ease var(--ri-delay, 0ms);
+}
+
+.ri--fade.is-in .ri__clip {
+  opacity: 1;
+}
+
+/* WebGL scenes fill their host */
+.kaapi-scene canvas {
+  display: block;
+  width: 100% !important;
+  height: 100% !important;
+}
+
 /* Dish cards: the photo wipes open and the Kannada name follows the words */
 .dish-photo {
   clip-path: inset(100% 0 0 0);
@@ -387,118 +405,6 @@ html.lenis body {
   margin-top: 0.5rem;
   font-size: 0.75rem;
   color: rgba(15, 14, 12, 0.5);
-}
-
-/* ---------- Offering: dishes floating in depth, gold rings turning ---------- */
-.offer-stage {
-  perspective: 1200px;
-  transform-style: preserve-3d;
-  --mx: 0;
-  --my: 0;
-  --drift: 0;
-}
-
-.offer-card {
-  position: absolute;
-  aspect-ratio: 4 / 5;
-  width: clamp(180px, 17vw, 280px);
-  transform-style: preserve-3d;
-  transition: transform 0.9s cubic-bezier(0.22, 1, 0.36, 1);
-  box-shadow: 0 50px 90px -30px rgba(0, 0, 0, 0.85);
-}
-
-.offer-card--left {
-  left: 9%;
-  top: 18%;
-  transform:
-    translate3d(0, calc(var(--drift) * -90px), 40px)
-    rotateY(calc(14deg + var(--mx) * 14deg))
-    rotateX(calc(-6deg - var(--my) * 12deg));
-}
-
-.offer-card--right {
-  right: 5%;
-  bottom: 12%;
-  transform:
-    translate3d(0, calc(var(--drift) * 120px), 20px)
-    rotateY(calc(-16deg + var(--mx) * 12deg))
-    rotateX(calc(5deg - var(--my) * 10deg));
-}
-
-/* A thin lit edge that reads as the card's thickness */
-.offer-card__edge {
-  position: absolute;
-  inset: 0;
-  pointer-events: none;
-  box-shadow: inset 0 0 0 1px rgba(230, 168, 60, 0.35);
-  transform: translateZ(-6px);
-  background: #241a10;
-}
-
-.offer-ring {
-  position: absolute;
-  left: 50%;
-  top: 50%;
-  border-radius: 999px;
-  border: 1px solid rgba(230, 168, 60, 0.35);
-  transform-style: preserve-3d;
-}
-
-.offer-ring--1 {
-  width: 62vmin;
-  height: 62vmin;
-  margin: -31vmin 0 0 -31vmin;
-  animation: offer-ring-1 26s linear infinite;
-}
-
-.offer-ring--2 {
-  width: 84vmin;
-  height: 84vmin;
-  margin: -42vmin 0 0 -42vmin;
-  border-color: rgba(230, 168, 60, 0.18);
-  animation: offer-ring-2 38s linear infinite;
-}
-
-@keyframes offer-ring-1 {
-  from {
-    transform: rotateX(68deg) rotateZ(0deg);
-  }
-  to {
-    transform: rotateX(68deg) rotateZ(360deg);
-  }
-}
-
-@keyframes offer-ring-2 {
-  from {
-    transform: rotateY(60deg) rotateX(20deg) rotateZ(0deg);
-  }
-  to {
-    transform: rotateY(60deg) rotateX(20deg) rotateZ(-360deg);
-  }
-}
-
-.offer-dot {
-  position: absolute;
-  width: 14px;
-  height: 14px;
-  background: linear-gradient(135deg, var(--color-gold), #8a5a12);
-  box-shadow: 0 16px 30px -8px rgba(0, 0, 0, 0.7);
-  animation: map-float-spin 18s linear infinite;
-}
-
-.offer-dot--1 {
-  left: 28%;
-  top: 22%;
-  transform: translateY(calc(var(--drift) * -60px));
-}
-
-.offer-dot--2 {
-  right: 26%;
-  top: 70%;
-  width: 20px;
-  height: 20px;
-  animation-direction: reverse;
-  transform: translateY(calc(var(--drift) * 80px));
 }
 
 /* ---------- Visit: 3D map card ---------- */
@@ -881,9 +787,7 @@ html.lenis body {
   .map-pin__head,
   .map-pin__shadow,
   .map-pin__ring,
-  .map-float,
-  .offer-ring,
-  .offer-dot {
+  .map-float {
     animation: none;
   }
 }

@@ -42,8 +42,11 @@ const PinnedMorning = () => {
         if (introPhotoRef.current) introPhotoRef.current.style.transform = `scale(${(1 + progress * 0.35).toFixed(3)})`;
         if (coursesRef.current) {
             const shown = smoothstep(INTRO_END - 0.01, COURSES_FROM, progress);
-            coursesRef.current.style.opacity = shown.toFixed(3);
-            coursesRef.current.style.transform = `translate3d(0, ${((1 - shown) * 40).toFixed(1)}px, 0)`;
+            // Towards the end the list starts moving up by itself, so when the chapter
+            // releases, the page is already in motion and there is no jolt
+            const leaving = smoothstep(0.86, 1, progress);
+            coursesRef.current.style.opacity = (shown * (1 - leaving * 0.6)).toFixed(3);
+            coursesRef.current.style.transform = `translate3d(0, ${((1 - shown) * 40 - leaving * window.innerHeight * 0.35).toFixed(1)}px, 0)`;
             coursesRef.current.style.visibility = shown <= 0 ? 'hidden' : 'visible';
         }
         const span = (1 - COURSES_FROM) / COURSES.length;
