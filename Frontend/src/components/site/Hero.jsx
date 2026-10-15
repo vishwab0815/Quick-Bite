@@ -88,26 +88,44 @@ Hero.propTypes = {
 };
 
 /**
- * One full screen, one thought: what "naivedya" means. Two small dishes drift past at the edges.
+ * One full screen, one thought: what "naivedya" means. Two dishes float in depth beside the
+ * words and lean with the pointer; gold rings turn slowly behind the headline.
  */
 export const Statement = () => {
     const sectionRef = useRef(null);
-    const leftRef = useRef(null);
-    const rightRef = useRef(null);
+    const stageRef = useRef(null);
 
     useScrollProgress(sectionRef, (progress) => {
-        const shift = (progress - 0.5) * 2;
-        if (leftRef.current) leftRef.current.style.transform = `translate3d(0, ${(-shift * 90).toFixed(1)}px, 0) rotate(-4deg)`;
-        if (rightRef.current) rightRef.current.style.transform = `translate3d(0, ${(shift * 120).toFixed(1)}px, 0) rotate(3deg)`;
+        stageRef.current?.style.setProperty('--drift', ((progress - 0.5) * 2).toFixed(3));
     }, 'pass');
+
+    // The cards lean towards the pointer (mouse only)
+    const onMove = (event) => {
+        if (event.pointerType !== 'mouse' || !stageRef.current) return;
+        const rect = stageRef.current.getBoundingClientRect();
+        stageRef.current.style.setProperty('--mx', ((event.clientX - rect.left) / rect.width - 0.5).toFixed(3));
+        stageRef.current.style.setProperty('--my', ((event.clientY - rect.top) / rect.height - 0.5).toFixed(3));
+    };
+    const onLeave = () => {
+        stageRef.current?.style.setProperty('--mx', '0');
+        stageRef.current?.style.setProperty('--my', '0');
+    };
 
     return (
         <section ref={sectionRef} data-chapter="Offering" className="relative flex min-h-[100svh] items-center justify-center overflow-hidden bg-ink px-5 py-28 text-center sm:px-10">
-            <div ref={leftRef} className="pointer-events-none absolute left-[4%] top-[12%] hidden w-[15vw] max-w-[220px] md:block">
-                <RevealImage src="/site/flowers.webp" alt="" className="aspect-[4/5] rounded-[4px]" imgClassName="h-full w-full object-cover" />
-            </div>
-            <div ref={rightRef} className="pointer-events-none absolute bottom-[10%] right-[5%] hidden w-[17vw] max-w-[250px] md:block">
-                <RevealImage src="/site/ghee-roast.webp" alt="" delay={150} className="aspect-[4/5] rounded-[4px]" imgClassName="h-full w-full object-cover" />
+            <div ref={stageRef} onPointerMove={onMove} onPointerLeave={onLeave} className="offer-stage absolute inset-0" aria-hidden="true">
+                <span className="offer-ring offer-ring--1" />
+                <span className="offer-ring offer-ring--2" />
+                <div className="offer-card offer-card--left hidden md:block">
+                    <RevealImage src="/site/masala-dosa.webp" alt="" className="h-full w-full" imgClassName="h-full w-full object-cover" />
+                    <span className="offer-card__edge" />
+                </div>
+                <div className="offer-card offer-card--right hidden md:block">
+                    <RevealImage src="/site/ghee-roast.webp" alt="" delay={150} className="h-full w-full" imgClassName="h-full w-full object-cover" />
+                    <span className="offer-card__edge" />
+                </div>
+                <span className="offer-dot offer-dot--1" />
+                <span className="offer-dot offer-dot--2" />
             </div>
 
             <div className="relative max-w-5xl">

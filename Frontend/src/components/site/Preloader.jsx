@@ -4,7 +4,7 @@ import { RESTAURANT } from '../../site/restaurant';
 import { prefersReducedMotion } from './motion';
 
 // Dishes that flicker through the little frame while the page gets ready
-const FLICKER = ['/site/flowers.webp', '/site/masala-dosa.webp', '/site/vada-kaapi.webp', '/site/ghee-roast.webp', '/site/upma.webp', '/site/oota.webp'];
+const FLICKER = ['/site/course-vade.webp', '/site/masala-dosa.webp', '/site/vada-kaapi.webp', '/site/ghee-roast.webp', '/site/upma.webp', '/site/oota.webp'];
 const MIN_MS = 1900;
 const MAX_MS = 4500;
 const LIFT_MS = 1150;
