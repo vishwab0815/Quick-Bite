@@ -2,10 +2,13 @@ import { useEffect, useState } from 'react';
 import axios from 'axios';
 import { Link, useNavigate } from 'react-router-dom';
 import { FiArrowRight, FiBarChart2, FiEye, FiEyeOff, FiLock, FiShoppingBag } from 'react-icons/fi';
-import { demoHref, demoIsExternal } from '../utils/sales';
+import BrandMark from '../components/common/BrandMark';
+import { RESTAURANT } from '../site/restaurant';
 import { useDemoLogin } from '../utils/useDemoLogin';
 
 const API = import.meta.env.VITE_API_URL;
+// The sample-restaurant demo buttons, for showing the system to someone (off by default)
+const SHOW_DEMO = import.meta.env.VITE_SHOW_DEMO === 'true';
 
 // Where each kind of login lands
 const homeFor = (role) => (role === 'superadmin' ? '/console' : '/pos');
@@ -16,12 +19,12 @@ export default function Signin() {
     const [showPassword, setShowPassword] = useState(false);
     const [error, setError] = useState('');
     const [loading, setLoading] = useState(false);
-    // One click into the sample restaurant - for showing QuickBite to a client
+    // One click into the sample restaurant
     const { openDemo, demoRole, waking, demoError, clearDemoError } = useDemoLogin({ replace: true });
 
     // Already signed in on this device - go straight in
     useEffect(() => {
-        document.title = 'Sign in · QuickBite';
+        document.title = `Staff sign in · ${RESTAURANT.name}`;
         let active = true;
         axios.get(`${API}/api/auth/profile`, { withCredentials: true })
             .then((res) => { if (active && res.data.user) navigate(homeFor(res.data.user.role), { replace: true }); })
@@ -67,39 +70,37 @@ export default function Signin() {
         <div className="qb-landing grid min-h-[100dvh] bg-paper text-ink lg:grid-cols-[1.05fr_1fr]">
             {/* Brand panel */}
             <aside className="grain relative hidden flex-col justify-between overflow-hidden bg-ink p-12 text-paper lg:flex">
-                {/* A South Indian feast behind a dark gradient, so the words stay readable */}
-                <img src="/food/hero-feast.webp" alt="" className="absolute inset-0 h-full w-full object-cover" />
+                {/* Idli, vade and kaapi on a leaf, behind a dark gradient so the words stay readable */}
+                <img src="/site/morning-m.webp" alt="" className="absolute inset-0 h-full w-full object-cover" />
                 <div className="absolute inset-0 bg-gradient-to-t from-ink via-ink/75 to-ink/30" />
                 <div className="absolute inset-0 bg-gradient-to-r from-ink/60 to-transparent" />
-                <Link to="/" className="relative flex items-center gap-2.5">
-                    <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-saffron font-extrabold text-ink">Q</span>
-                    <span className="text-lg font-bold tracking-tight">QuickBite</span>
+                <Link to="/" className="relative flex items-center gap-3">
+                    <BrandMark />
+                    <span className="text-lg font-semibold tracking-tight">{RESTAURANT.name}</span>
                 </Link>
                 <div className="relative">
-                    <p className="font-display text-[clamp(3rem,5.5vw,5.5rem)] font-extrabold leading-[0.88] tracking-[-0.05em]">
-                        Rush hour,<br />
-                        <span className="font-accent font-normal italic text-saffron">handled.</span>
-                    </p>
-                    <p className="mt-6 max-w-sm text-stone-300">Bills in seconds, tokens on screen and every rupee on one live dashboard.</p>
+                    <p className="font-kn text-2xl text-gold">{RESTAURANT.leadKn}</p>
+                    <p className="font-accent text-[clamp(4rem,8vw,7.5rem)] leading-[0.85]">{RESTAURANT.word}</p>
+                    <p className="mt-6 max-w-sm text-stone-300">Counter, kitchen and token screens for our team.</p>
                 </div>
-                <p className="relative font-code text-[11px] uppercase tracking-[0.2em] text-stone-400">Counter billing & tokens</p>
+                <p className="relative font-code text-[11px] uppercase tracking-[0.2em] text-stone-400">{RESTAURANT.area} · {RESTAURANT.city}</p>
             </aside>
 
             {/* Form */}
             <main className="flex flex-col px-5 py-6 sm:px-10 sm:py-8">
                 {/* Phones: food banner with the logo */}
                 <Link to="/" className="relative -mx-5 -mt-6 mb-2 flex h-40 items-end overflow-hidden px-5 pb-4 text-paper sm:-mx-10 sm:-mt-8 sm:px-10 lg:hidden">
-                    <img src="/food/hero-dosa.webp" alt="" className="absolute inset-0 h-full w-full object-cover" />
+                    <img src="/site/morning-d.webp" alt="" className="absolute inset-0 h-full w-full object-cover" />
                     <span className="absolute inset-0 bg-gradient-to-t from-ink/85 via-ink/30 to-transparent" />
-                    <span className="relative flex items-center gap-2.5">
-                        <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-saffron font-extrabold text-ink">Q</span>
-                        <span className="text-lg font-bold tracking-tight">QuickBite</span>
+                    <span className="relative flex items-center gap-3">
+                        <BrandMark />
+                        <span className="text-lg font-semibold leading-tight tracking-tight">{RESTAURANT.name}</span>
                     </span>
                 </Link>
 
                 <div className="mx-auto my-auto w-full max-w-sm py-12">
                     <h1 className="font-display text-4xl font-bold tracking-[-0.03em]">Sign in</h1>
-                    <p className="mt-2 text-ink/60">Use the login your restaurant gave you.</p>
+                    <p className="mt-2 text-ink/60">For the {RESTAURANT.word} team. Use the login the owner gave you.</p>
 
                     <form onSubmit={submit} className="mt-9 space-y-4" noValidate>
                         <label className="block">
@@ -158,47 +159,39 @@ export default function Signin() {
                         Forgot your password? Ask your restaurant owner to reset it from Staff.
                     </p>
 
-                    <section className="mt-10" aria-labelledby="demo-heading">
-                        <h2 id="demo-heading" className="flex items-center gap-3 font-code text-[11px] font-semibold uppercase tracking-[0.2em] text-ink/45">
-                            <span className="h-px flex-1 bg-ink/10" /> Try the demo <span className="h-px flex-1 bg-ink/10" />
-                        </h2>
-                        <div className="mt-4 grid grid-cols-2 gap-3">
-                            {demos.map((demo) => {
-                                const Icon = demo.icon;
-                                return (
-                                    <button
-                                        key={demo.role}
-                                        type="button"
-                                        onClick={() => openDemo(demo.role)}
-                                        disabled={Boolean(demoRole)}
-                                        className="group rounded-2xl border border-ink/10 bg-white p-4 text-left transition hover:border-ink/30 hover:shadow-[0_10px_30px_-18px_rgba(15,14,12,0.5)] disabled:opacity-60"
-                                    >
-                                        <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-saffron/10 text-saffron-deep">
-                                            <Icon />
-                                        </span>
-                                        <span className="mt-3 flex items-center gap-1.5 font-semibold">
-                                            {demoRole === demo.role ? (waking ? 'Waking up…' : 'Opening…') : demo.title}
-                                            <FiArrowRight className="text-ink/40 transition-transform group-hover:translate-x-0.5" />
-                                        </span>
-                                        <span className="mt-0.5 block text-xs leading-snug text-ink/55">{demo.text}</span>
-                                    </button>
-                                );
-                            })}
-                        </div>
-                        <p className="mt-3 text-center text-xs text-ink/45">A sample restaurant - no sign-up, nothing real is touched.</p>
-                    </section>
+                    {SHOW_DEMO && (
+                        <section className="mt-10" aria-labelledby="demo-heading">
+                            <h2 id="demo-heading" className="flex items-center gap-3 font-code text-[11px] font-semibold uppercase tracking-[0.2em] text-ink/45">
+                                <span className="h-px flex-1 bg-ink/10" /> Try the demo <span className="h-px flex-1 bg-ink/10" />
+                            </h2>
+                            <div className="mt-4 grid grid-cols-2 gap-3">
+                                {demos.map((demo) => {
+                                    const Icon = demo.icon;
+                                    return (
+                                        <button
+                                            key={demo.role}
+                                            type="button"
+                                            onClick={() => openDemo(demo.role)}
+                                            disabled={Boolean(demoRole)}
+                                            className="group rounded-2xl border border-ink/10 bg-white p-4 text-left transition hover:border-ink/30 hover:shadow-[0_10px_30px_-18px_rgba(15,14,12,0.5)] disabled:opacity-60"
+                                        >
+                                            <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-saffron/10 text-saffron-deep">
+                                                <Icon />
+                                            </span>
+                                            <span className="mt-3 flex items-center gap-1.5 font-semibold">
+                                                {demoRole === demo.role ? (waking ? 'Waking up…' : 'Opening…') : demo.title}
+                                                <FiArrowRight className="text-ink/40 transition-transform group-hover:translate-x-0.5" />
+                                            </span>
+                                            <span className="mt-0.5 block text-xs leading-snug text-ink/55">{demo.text}</span>
+                                        </button>
+                                    );
+                                })}
+                            </div>
+                            <p className="mt-3 text-center text-xs text-ink/45">A sample restaurant - no sign-up, nothing real is touched.</p>
+                        </section>
+                    )}
                 </div>
 
-                <p className="text-center text-sm text-ink/55">
-                    New restaurant?{' '}
-                    <a
-                        href={demoHref}
-                        {...(demoIsExternal && { target: '_blank', rel: 'noreferrer' })}
-                        className="font-semibold text-ink underline decoration-ink/25 underline-offset-4 hover:decoration-ink"
-                    >
-                        Book a demo
-                    </a>
-                </p>
             </main>
         </div>
     );

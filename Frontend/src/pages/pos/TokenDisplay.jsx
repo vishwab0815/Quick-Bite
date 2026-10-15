@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { PiSpeakerHighBold, PiCookingPotDuotone, PiBellRingingDuotone } from 'react-icons/pi';
 import { posApi, playBeep } from '../../utils/pos';
+import { RESTAURANT } from '../../site/restaurant';
 
 const POLL_MS = 3000;
 const MAX_READY = 12;
@@ -100,7 +101,7 @@ export default function TokenDisplay() {
                         {(board.hotelName || 'Q').charAt(0)}
                     </span>
                     <div>
-                        <h1 className="font-display text-3xl font-bold tracking-tight sm:text-4xl">{board.hotelName || 'QuickBite'}</h1>
+                        <h1 className="font-display text-3xl font-bold tracking-tight sm:text-4xl">{board.hotelName || RESTAURANT.name}</h1>
                         <p className="text-sm font-medium uppercase tracking-[0.25em] text-stone-400">Now serving</p>
                     </div>
                 </div>

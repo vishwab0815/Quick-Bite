@@ -145,7 +145,7 @@ const ErrorFallback = ({ error, errorInfo, onReload, onReset }) => {
                 {/* Support Info */}
                 <div className="mt-8 pt-6 border-t border-gray-200 text-center">
                     <p className="text-sm text-gray-500">
-                        If this keeps happening, reload the page or contact QuickBite support.
+                        If this keeps happening, reload the page or let the restaurant owner know.
                     </p>
                 </div>
             </div>

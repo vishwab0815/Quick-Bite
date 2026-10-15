@@ -3,7 +3,7 @@ import PropTypes from 'prop-types';
 import { Link } from 'react-router-dom';
 import { PiArrowUpRight, PiPhone } from 'react-icons/pi';
 import { RESTAURANT } from '../../site/restaurant';
-import { useScrollProgress } from './motion';
+import { smoothstep, useScrollProgress } from './motion';
 
 const Detail = ({ label, children }) => (
     <div>
@@ -17,22 +17,26 @@ Detail.propTypes = { label: PropTypes.string.isRequired, children: PropTypes.nod
 /**
  * Where and when: details come from the restaurant's own settings - anything not filled in is left out
  */
-const Visit = ({ restaurant, board }) => {
+const Visit = ({ restaurant, board, onlineOrdering }) => {
     const sectionRef = useRef(null);
     const photoRef = useRef(null);
     const phone = restaurant?.phone;
     const ready = board?.ready?.map((entry) => entry.tokenNumber).slice(0, 4) || [];
 
-    // The photo settles from slightly zoomed in as the section scrolls up
+    // The photo opens as a growing circle, settling from slightly zoomed in
     useScrollProgress(sectionRef, (progress) => {
-        if (photoRef.current) photoRef.current.style.transform = `scale(${(1.18 - progress * 0.18).toFixed(3)})`;
+        const open = smoothstep(0.05, 0.45, progress);
+        if (photoRef.current) {
+            photoRef.current.style.clipPath = `circle(${(14 + open * 76).toFixed(2)}% at 50% 55%)`;
+            photoRef.current.style.transform = `scale(${(1.2 - open * 0.2).toFixed(3)})`;
+        }
     }, 'pass');
 
     return (
         <section ref={sectionRef} id="visit" data-chapter="Visit" className="relative isolate overflow-hidden bg-ink text-paper">
             <picture>
                 <source media="(max-aspect-ratio: 4/5)" srcSet="/site/visit-m.webp" />
-                <img ref={photoRef} src="/site/visit.webp" alt="" loading="lazy" decoding="async" className="absolute inset-0 -z-20 h-full w-full object-cover will-change-transform" />
+                <img ref={photoRef} src="/site/visit.webp" alt="" loading="lazy" decoding="async" className="absolute inset-0 -z-20 h-full w-full object-cover will-change-transform" style={{ clipPath: 'circle(14% at 50% 55%)' }} />
             </picture>
             <div className="absolute inset-0 -z-10 bg-gradient-to-t from-ink via-ink/80 to-ink/40" aria-hidden="true" />
 
@@ -52,7 +56,10 @@ const Visit = ({ restaurant, board }) => {
                 </div>
 
                 <div className="mt-12 flex flex-wrap items-center gap-3">
-                    <a href={RESTAURANT.mapsUrl} target="_blank" rel="noreferrer" className="site-button bg-gold text-ink">
+                    {onlineOrdering && (
+                        <a href="/order" className="site-button bg-paper text-ink" data-cursor="Order">Order online <PiArrowUpRight /></a>
+                    )}
+                    <a href={RESTAURANT.mapsUrl} target="_blank" rel="noreferrer" className="site-button bg-gold text-ink" data-cursor="Map">
                         Directions <PiArrowUpRight />
                     </a>
                     {phone && (
@@ -85,6 +92,7 @@ const Visit = ({ restaurant, board }) => {
 Visit.propTypes = {
     restaurant: PropTypes.shape({ address: PropTypes.string, phone: PropTypes.string, hours: PropTypes.string }),
     board: PropTypes.shape({ ready: PropTypes.array }),
+    onlineOrdering: PropTypes.bool,
 };
 
 export default Visit;

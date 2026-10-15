@@ -112,7 +112,7 @@ const OverviewTab = ({ data }) => {
                         <div><dt className="text-xs text-stone-500">Menu items</dt><dd className="font-medium">{counts.menuItems}</dd></div>
                         <div><dt className="text-xs text-stone-500">Staff logins</dt><dd className="font-medium">{counts.staff}</dd></div>
                         <div><dt className="text-xs text-stone-500">Regular customers</dt><dd className="font-medium">{counts.customers}</dd></div>
-                        <div><dt className="text-xs text-stone-500">On QuickBite since</dt><dd className="font-medium">{formatDate(hotel.createdAt)}</dd></div>
+                        <div><dt className="text-xs text-stone-500">Joined</dt><dd className="font-medium">{formatDate(hotel.createdAt)}</dd></div>
                     </dl>
                 </Card>
             </div>

@@ -34,7 +34,7 @@ export function useDemoLogin({ replace = false } = {}) {
                 }
                 setError(
                     status === 429 ? 'Too many demo sign-ins from this network. Please wait a few minutes and try again.'
-                        : !err.response ? 'Could not reach QuickBite. Check your internet connection and try again.'
+                        : !err.response ? 'Could not reach the server. Check your internet connection and try again.'
                             : err.response.data?.message || 'Could not open the demo. Please try again.'
                 );
             }

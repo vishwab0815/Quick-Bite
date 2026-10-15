@@ -7,6 +7,9 @@ import ErrorBoundary from './components/common/ErrorBoundary';
 // Each area is downloaded only when it's first opened
 const Landing = lazy(() => import('./pages/Landing'));
 const Signin = lazy(() => import('./pages/Signin'));
+// Customers order and pay online (website, table QR, self-order kiosk)
+const OrderPage = lazy(() => import('./pages/order/OrderPage'));
+const OrderStatus = lazy(() => import('./pages/order/OrderStatus'));
 // Counter billing: all counter screens in one bundle so tab switches are instant
 const PosApp = lazy(() => import('./pages/pos/PosApp'));
 const TokenDisplay = lazy(() => import('./pages/pos/TokenDisplay'));
@@ -26,6 +29,8 @@ const App = () => (
             <Routes>
                 <Route path="/" element={<Landing />} />
                 <Route path="/signin" element={<Signin />} />
+                <Route path="/order" element={<OrderPage />} />
+                <Route path="/order/:publicId" element={<OrderStatus />} />
 
                 {/* Hotel staff & owners */}
                 <Route path="/pos/*" element={<PosApp />} />

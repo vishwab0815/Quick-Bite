@@ -7,6 +7,7 @@ import Hotels from './Hotels';
 import HotelDetail from './HotelDetail';
 import Payments from './Payments';
 import Activity from './Activity';
+import { RESTAURANT } from '../../site/restaurant';
 
 /**
  * Platform owner console. Only the platform owner gets past the sign-in check; everyone else
@@ -17,7 +18,7 @@ export default function ConsoleApp() {
     const [user, setUser] = useState(null);
 
     useEffect(() => {
-        document.title = 'Console · QuickBite';
+        document.title = `Console · ${RESTAURANT.word}`;
         let active = true;
         axios.get(`${import.meta.env.VITE_API_URL}/api/auth/profile`, { withCredentials: true })
             .then((res) => {

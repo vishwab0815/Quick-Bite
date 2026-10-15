@@ -196,6 +196,13 @@ const HourFacts = ({ summary }) => {
 
 HourFacts.propTypes = { summary: PropTypes.object.isRequired };
 
+// Ordered and paid by the customer online (website, table QR or kiosk)
+const OnlineTag = () => (
+    <span className="ml-1.5 inline-flex items-center rounded-full bg-violet-50 px-2 py-0.5 align-middle text-[10px] font-bold uppercase tracking-wide text-violet-700 ring-1 ring-violet-200">Online</span>
+);
+
+const isOnline = (bill) => Boolean(bill.payment?.gateway) || (bill.source && bill.source !== 'counter');
+
 const StatusPill = ({ status }) => (
     <span className={`inline-flex rounded-full px-2.5 py-0.5 text-[11px] font-semibold ring-1 ${STATUS[status]?.className}`}>{STATUS[status]?.label || status}</span>
 );
@@ -239,7 +246,8 @@ const BillDetail = ({ bill, timeZone, isOwner, onPrint, onWhatsapp, onCancel, on
                     <span className="font-display text-2xl font-bold tabular-nums">{formatINR(bill.total)}</span>
                 </div>
                 <div className="flex items-center justify-between pt-1 text-stone-600">
-                    <span className="flex items-center gap-1.5 font-semibold uppercase"><ModeIcon className="text-base text-saffron-deep" /> {bill.payment.mode}</span>
+                    <span className="flex items-center gap-1.5 font-semibold uppercase"><ModeIcon className="text-base text-saffron-deep" /> {bill.payment.mode}{bill.payment.gateway && <span className="font-normal normal-case text-stone-500">· paid online</span>}</span>
+                    {bill.payment.refund?.id && <span className="font-semibold text-violet-700">Refunded {formatINR(bill.payment.refund.amount)}</span>}
                     {bill.payment.mode === 'cash' && bill.payment.cashReceived > 0 && (
                         <span className="tabular-nums">Received {formatINR(bill.payment.cashReceived)} · change {formatINR(bill.payment.changeReturned || 0)}</span>
                     )}
@@ -355,8 +363,8 @@ export default function PosBills() {
 
     const cancelBill = async (bill, reason) => {
         try {
-            await posApi.patch(`/bills/${bill._id}/cancel`, { reason });
-            showToast.success(`Token #${bill.tokenNumber} cancelled`);
+            const res = await posApi.patch(`/bills/${bill._id}/cancel`, { reason });
+            showToast.success(`Token #${bill.tokenNumber}: ${res.data.message}`);
             setCancelling(null);
             setOpenBill(null);
             refresh();
@@ -521,7 +529,7 @@ export default function PosBills() {
                                         <button type="button" onClick={() => setOpenBill(bill)} className={`${cardClass} w-full p-4 text-left active:bg-stone-50`}>
                                             <div className="flex items-start justify-between gap-3">
                                                 <div>
-                                                    <p className="font-display text-lg font-bold">#{bill.tokenNumber}</p>
+                                                    <p className="font-display text-lg font-bold">#{bill.tokenNumber}{isOnline(bill) && <OnlineTag />}</p>
                                                     <p className="text-xs text-stone-500">{formatTime(bill.createdAt, settings.timeZone)} · {bill.payment.mode.toUpperCase()}</p>
                                                 </div>
                                                 <div className="text-right">
@@ -555,7 +563,7 @@ export default function PosBills() {
                                             return (
                                                 <tr key={bill._id} onClick={() => setOpenBill(bill)} className="cursor-pointer transition-colors hover:bg-orange-50/40">
                                                     <td className="whitespace-nowrap px-5 py-3">
-                                                        <p className="font-display text-[15px] font-bold tabular-nums">#{bill.tokenNumber}</p>
+                                                        <p className="whitespace-nowrap font-display text-[15px] font-bold tabular-nums">#{bill.tokenNumber}{isOnline(bill) && <OnlineTag />}</p>
                                                         <p className="font-mono text-[10px] text-stone-400">{bill.billNumber}</p>
                                                     </td>
                                                     <td className="whitespace-nowrap px-4 py-3 tabular-nums text-stone-600">{formatTime(bill.createdAt, settings.timeZone)}</td>
@@ -611,7 +619,9 @@ export default function PosBills() {
             {cancelling && (
                 <ConfirmDialog
                     title={`Cancel token #${cancelling.tokenNumber}?`}
-                    description={`${formatINR(cancelling.total)} will be removed from today's sales. This is recorded with your name.`}
+                    description={cancelling.payment?.gateway
+                        ? `${formatINR(cancelling.total)} will be refunded to the customer through Razorpay and removed from today's sales. This is recorded with your name.`
+                        : `${formatINR(cancelling.total)} will be removed from today's sales. This is recorded with your name.`}
                     reasonLabel="Reason"
                     confirmLabel="Cancel bill"
                     onConfirm={(reason) => cancelBill(cancelling, reason)}

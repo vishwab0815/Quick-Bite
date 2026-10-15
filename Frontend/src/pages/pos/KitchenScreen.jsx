@@ -128,7 +128,12 @@ export default function KitchenScreen() {
                 }`}
             >
                 <header className={`flex items-center justify-between px-5 py-3.5 ${status === 'ready' ? 'bg-emerald-50' : late ? 'bg-rose-50' : 'bg-stone-50'}`}>
-                    <span className="font-display text-[34px] font-extrabold leading-none tracking-tight text-stone-900">#{ticket.tokenNumber}</span>
+                    <span className="flex items-center gap-2">
+                        <span className="font-display text-[34px] font-extrabold leading-none tracking-tight text-stone-900">#{ticket.tokenNumber}</span>
+                        {ticket.source && ticket.source !== 'counter' && (
+                            <span className="rounded-full bg-violet-100 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-violet-700">Online</span>
+                        )}
+                    </span>
                     <span className={`rounded-xl px-2.5 py-1 font-mono text-sm font-bold tabular-nums ${timerColor}`}>{elapsedLabel(ticket.createdAt, now)}</span>
                 </header>
 

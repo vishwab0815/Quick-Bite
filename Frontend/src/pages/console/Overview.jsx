@@ -15,7 +15,7 @@ export default function Overview() {
     if (!data) {
         return (
             <>
-                <PageHeader title="Overview" subtitle="Every hotel on QuickBite at a glance" />
+                <PageHeader title="Overview" subtitle="Every hotel at a glance" />
                 {error ? <EmptyState>Could not load the overview. <button className="font-semibold underline" onClick={refresh}>Try again</button></EmptyState> : (
                     <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">{Array.from({ length: 8 }, (_, index) => <Skeleton key={index} className="h-24" />)}</div>
                 )}
@@ -29,7 +29,7 @@ export default function Overview() {
         <>
             <PageHeader
                 title="Overview"
-                subtitle={`Every hotel on QuickBite · updated ${timeAgo(data.generatedAt).toLowerCase()}`}
+                subtitle={`Every hotel · updated ${timeAgo(data.generatedAt).toLowerCase()}`}
                 actions={<Button variant="secondary" onClick={refresh}><FiRefreshCw /> Refresh</Button>}
             />
 

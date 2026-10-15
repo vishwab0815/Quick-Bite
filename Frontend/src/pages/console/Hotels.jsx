@@ -186,7 +186,7 @@ export default function Hotels() {
         <>
             <PageHeader
                 title="Hotels"
-                subtitle={hotels ? `${hotels.length} hotel${hotels.length === 1 ? '' : 's'} on QuickBite` : 'Every restaurant using QuickBite'}
+                subtitle={hotels ? `${hotels.length} hotel${hotels.length === 1 ? '' : 's'} on the platform` : 'Every restaurant on the platform'}
                 actions={<Button onClick={() => setAdding(true)}><FiPlus /> Add hotel</Button>}
             />
 

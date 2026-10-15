@@ -9,7 +9,7 @@ export const posApi = axios.create({
     withCredentials: true,
 });
 
-// Hotel switched off by QuickBite or subscription lapsed - the counter shows a full-screen notice
+// Hotel switched off by the platform owner or subscription lapsed - the counter shows a full-screen notice
 export const BLOCKED_EVENT = 'quickbite:blocked';
 const BLOCKED_CODES = ['HOTEL_DISABLED', 'SUBSCRIPTION_EXPIRED', 'HOTEL_NOT_FOUND'];
 

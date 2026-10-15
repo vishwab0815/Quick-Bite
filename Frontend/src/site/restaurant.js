@@ -1,9 +1,9 @@
 /**
  * The restaurant this website is for. Address, phone and hours are not written here:
- * they come live from the restaurant's own QuickBite settings (owner → settings), so the
+ * they come live from the restaurant's own settings in the billing system, so the
  * site never shows details the owner has not entered.
  *
- * VITE_RESTAURANT_SLUG picks the restaurant's QuickBite record (its token TV address).
+ * VITE_RESTAURANT_SLUG picks the restaurant's record (its token TV address, /tv/<slug>).
  */
 const slug = String(import.meta.env.VITE_RESTAURANT_SLUG || '').trim();
 
@@ -21,7 +21,7 @@ export const RESTAURANT = {
 };
 
 /**
- * Public QuickBite endpoints for this restaurant (menu, contact details, live tokens).
+ * Public endpoints for this restaurant (menu, contact details, live tokens).
  * Null until VITE_RESTAURANT_SLUG is set, so the site never shows another restaurant's data.
  */
 export const publicPaths = slug

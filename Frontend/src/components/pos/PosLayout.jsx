@@ -13,7 +13,7 @@ import { useCachedQuery } from '../../utils/useCachedQuery';
 const fetchSettings = () => posApi.get('/settings').then((res) => res.data.settings);
 
 /**
- * Shown instead of the counter when QuickBite has switched the hotel off or its subscription has lapsed
+ * Shown instead of the counter when the platform owner has switched the hotel off or its subscription has lapsed
  */
 const BlockedScreen = ({ reason }) => {
     const signOut = async () => {

@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { NavLink } from 'react-router-dom';
 import PropTypes from 'prop-types';
 import axios from 'axios';
+import { RESTAURANT } from '../../site/restaurant';
 import {
     PiStorefrontDuotone, PiCookingPotDuotone, PiChartLineUpDuotone, PiBowlFoodDuotone,
     PiUsersThreeDuotone, PiTelevisionSimpleDuotone, PiSignOutBold,
@@ -87,7 +88,7 @@ AccountMenu.propTypes = {
  */
 export default function PosNav({ user, hotelName, hotelSlug }) {
     const links = LINKS.filter((link) => !link.ownerOnly || user.role === 'admin');
-    const name = hotelName || 'QuickBite';
+    const name = hotelName || RESTAURANT.name;
 
     return (
         <>

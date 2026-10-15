@@ -1,63 +1,95 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import PropTypes from 'prop-types';
 import { RESTAURANT } from '../../site/restaurant';
 import { prefersReducedMotion } from './motion';
 
-const READY_AT = 0.3;      // enough of the opening film to scrub smoothly
-const MIN_MS = 1100;
-const MAX_MS = 3200;
+// Dishes that flicker through the little frame while the page gets ready
+const FLICKER = ['/site/flowers.webp', '/site/masala-dosa.webp', '/site/vada-kaapi.webp', '/site/kaapi.webp', '/site/upma.webp', '/site/oota.webp'];
+const MIN_MS = 1900;
+const MAX_MS = 4500;
+const EXPAND_MS = 1250;
+const FLICKER_MS = 170;
 
 /**
- * Opening curtain: the name in Kannada and a counter while the first frames arrive,
- * then it lifts away. Never holds the page for more than a few seconds.
+ * Opening: dishes flicker in a small frame with a counter; then the frame opens up to the
+ * full screen and becomes the hero photo underneath, so the page starts seamlessly.
  */
-const Preloader = ({ progress, onDone }) => {
+const Preloader = ({ heroSrc, onReveal, onDone }) => {
+    const [loaded, setLoaded] = useState(0);
     const [shown, setShown] = useState(0);
-    const [leaving, setLeaving] = useState(false);
-    const [gone, setGone] = useState(false);
-    const [startedAt] = useState(() => Date.now());
+    const [index, setIndex] = useState(0);
+    const [phase, setPhase] = useState('loading');
+    const startedAt = useRef(Date.now());
+    const total = FLICKER.length + 1;
 
-    // The counter eases towards the real progress
+    // Load the flicker dishes and the hero photo
     useEffect(() => {
-        const target = Math.min(1, progress / READY_AT);
+        let alive = true;
+        [...FLICKER, heroSrc].forEach((src) => {
+            const image = new Image();
+            image.onload = image.onerror = () => alive && setLoaded((count) => count + 1);
+            image.src = src;
+        });
+        return () => {
+            alive = false;
+        };
+    }, [heroSrc]);
+
+    // Counter eases towards the real progress; dishes flicker while loading
+    useEffect(() => {
+        if (phase !== 'loading') return undefined;
         const timer = setInterval(() => {
-            const waited = Date.now() - startedAt;
-            const floor = Math.min(1, waited / MAX_MS);
-            setShown((value) => Math.min(1, Math.max(floor, value + (target - value) * 0.18)));
-        }, 40);
+            const elapsed = Date.now() - startedAt.current;
+            const target = Math.min(loaded / total, elapsed / MIN_MS, 1);
+            setShown((value) => Math.max(Math.min(1, elapsed / MAX_MS), value + (target - value) * 0.2));
+            setIndex((value) => value + 1);
+        }, FLICKER_MS);
         return () => clearInterval(timer);
-    }, [progress, startedAt]);
+    }, [phase, loaded, total]);
 
     useEffect(() => {
-        if (leaving) return;
-        const ready = shown >= 0.995 && Date.now() - startedAt >= MIN_MS;
-        if (ready || prefersReducedMotion()) setLeaving(true);
-    }, [shown, leaving, startedAt]);
+        if (phase === 'loading' && (shown >= 0.99 || prefersReducedMotion())) {
+            setPhase('expanding');
+            onReveal();
+        }
+    }, [phase, shown, onReveal]);
 
-    // Once the curtain starts to lift, hand the page over when it has gone
     useEffect(() => {
-        if (!leaving) return undefined;
+        if (phase !== 'expanding') return undefined;
         const timer = setTimeout(() => {
-            setGone(true);
+            setPhase('gone');
             onDone();
-        }, prefersReducedMotion() ? 0 : 1100);
+        }, prefersReducedMotion() ? 0 : EXPAND_MS);
         return () => clearTimeout(timer);
-    }, [leaving, onDone]);
+    }, [phase, onDone]);
 
-    if (gone) return null;
+    if (phase === 'gone') return null;
+    const expanding = phase === 'expanding';
 
     return (
-        <div className={`site-preloader fixed inset-0 z-[100] flex flex-col items-center justify-center bg-ink text-paper ${leaving ? 'is-leaving' : ''}`} aria-hidden="true">
-            <p className="site-preloader__word font-kn text-[clamp(2.6rem,9vw,6rem)] leading-none text-gold">{RESTAURANT.wordKn}</p>
-            <p className="mt-6 font-code text-[11px] uppercase tracking-[0.4em] text-stone-500">{RESTAURANT.area} · {RESTAURANT.city}</p>
-            <p className="absolute bottom-8 right-8 font-accent text-6xl tabular-nums text-paper/80 sm:text-8xl">{Math.round(shown * 100)}</p>
-            <span className="absolute inset-x-0 bottom-0 h-[2px] origin-left bg-gold" style={{ transform: `scaleX(${shown})` }} />
+        <div className={`site-loader fixed inset-0 z-[100] bg-ink text-paper ${expanding ? 'is-expanding' : ''}`} aria-hidden="true">
+            <div className="site-loader__frame absolute inset-0 overflow-hidden">
+                <img
+                    key={expanding ? 'hero' : 'flicker'}
+                    src={expanding ? heroSrc : FLICKER[index % FLICKER.length]}
+                    alt=""
+                    className="site-loader__img h-full w-full object-cover"
+                />
+            </div>
+            <div className="site-loader__meta pointer-events-none absolute inset-x-0 bottom-0 flex items-end justify-between px-5 pb-6 sm:px-10 sm:pb-8">
+                <div>
+                    <p className="font-kn text-xl text-gold sm:text-2xl">{RESTAURANT.wordKn}</p>
+                    <p className="mt-2 font-code text-[10px] uppercase tracking-[0.35em] text-paper/50">{RESTAURANT.area} · {RESTAURANT.city}</p>
+                </div>
+                <p className="font-accent text-7xl leading-none tabular-nums sm:text-9xl">{Math.round(shown * 100)}</p>
+            </div>
         </div>
     );
 };
 
 Preloader.propTypes = {
-    progress: PropTypes.number.isRequired,
+    heroSrc: PropTypes.string.isRequired,
+    onReveal: PropTypes.func.isRequired,
     onDone: PropTypes.func.isRequired,
 };
 

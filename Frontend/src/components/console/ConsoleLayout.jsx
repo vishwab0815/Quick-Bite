@@ -3,6 +3,8 @@ import { NavLink, Outlet, useLocation } from 'react-router-dom';
 import PropTypes from 'prop-types';
 import { FiActivity, FiCreditCard, FiGrid, FiHome, FiLogOut, FiMenu, FiShield, FiX } from 'react-icons/fi';
 import { signOut } from '../../utils/console';
+import BrandMark from '../common/BrandMark';
+import { RESTAURANT } from '../../site/restaurant';
 
 const NAV = [
     { to: '/console', label: 'Overview', icon: FiGrid, end: true },
@@ -14,9 +16,9 @@ const NAV = [
 const Sidebar = ({ user, onNavigate }) => (
     <div className="flex h-full flex-col bg-stone-950 text-stone-300">
         <div className="flex items-center gap-2.5 px-5 py-5">
-            <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-orange-500 text-sm font-extrabold text-stone-950">Q</span>
+            <BrandMark />
             <div className="leading-tight">
-                <p className="text-sm font-bold text-white">QuickBite</p>
+                <p className="text-sm font-bold text-white">{RESTAURANT.word}</p>
                 <p className="flex items-center gap-1 text-[11px] font-medium text-stone-500"><FiShield /> Platform console</p>
             </div>
         </div>
@@ -94,7 +96,7 @@ export default function ConsoleLayout({ user }) {
                     <button onClick={() => setOpen(true)} className="rounded-lg p-2 text-stone-600 hover:bg-stone-100" aria-label="Open menu">
                         <FiMenu />
                     </button>
-                    <span className="text-sm font-bold">QuickBite console</span>
+                    <span className="text-sm font-bold">{RESTAURANT.word} console</span>
                 </header>
                 <main className="relative min-h-0 flex-1 overflow-y-auto [scrollbar-gutter:stable]">
                     <div key={location.pathname} className="pos-page mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8 lg:py-8">
