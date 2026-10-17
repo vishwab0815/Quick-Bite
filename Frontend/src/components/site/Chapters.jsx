@@ -145,7 +145,7 @@ export const StackedDishes = () => {
 
 const STEPS = [
     ['Pick your dishes', 'From today’s menu, with photos.'],
-    ['Pay by UPI or card', 'Secure checkout by Razorpay.'],
+    ['Pay by UPI', 'PhonePe, Google Pay or any UPI app.'],
     ['Collect with your token', 'We message you on WhatsApp when it’s ready.'],
 ];
 

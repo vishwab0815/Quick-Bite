@@ -3,7 +3,7 @@
  * and paid through Razorpay, with no cashier involved:
  *
  *   1. createOrder   prices the cart from the database and opens a Razorpay order
- *   2. Checkout      the customer pays in the Razorpay window (UPI or card)
+ *   2. Checkout      the customer pays by UPI in the Razorpay window (their UPI app, or a QR)
  *   3. verifyPayment the browser hands back the signed payment; the server checks the signature,
  *                    looks the payment up at Razorpay (amount, currency, captured) and issues the
  *                    bill with its token - the kitchen sees it at once

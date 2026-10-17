@@ -14,7 +14,7 @@ const MAX_EACH = 20;
 /** How ordering works, in three steps */
 const STEPS = (demo) => [
     ['Pick your dishes', 'Tap to add'],
-    [demo ? 'Place the order' : 'Pay by UPI or card', demo ? 'No payment in demo' : 'Secure, takes seconds'],
+    [demo ? 'Place the order' : 'Pay by UPI', demo ? 'No payment in demo' : 'PhonePe, Google Pay, any UPI app'],
     ['Collect with your token', "We tell you when it's ready"],
 ];
 
@@ -280,7 +280,22 @@ export default function OrderPage() {
                 description: checkout.description,
                 prefill: checkout.prefill,
                 theme: { color: '#e6a83c' },
-                method: { upi: true, card: true, netbanking: false, wallet: false, emi: false, paylater: false },
+                // UPI only: on a phone the customer picks their app (PhonePe, Google Pay, Paytm…) and
+                // approves there; on a computer or kiosk a QR code shows to scan. Entering a UPI ID
+                // stays as the fallback.
+                method: { upi: true, card: false, netbanking: false, wallet: false, emi: false, paylater: false },
+                config: {
+                    display: {
+                        blocks: {
+                            upi: {
+                                name: 'Pay with any UPI app',
+                                instruments: [{ method: 'upi', flows: ['intent', 'qr', 'collect'], apps: ['phonepe', 'google_pay', 'paytm', 'bhim'] }],
+                            },
+                        },
+                        sequence: ['block.upi'],
+                        preferences: { show_default_blocks: false },
+                    },
+                },
                 handler: async (response) => {
                     setCart({});
                     setNote('');
@@ -373,7 +388,7 @@ export default function OrderPage() {
                     </div>
                     {error && <p role="alert" className="mt-4 rounded-2xl bg-red-50 px-4 py-3 text-sm font-medium text-red-700 ring-1 ring-red-200">{error}</p>}
                     <button type="submit" disabled={paying} className="mt-7 flex w-full items-center justify-between rounded-full bg-ink py-4 pl-7 pr-5 font-semibold text-paper transition-transform active:scale-[0.99] disabled:opacity-60">
-                        <span>{demo ? (paying ? 'Placing order…' : 'Place order') : (paying ? 'Opening payment…' : 'Pay with UPI or card')}</span>
+                        <span>{demo ? (paying ? 'Placing order…' : 'Place order') : (paying ? 'Opening UPI…' : 'Pay with UPI')}</span>
                         <span className="rounded-full bg-gold px-4 py-1.5 text-sm font-bold tabular-nums text-ink">{formatPrice(total)}{restaurant?.pricesIncludeGst ? '' : ' + GST'}</span>
                     </button>
                     <p className="mt-4 text-center text-xs text-ink/50">Pick up at the counter - show your token when it&apos;s ready.</p>
@@ -397,7 +412,7 @@ export default function OrderPage() {
                     ) : (
                         <Link to="/" className="flex items-center gap-2 font-accent text-2xl" aria-label={`Back to ${RESTAURANT.name}`}><PiArrowLeft className="text-base text-ink/50" /> {RESTAURANT.word}</Link>
                     )}
-                    <span className="hidden text-sm text-ink/55 sm:block">Order online · {demo ? 'demo ordering, no payment' : 'pay by UPI or card'} · collect with your token{restaurant?.hours ? ` · ${restaurant.hours}` : ''}</span>
+                    <span className="hidden text-sm text-ink/55 sm:block">Order online · {demo ? 'demo ordering, no payment' : 'pay by UPI'} · collect with your token{restaurant?.hours ? ` · ${restaurant.hours}` : ''}</span>
                     {count > 0 && (
                         <span className="ml-auto rounded-full bg-ink px-3 py-1 text-xs font-semibold tabular-nums text-paper lg:hidden">{count} · {formatPrice(total)}</span>
                     )}
