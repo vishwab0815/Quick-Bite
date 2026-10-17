@@ -394,7 +394,9 @@ module.exports.cancelBill = async (req, res) => {
         // Paid online: give the money back through Razorpay before cancelling
         if (bill.payment?.gateway === 'razorpay' && bill.payment.gatewayPaymentId && !bill.payment.refund?.id) {
             try {
-                const refund = await razorpay.refundPayment(bill.payment.gatewayPaymentId, {
+                const account = razorpay.accountFor(await Hotel.findById(req.hotelId).select(razorpay.SECRET_FIELDS).lean());
+                if (!account) throw new Error('Razorpay is not connected for this hotel - refund it from the Razorpay dashboard');
+                const refund = await razorpay.refundPayment(account, bill.payment.gatewayPaymentId, {
                     notes: { bill: bill.billNumber, reason: reason.slice(0, 200) }
                 });
                 bill.payment.refund = { id: refund.id, status: refund.status, amount: refund.amount / 100, at: new Date() };

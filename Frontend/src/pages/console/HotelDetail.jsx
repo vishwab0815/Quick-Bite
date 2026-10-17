@@ -13,8 +13,9 @@ import { useCachedQuery } from '../../utils/useCachedQuery';
 import HotelSales from './HotelSales';
 import HotelSubscription from './HotelSubscription';
 import HotelSettings from './HotelSettings';
+import HotelOnlinePayments from './HotelOnlinePayments';
 
-const TABS = ['Overview', 'Sales', 'Menu', 'Staff', 'Subscription', 'Settings'];
+const TABS = ['Overview', 'Sales', 'Menu', 'Staff', 'Online orders', 'Subscription', 'Settings'];
 
 /* ---------- Enable / disable ---------- */
 
@@ -291,6 +292,7 @@ export default function HotelDetail() {
             {tab === 'Sales' && <HotelSales hotelId={id} timeZone={hotel.settings.timeZone} />}
             {tab === 'Menu' && <MenuTab hotelId={id} />}
             {tab === 'Staff' && <StaffTab hotelId={id} />}
+            {tab === 'Online orders' && <HotelOnlinePayments hotel={hotel} />}
             {tab === 'Subscription' && <HotelSubscription hotel={hotel} onChanged={refresh} />}
             {tab === 'Settings' && <HotelSettings hotel={hotel} onChanged={refresh} />}
 

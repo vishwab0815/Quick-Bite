@@ -71,6 +71,17 @@ const hotelSchema = new mongoose.Schema({
     // Show online ordering to a client before payments are set up: orders go straight to the
     // kitchen with no payment taken. Real Razorpay payments take over as soon as they are configured.
     onlineOrdersDemo: { type: Boolean, default: false },
+
+    // The hotel's own Razorpay account for online orders - customers' money goes straight to
+    // the hotel. Set by the platform owner in the console. Secrets are encrypted
+    // (utils/secretBox) and only read where a payment needs them.
+    razorpay: {
+        keyId: { type: String, trim: true, maxlength: 40, default: '' },
+        keySecret: { type: String, select: false },
+        webhookSecret: { type: String, select: false },
+        enabled: { type: Boolean, default: false },
+        connectedAt: Date
+    },
     demoResetAt: Date,
 
     createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'user' }

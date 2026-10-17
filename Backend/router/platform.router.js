@@ -31,6 +31,9 @@ platformRouter.get('/hotels/:id/bills', Platform.getHotelBills);
 platformRouter.get('/hotels/:id/menu', Platform.getHotelMenu);
 platformRouter.get('/hotels/:id/staff', Platform.getHotelStaff);
 platformRouter.patch('/hotels/:id/staff/:userId/password', Platform.resetStaffPassword);
+platformRouter.get('/hotels/:id/online-payments', Platform.getOnlinePayments);
+platformRouter.put('/hotels/:id/online-payments', Platform.updateOnlinePayments);
+platformRouter.delete('/hotels/:id/online-payments', Platform.disconnectOnlinePayments);
 
 platformRouter.get('/payments', Platform.listPayments);
 platformRouter.get('/audit', Platform.listAudit);

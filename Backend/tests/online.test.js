@@ -16,6 +16,9 @@ const PASSWORD = 'Test1234';
 const KEY_SECRET = 'rzp-test-secret';
 const WEBHOOK_SECRET = 'rzp-webhook-secret';
 const APP_SECRET = 'meta-app-secret';
+const HOTEL_KEY_ID = 'rzp_test_SecondHotel01';
+const HOTEL_KEY_SECRET = 'SecondHotelSecret0123456';
+const HOTEL_WEBHOOK_SECRET = 'second-hotel-webhook-secret';
 
 let mongo;
 let app;
@@ -26,7 +29,7 @@ let coffee;
 let soldOut;
 
 // ---------- Fake Razorpay + WhatsApp ----------
-const fake = { payments: new Map(), refunds: [], whatsapp: [], failRefund: false, orderSeq: 0, messageSeq: 0 };
+const fake = { payments: new Map(), refunds: [], whatsapp: [], failRefund: false, orderSeq: 0, messageSeq: 0, keyChecks: [], orderKeys: [] };
 const realFetch = global.fetch;
 
 const json = (status, body) => ({ ok: status < 300, status, json: async () => body });
@@ -35,8 +38,15 @@ global.fetch = async (url, options = {}) => {
     const { pathname } = new URL(url);
     const body = options.body ? JSON.parse(options.body) : {};
     if (url.startsWith('https://api.razorpay.com/v1')) {
+        if (pathname === '/v1/payments') {
+            // Key check: only the hotel's real key pair is accepted
+            const [keyId, secret] = Buffer.from(String(options.headers.Authorization).slice(6), 'base64').toString().split(':');
+            fake.keyChecks.push(keyId);
+            return secret === HOTEL_KEY_SECRET || secret === KEY_SECRET ? json(200, { items: [] }) : json(401, { error: { description: 'Authentication failed' } });
+        }
         if (pathname === '/v1/orders') {
             fake.orderSeq += 1;
+            fake.orderKeys.push(Buffer.from(String(options.headers.Authorization).slice(6), 'base64').toString().split(':')[0]);
             return json(200, { id: `order_T${fake.orderSeq}`, amount: body.amount, currency: body.currency, receipt: body.receipt });
         }
         const refund = pathname.match(/^\/v1\/payments\/([^/]+)\/refund$/);
@@ -150,7 +160,10 @@ before(async () => {
     await User.create([
         { name: 'Owner', email: 'owner@naivedya.test', password, role: 'admin', hotel: hotel._id },
         { name: 'Kitchen', email: 'kitchen@naivedya.test', password, role: 'staff', hotel: hotel._id },
+        { name: 'Platform', email: 'platform@quickbite.test', password, role: 'superadmin' },
     ]);
+    const second = await Hotel.create({ name: 'Second Hotel', slug: 'second-hotel', subscription: { plan: 'trial', paidUntil } });
+    await MenuItem.create({ hotel: second._id, name: 'Rava Idli', price: 50, counter: 'Main' });
 });
 
 after(async () => {
@@ -322,6 +335,72 @@ describe('demo ordering (no payments set up)', () => {
         assert.equal(res.body.demo, undefined);
         assert.ok(res.body.checkout.orderId.startsWith('order_'));
         await Hotel.updateOne({ slug: 'naivedya' }, { $set: { onlineOrdersDemo: false } });
+    });
+});
+
+describe("each hotel's own Razorpay account (set in the console)", () => {
+    let platform;
+    let hotelId;
+    let rava;
+
+    before(async () => {
+        const Hotel = require('../models/hotel.model');
+        const MenuItem = require('../models/menuItem.model');
+        platform = await login('platform@quickbite.test');
+        hotelId = String((await Hotel.findOne({ slug: 'second-hotel' }))._id);
+        rava = await MenuItem.findOne({ name: 'Rava Idli' });
+    });
+
+    it('refuses keys Razorpay does not accept, and never stores or shows a secret in plain text', async () => {
+        const bad = await platform.put(`/platform/hotels/${hotelId}/online-payments`).send({ keyId: HOTEL_KEY_ID, keySecret: 'WrongSecret000000000000' });
+        assert.equal(bad.status, 400);
+        assert.equal((await request(app).get('/pos/public/second-hotel/info')).body.restaurant.onlineOrdering, false);
+
+        const res = await platform.put(`/platform/hotels/${hotelId}/online-payments`)
+            .send({ keyId: HOTEL_KEY_ID, keySecret: HOTEL_KEY_SECRET, webhookSecret: HOTEL_WEBHOOK_SECRET });
+        assert.equal(res.status, 200, res.body.message);
+        assert.equal(res.body.online.enabled, true);
+        assert.equal(res.body.online.mode, 'test');
+        assert.equal(res.body.online.webhookSecretSaved, true);
+        assert.ok(!JSON.stringify(res.body).includes(HOTEL_KEY_SECRET));
+        assert.ok(!JSON.stringify((await platform.get(`/platform/hotels/${hotelId}`)).body).includes('keySecret'));
+
+        const stored = await mongoose.connection.db.collection('hotels').findOne({ slug: 'second-hotel' });
+        assert.ok(stored.razorpay.keySecret.startsWith('v1.'), 'encrypted at rest');
+        assert.ok(!JSON.stringify(stored).includes(HOTEL_KEY_SECRET));
+    });
+
+    it("takes the payment on the hotel's own account and confirms it through its own webhook", async () => {
+        await new Promise((resolve) => setTimeout(resolve, 15100)); // public details are cached for 15 s
+        assert.equal((await request(app).get('/pos/public/second-hotel/info')).body.restaurant.onlineOrdering, true);
+        const started = await request(app).post('/pos/public/second-hotel/orders')
+            .send({ items: [{ itemId: String(rava._id), quantity: 2 }], customer: { phone: '9876543210' } });
+        assert.equal(started.status, 201, started.body.message);
+        assert.equal(started.body.checkout.key, HOTEL_KEY_ID);
+        assert.equal(fake.orderKeys.at(-1), HOTEL_KEY_ID, 'the order is opened on the hotel account');
+
+        const { razorpay_payment_id: paymentId } = pay(started.body.checkout.orderId, 10000);
+        const payment = fake.payments.get(paymentId);
+        const wrong = await webhook('payment.captured', payment, WEBHOOK_SECRET).then(() => null);
+        assert.equal(wrong, null);
+        const raw = JSON.stringify({ event: 'payment.captured', payload: { payment: { entity: payment } } });
+        const unsigned = await request(app).post('/pos/payments/razorpay/webhook/second-hotel').set('Content-Type', 'application/json')
+            .set('X-Razorpay-Signature', sign(WEBHOOK_SECRET, raw)).send(raw);
+        assert.equal(unsigned.status, 400, "another account's webhook secret is refused");
+        const signed = await request(app).post('/pos/payments/razorpay/webhook/second-hotel').set('Content-Type', 'application/json')
+            .set('X-Razorpay-Signature', sign(HOTEL_WEBHOOK_SECRET, raw)).send(raw);
+        assert.equal(signed.status, 200);
+        const order = await OnlineOrder.findOne({ publicId: started.body.order.publicId });
+        assert.equal(order.status, 'paid');
+        assert.ok(order.bill);
+    });
+
+    it('switches online orders off, and disconnects', async () => {
+        const off = await platform.put(`/platform/hotels/${hotelId}/online-payments`).send({ enabled: false });
+        assert.equal(off.body.online.enabled, false);
+        const gone = await platform.delete(`/platform/hotels/${hotelId}/online-payments`);
+        assert.equal(gone.body.online.keyId, '');
+        assert.equal(gone.body.online.keySecretSaved, false);
     });
 });
 

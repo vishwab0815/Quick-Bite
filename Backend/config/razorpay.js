@@ -1,32 +1,59 @@
 /**
  * Razorpay - online payments for website / QR / kiosk orders
  *
- * Money goes straight into the restaurant's own Razorpay account. Set in the environment
- * (never in code):
- *   RAZORPAY_KEY_ID          rzp_live_... (rzp_test_... while testing)
- *   RAZORPAY_KEY_SECRET      from Razorpay Dashboard → Account & Settings → API keys
- *   RAZORPAY_WEBHOOK_SECRET  the secret typed when adding the webhook
- *   ONLINE_ORDERS_HOTEL      slug of the hotel this Razorpay account belongs to - only that
- *                            hotel can take online orders, so no other hotel's customers can
- *                            ever pay into this account
+ * Every hotel takes payments into its OWN Razorpay account, so customers' money goes straight
+ * to the restaurant. The platform owner enters each hotel's keys in the console (Hotel →
+ * Online orders); the key secret and webhook secret are stored encrypted. Each hotel adds its
+ * own webhook in its Razorpay dashboard:
+ *   URL     <backend>/pos/payments/razorpay/webhook/<hotel web address>
+ *   Events  payment.captured, payment.failed, order.paid
  *
- * Webhook (Dashboard → Webhooks): URL <backend>/pos/payments/razorpay/webhook,
- * events payment.captured, payment.failed, order.paid
+ * Older single-account setup (still honoured, for one hotel): RAZORPAY_KEY_ID,
+ * RAZORPAY_KEY_SECRET, RAZORPAY_WEBHOOK_SECRET and ONLINE_ORDERS_HOTEL in the environment,
+ * webhook URL <backend>/pos/payments/razorpay/webhook. A hotel's own keys take priority.
  */
 
 const crypto = require('crypto');
+const { open } = require('../utils/secretBox');
 
 const API = 'https://api.razorpay.com/v1';
 
+/** Add to a hotel query to load the stored (encrypted) secrets */
+const SECRET_FIELDS = '+razorpay.keySecret +razorpay.webhookSecret';
+
+const KEY_ID = /^rzp_(test|live)_[A-Za-z0-9]{8,32}$/;
+const KEY_SECRET = /^[A-Za-z0-9]{16,64}$/;
+
 const isRazorpayConfigured = () => Boolean(process.env.RAZORPAY_KEY_ID && process.env.RAZORPAY_KEY_SECRET);
 
-/** Whether this hotel may take online (prepaid) orders */
-const acceptsOnlineOrders = (hotel) => Boolean(
+/** The single account set in the environment (older setup), for ONLINE_ORDERS_HOTEL only */
+const envAccountFor = (hotel) => (
     isRazorpayConfigured() &&
     hotel?.slug &&
     process.env.ONLINE_ORDERS_HOTEL &&
     hotel.slug === process.env.ONLINE_ORDERS_HOTEL.trim()
+        ? { keyId: process.env.RAZORPAY_KEY_ID, keySecret: process.env.RAZORPAY_KEY_SECRET, webhookSecret: process.env.RAZORPAY_WEBHOOK_SECRET || '' }
+        : null
 );
+
+/** The hotel has its own Razorpay account switched on (no secrets needed to tell) */
+const hasOwnAccount = (hotel) => Boolean(hotel?.razorpay?.enabled && hotel.razorpay.keyId);
+
+/** Whether this hotel may take online (prepaid) orders */
+const acceptsOnlineOrders = (hotel) => hasOwnAccount(hotel) || Boolean(envAccountFor(hotel));
+
+/**
+ * The Razorpay credentials a hotel's payments use - the hotel must be loaded with SECRET_FIELDS.
+ * Null when it takes no online payments, or its stored secret can no longer be read.
+ */
+const accountFor = (hotel) => {
+    if (hasOwnAccount(hotel)) {
+        const keySecret = open(hotel.razorpay.keySecret);
+        if (!keySecret) return null;
+        return { keyId: hotel.razorpay.keyId, keySecret, webhookSecret: open(hotel.razorpay.webhookSecret) || '' };
+    }
+    return envAccountFor(hotel);
+};
 
 /**
  * How this hotel takes online orders: 'razorpay' (paid), 'demo' (no payment - for showing the
@@ -37,6 +64,9 @@ const onlineOrderingMode = (hotel) => {
     if (hotel?.onlineOrdersDemo) return 'demo';
     return null;
 };
+
+/** 'test' or 'live', from the key id */
+const keyMode = (keyId) => (String(keyId).startsWith('rzp_live_') ? 'live' : 'test');
 
 const toPaise = (rupees) => Math.round(Number(rupees) * 100);
 
@@ -50,14 +80,14 @@ const safeEqual = (a, b) => {
 const hmac = (secret, data) => crypto.createHmac('sha256', secret).update(data).digest('hex');
 
 /** Signature returned by Checkout: HMAC(order_id|payment_id, key secret) */
-const verifyPaymentSignature = ({ orderId, paymentId, signature }) =>
-    Boolean(orderId && paymentId && signature && process.env.RAZORPAY_KEY_SECRET) &&
-    safeEqual(hmac(process.env.RAZORPAY_KEY_SECRET, `${orderId}|${paymentId}`), signature);
+const verifyPaymentSignature = (account, { orderId, paymentId, signature }) =>
+    Boolean(account?.keySecret && orderId && paymentId && signature) &&
+    safeEqual(hmac(account.keySecret, `${orderId}|${paymentId}`), signature);
 
 /** Signature on webhooks: HMAC(raw request body, webhook secret) */
-const verifyWebhookSignature = (rawBody, signature) =>
-    Boolean(process.env.RAZORPAY_WEBHOOK_SECRET && rawBody && signature) &&
-    safeEqual(hmac(process.env.RAZORPAY_WEBHOOK_SECRET, rawBody), signature);
+const verifyWebhookSignature = (webhookSecret, rawBody, signature) =>
+    Boolean(webhookSecret && rawBody && signature) &&
+    safeEqual(hmac(webhookSecret, rawBody), signature);
 
 class RazorpayError extends Error {
     constructor(message, status) {
@@ -67,8 +97,8 @@ class RazorpayError extends Error {
     }
 }
 
-const request = async (method, path, body) => {
-    const auth = Buffer.from(`${process.env.RAZORPAY_KEY_ID}:${process.env.RAZORPAY_KEY_SECRET}`).toString('base64');
+const request = async (account, method, path, body) => {
+    const auth = Buffer.from(`${account.keyId}:${account.keySecret}`).toString('base64');
     let response;
     try {
         response = await fetch(`${API}${path}`, {
@@ -88,31 +118,47 @@ const request = async (method, path, body) => {
 };
 
 /** Create a Razorpay order for an amount in rupees */
-const createOrder = ({ amount, receipt, notes }) => request('POST', '/orders', {
+const createOrder = (account, { amount, receipt, notes }) => request(account, 'POST', '/orders', {
     amount: toPaise(amount),
     currency: 'INR',
     receipt: String(receipt).slice(0, 40),
     notes
 });
 
-const fetchPayment = (paymentId) => request('GET', `/payments/${encodeURIComponent(paymentId)}`);
+const fetchPayment = (account, paymentId) => request(account, 'GET', `/payments/${encodeURIComponent(paymentId)}`);
 
-const capturePayment = (paymentId, amountPaise) => request('POST', `/payments/${encodeURIComponent(paymentId)}/capture`, {
+const capturePayment = (account, paymentId, amountPaise) => request(account, 'POST', `/payments/${encodeURIComponent(paymentId)}/capture`, {
     amount: amountPaise,
     currency: 'INR'
 });
 
 /** Full refund (or `amount` rupees) of a captured payment */
-const refundPayment = (paymentId, { amount, notes } = {}) => request('POST', `/payments/${encodeURIComponent(paymentId)}/refund`, {
+const refundPayment = (account, paymentId, { amount, notes } = {}) => request(account, 'POST', `/payments/${encodeURIComponent(paymentId)}/refund`, {
     ...(amount !== undefined && { amount: toPaise(amount) }),
     speed: 'normal',
     notes
 });
 
+/** Check a key pair with Razorpay before saving it: true if Razorpay accepts it */
+const checkKeys = async (keyId, keySecret) => {
+    try {
+        await request({ keyId, keySecret }, 'GET', '/payments?count=1');
+        return true;
+    } catch (error) {
+        if (error.status === 401) return false;
+        throw error;
+    }
+};
+
 module.exports = {
+    SECRET_FIELDS,
+    KEY_ID,
+    KEY_SECRET,
     isRazorpayConfigured,
     acceptsOnlineOrders,
+    accountFor,
     onlineOrderingMode,
+    keyMode,
     toPaise,
     verifyPaymentSignature,
     verifyWebhookSignature,
@@ -120,5 +166,6 @@ module.exports = {
     fetchPayment,
     capturePayment,
     refundPayment,
+    checkKeys,
     RazorpayError
 };

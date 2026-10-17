@@ -15,6 +15,8 @@ const { isValidEmail, isValidPassword, isValidObjectId, sanitizeString } = requi
 const { forgetCachedHotel } = require('../middleware/auth');
 const { round2, getBusinessDate, shiftBusinessDate, slugify } = require('../utils/billing');
 const { buildSummary, SUMMARY_FIELDS } = require('../utils/reports');
+const razorpay = require('../config/razorpay');
+const { seal, open } = require('../utils/secretBox');
 
 const { DAY_MS } = Hotel;
 const PLATFORM_TIME_ZONE = 'Asia/Kolkata';
@@ -657,5 +659,120 @@ module.exports.listAudit = async (req, res) => {
         res.status(200).json({ success: true, entries });
     } catch (error) {
         return serverError(res, 'load the audit log', error);
+    }
+};
+
+/* ---------- Online orders: each hotel's own Razorpay account ---------- */
+
+const WEBHOOK_SECRET = /^[!-~]{8,128}$/;
+
+/** What the console shows - never a secret, only whether one is saved and still readable */
+const onlinePaymentsView = (hotel) => {
+    const account = hotel.razorpay || {};
+    return {
+        keyId: account.keyId || '',
+        mode: account.keyId ? razorpay.keyMode(account.keyId) : null,
+        enabled: Boolean(account.enabled),
+        connectedAt: account.connectedAt || null,
+        keySecretSaved: Boolean(account.keySecret),
+        keySecretReadable: Boolean(open(account.keySecret)),
+        webhookSecretSaved: Boolean(open(account.webhookSecret)),
+        demo: Boolean(hotel.onlineOrdersDemo),
+        // What customers get right now: 'razorpay', 'demo' or null
+        ordering: razorpay.onlineOrderingMode(hotel)
+    };
+};
+
+const loadHotelWithSecrets = async (req, res) => {
+    if (!isValidObjectId(req.params.id)) {
+        fail(res, 404, 'Hotel not found');
+        return null;
+    }
+    const hotel = await Hotel.findById(req.params.id).select(razorpay.SECRET_FIELDS);
+    if (!hotel) fail(res, 404, 'Hotel not found');
+    return hotel;
+};
+
+module.exports.getOnlinePayments = async (req, res) => {
+    try {
+        const hotel = await loadHotelWithSecrets(req, res);
+        if (!hotel) return;
+        res.status(200).json({ success: true, online: onlinePaymentsView(hotel.toObject()) });
+    } catch (error) {
+        return serverError(res, 'load online payments', error);
+    }
+};
+
+/**
+ * Connect or change the hotel's Razorpay account, switch online orders on/off, or demo ordering.
+ * New keys are checked with Razorpay before they are saved; secrets are stored encrypted.
+ */
+module.exports.updateOnlinePayments = async (req, res) => {
+    try {
+        const hotel = await loadHotelWithSecrets(req, res);
+        if (!hotel) return;
+        const { keyId, keySecret, webhookSecret, enabled, demo } = req.body;
+        // A copy - the hotel's own fields change below
+        const current = { keyId: hotel.razorpay?.keyId || '', keySecret: hotel.razorpay?.keySecret };
+        const changes = {};
+
+        const newSecret = String(keySecret || '').trim();
+        if ((keyId !== undefined && String(keyId).trim() !== current.keyId) || newSecret) {
+            const id = String(keyId ?? current.keyId ?? '').trim();
+            if (!razorpay.KEY_ID.test(id)) return fail(res, 400, 'The Key ID looks like rzp_test_... or rzp_live_...');
+            const secret = newSecret || (id === current.keyId ? open(current.keySecret) : null);
+            if (!secret) return fail(res, 400, 'Enter the Key Secret that goes with this Key ID');
+            if (!razorpay.KEY_SECRET.test(secret)) return fail(res, 400, 'That Key Secret does not look right - copy it again from Razorpay');
+            if (!(await razorpay.checkKeys(id, secret))) {
+                return fail(res, 400, 'Razorpay did not accept these keys - copy both again from Dashboard → Account & Settings → API keys');
+            }
+            hotel.set('razorpay.keyId', id);
+            hotel.set('razorpay.keySecret', seal(secret));
+            hotel.set('razorpay.connectedAt', new Date());
+            if (!current.keyId && enabled === undefined) hotel.set('razorpay.enabled', true);
+            changes.keys = `${razorpay.keyMode(id)} key ...${id.slice(-4)}`;
+        }
+
+        const newWebhookSecret = String(webhookSecret || '').trim();
+        if (newWebhookSecret) {
+            if (!WEBHOOK_SECRET.test(newWebhookSecret)) return fail(res, 400, 'The webhook secret must be 8 to 128 characters, without spaces');
+            hotel.set('razorpay.webhookSecret', seal(newWebhookSecret));
+            changes.webhookSecret = 'updated';
+        }
+
+        if (enabled !== undefined) {
+            if (enabled && !hotel.razorpay?.keyId) return fail(res, 400, 'Connect a Razorpay account first');
+            hotel.set('razorpay.enabled', Boolean(enabled));
+            changes.enabled = Boolean(enabled);
+        }
+        if (demo !== undefined) {
+            hotel.onlineOrdersDemo = Boolean(demo);
+            changes.demo = Boolean(demo);
+        }
+
+        await hotel.save();
+        forgetCachedHotel(hotel._id);
+        AuditLog.record(req, 'hotel.online_payments', { hotel, details: changes });
+        res.status(200).json({ success: true, online: onlinePaymentsView(hotel.toObject()) });
+    } catch (error) {
+        if (error instanceof razorpay.RazorpayError) return fail(res, 502, 'Could not reach Razorpay to check the keys. Please try again.');
+        return serverError(res, 'update online payments', error);
+    }
+};
+
+/** Disconnect the hotel's Razorpay account (its keys are deleted) */
+module.exports.disconnectOnlinePayments = async (req, res) => {
+    try {
+        const hotel = await loadHotelWithSecrets(req, res);
+        if (!hotel) return;
+        hotel.set('razorpay', { keyId: '', enabled: false });
+        hotel.set('razorpay.keySecret', undefined);
+        hotel.set('razorpay.webhookSecret', undefined);
+        await hotel.save();
+        forgetCachedHotel(hotel._id);
+        AuditLog.record(req, 'hotel.online_payments', { hotel, details: { disconnected: true } });
+        res.status(200).json({ success: true, online: onlinePaymentsView(hotel.toObject()) });
+    } catch (error) {
+        return serverError(res, 'disconnect online payments', error);
     }
 };

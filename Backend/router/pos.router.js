@@ -46,6 +46,7 @@ posRouter.get('/public/orders/:publicId', OnlineOrderController.getOrder);
 
 // Webhooks (signed - their raw bodies are kept in app.js so the signatures can be checked)
 posRouter.post('/payments/razorpay/webhook', OnlineOrderController.razorpayWebhook);
+posRouter.post('/payments/razorpay/webhook/:slug', OnlineOrderController.razorpayWebhook);
 posRouter.get('/whatsapp/webhook', OnlineOrderController.whatsappWebhookVerify);
 posRouter.post('/whatsapp/webhook', OnlineOrderController.whatsappWebhook);
 

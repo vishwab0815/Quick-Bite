@@ -30,9 +30,17 @@ const fail = (res, status, message) => res.status(status).json({ success: false,
 /** The hotel, if it is active and takes online orders */
 const findOrderingHotel = async (slug) => {
     if (!SLUG.test(String(slug || ''))) return null;
-    const hotel = await Hotel.findOne({ slug }).lean();
+    const hotel = await Hotel.findOne({ slug }).select(razorpay.SECRET_FIELDS).lean();
     if (!hotel || !Hotel.accessStatus(hotel).ok || !razorpay.onlineOrderingMode(hotel)) return null;
     return hotel;
+};
+
+/** A hotel with the Razorpay credentials its payments use */
+const loadPaymentHotel = async (hotelId) => {
+    const hotel = await Hotel.findById(hotelId).select(razorpay.SECRET_FIELDS).lean();
+    const account = razorpay.accountFor(hotel);
+    if (!account) throw new OrderError('Online payments are not set up for this restaurant right now', 503);
+    return { hotel, account };
 };
 
 /**
@@ -111,13 +119,14 @@ const finalizeOrder = async (orderId, paymentId) => {
     if (!order) throw new OrderError('Order not found', 404);
     if (order.bill) return order;
 
-    // Never trust the browser: ask Razorpay what was actually paid
-    let payment = await razorpay.fetchPayment(paymentId);
+    // Never trust the browser: ask Razorpay what was actually paid (on the hotel's own account)
+    const { hotel, account } = await loadPaymentHotel(order.hotel);
+    let payment = await razorpay.fetchPayment(account, paymentId);
     if (payment.order_id !== order.razorpay.orderId) throw new OrderError('This payment belongs to a different order');
     if (payment.currency !== 'INR' || payment.amount !== razorpay.toPaise(order.total)) {
         throw new OrderError('The amount paid does not match the order. Please contact the restaurant.');
     }
-    if (payment.status === 'authorized') payment = await razorpay.capturePayment(paymentId, payment.amount);
+    if (payment.status === 'authorized') payment = await razorpay.capturePayment(account, paymentId, payment.amount);
     if (payment.status !== 'captured') throw new OrderError('The payment is not complete yet', 409);
 
     const claimed = await OnlineOrder.findOneAndUpdate(
@@ -136,7 +145,6 @@ const finalizeOrder = async (orderId, paymentId) => {
     }
 
     try {
-        const hotel = await Hotel.findById(claimed.hotel).lean();
         const settings = getBusinessSettings(hotel);
         const bill = await issueBill({
             hotelId: hotel._id,
@@ -216,7 +224,9 @@ module.exports.createOrder = async (req, res) => {
             return res.status(201).json({ success: true, demo: true, order: { publicId: order.publicId, total: order.total } });
         }
 
-        const gatewayOrder = await razorpay.createOrder({
+        const account = razorpay.accountFor(hotel);
+        if (!account) return fail(res, 503, 'Online payments are not set up for this restaurant right now');
+        const gatewayOrder = await razorpay.createOrder(account, {
             amount: totals.total,
             receipt: publicId,
             notes: { hotel: hotel.slug, order: publicId }
@@ -237,7 +247,7 @@ module.exports.createOrder = async (req, res) => {
             success: true,
             order: { publicId: order.publicId, total: order.total },
             checkout: {
-                key: process.env.RAZORPAY_KEY_ID,
+                key: account.keyId,
                 orderId: gatewayOrder.id,
                 amount: gatewayOrder.amount,
                 currency: 'INR',
@@ -261,7 +271,8 @@ module.exports.verifyPayment = async (req, res) => {
         if (!order) return fail(res, 404, 'Order not found');
 
         const { razorpay_order_id: orderId, razorpay_payment_id: paymentId, razorpay_signature: signature } = req.body;
-        if (orderId !== order.razorpay.orderId || !razorpay.verifyPaymentSignature({ orderId, paymentId, signature })) {
+        const { account } = await loadPaymentHotel(order.hotel);
+        if (orderId !== order.razorpay.orderId || !razorpay.verifyPaymentSignature(account, { orderId, paymentId, signature })) {
             return fail(res, 400, 'The payment could not be verified');
         }
 
@@ -288,11 +299,20 @@ module.exports.getOrder = async (req, res) => {
 };
 
 /**
- * Razorpay webhook (raw body, signed with RAZORPAY_WEBHOOK_SECRET)
+ * Razorpay webhook (raw body). Each hotel's webhook is /pos/payments/razorpay/webhook/<slug>,
+ * signed with that hotel's webhook secret; the older /webhook (no slug) uses RAZORPAY_WEBHOOK_SECRET.
  */
 module.exports.razorpayWebhook = async (req, res) => {
     const raw = Buffer.isBuffer(req.body) ? req.body.toString('utf8') : '';
-    if (!razorpay.verifyWebhookSignature(raw, req.get('X-Razorpay-Signature'))) {
+    const { slug } = req.params;
+    let hotelId = null;
+    let secret = process.env.RAZORPAY_WEBHOOK_SECRET;
+    if (slug !== undefined) {
+        const hotel = SLUG.test(slug) ? await Hotel.findOne({ slug }).select(razorpay.SECRET_FIELDS).lean().catch(() => null) : null;
+        hotelId = hotel?._id;
+        secret = razorpay.accountFor(hotel)?.webhookSecret;
+    }
+    if (!razorpay.verifyWebhookSignature(secret, raw, req.get('X-Razorpay-Signature'))) {
         return fail(res, 400, 'Invalid signature');
     }
 
@@ -306,7 +326,7 @@ module.exports.razorpayWebhook = async (req, res) => {
     try {
         const payment = event.payload?.payment?.entity;
         if (payment?.order_id) {
-            const order = await OnlineOrder.findOne({ 'razorpay.orderId': payment.order_id });
+            const order = await OnlineOrder.findOne({ 'razorpay.orderId': payment.order_id, ...(hotelId && { hotel: hotelId }) });
             if (order && ['payment.captured', 'order.paid'].includes(event.event) && !order.bill) {
                 await finalizeOrder(order._id, payment.id);
             } else if (order && event.event === 'payment.failed' && !order.bill) {
