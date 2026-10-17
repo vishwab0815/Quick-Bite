@@ -284,6 +284,47 @@ describe('online orders (Razorpay)', () => {
     });
 });
 
+describe('demo ordering (no payments set up)', () => {
+    it('takes the order straight to the kitchen with no payment, clearly marked as a demo', async () => {
+        const Hotel = require('../models/hotel.model');
+        const MenuItem = require('../models/menuItem.model');
+        const hotel = await Hotel.create({
+            name: 'Demo Hotel', slug: 'demo-orders', onlineOrdersDemo: true,
+            subscription: { plan: 'trial', paidUntil: new Date(Date.now() + DAY_MS) },
+        });
+        const idli = await MenuItem.create({ hotel: hotel._id, name: 'Idli', price: 40, counter: 'Tiffin' });
+
+        const info = (await request(app).get('/pos/public/demo-orders/info')).body.restaurant;
+        assert.equal(info.onlineOrdering, true);
+        assert.equal(info.orderingDemo, true);
+        const ordersBefore = fake.orderSeq;
+
+        const res = await request(app).post('/pos/public/demo-orders/orders')
+            .send({ items: [{ itemId: String(idli._id), quantity: 3 }], customer: { phone: '9876543210' } });
+        assert.equal(res.status, 201, res.body.message);
+        assert.equal(res.body.demo, true);
+        assert.equal(res.body.checkout, undefined, 'no payment window');
+        assert.equal(fake.orderSeq, ordersBefore, 'Razorpay is never called');
+
+        const order = (await request(app).get(`/pos/public/orders/${res.body.order.publicId}`)).body.order;
+        assert.equal(order.status, 'paid');
+        assert.ok(order.bill.tokenNumber >= 1, 'the customer gets a token');
+        const bill = await Bill.findOne({ publicId: order.bill.publicId });
+        assert.equal(bill.total, 120);
+        assert.equal(bill.payment.gateway, 'demo');
+    });
+
+    it('lets real Razorpay payments take over once they are set up', async () => {
+        const Hotel = require('../models/hotel.model');
+        await Hotel.updateOne({ slug: 'naivedya' }, { $set: { onlineOrdersDemo: true } });
+        const res = await startOrder();
+        assert.equal(res.status, 201);
+        assert.equal(res.body.demo, undefined);
+        assert.ok(res.body.checkout.orderId.startsWith('order_'));
+        await Hotel.updateOne({ slug: 'naivedya' }, { $set: { onlineOrdersDemo: false } });
+    });
+});
+
 describe('WhatsApp (Cloud API)', () => {
     it('tells the customer once when the whole order is ready, and tracks delivery', async () => {
         const { body } = await startOrder();

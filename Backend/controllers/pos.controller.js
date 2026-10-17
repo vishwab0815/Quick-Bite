@@ -602,7 +602,9 @@ module.exports.getPublicInfo = async (req, res) => {
                 phone: settings.phone,
                 hours: settings.hours,
                 pricesIncludeGst: settings.gstScheme === 'composition' || settings.pricesIncludeGst,
-                onlineOrdering: razorpay.acceptsOnlineOrders(hotel)
+                onlineOrdering: Boolean(razorpay.onlineOrderingMode(hotel)),
+                // Demo ordering: the order page says no payment is taken
+                orderingDemo: razorpay.onlineOrderingMode(hotel) === 'demo'
             },
             menu
         });

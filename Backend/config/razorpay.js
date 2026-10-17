@@ -28,6 +28,16 @@ const acceptsOnlineOrders = (hotel) => Boolean(
     hotel.slug === process.env.ONLINE_ORDERS_HOTEL.trim()
 );
 
+/**
+ * How this hotel takes online orders: 'razorpay' (paid), 'demo' (no payment - for showing the
+ * ordering flow before payments are set up) or null (not at all). Razorpay always wins.
+ */
+const onlineOrderingMode = (hotel) => {
+    if (acceptsOnlineOrders(hotel)) return 'razorpay';
+    if (hotel?.onlineOrdersDemo) return 'demo';
+    return null;
+};
+
 const toPaise = (rupees) => Math.round(Number(rupees) * 100);
 
 /** Equal-length, constant-time comparison of two hex signatures */
@@ -102,6 +112,7 @@ const refundPayment = (paymentId, { amount, notes } = {}) => request('POST', `/p
 module.exports = {
     isRazorpayConfigured,
     acceptsOnlineOrders,
+    onlineOrderingMode,
     toPaise,
     verifyPaymentSignature,
     verifyWebhookSignature,

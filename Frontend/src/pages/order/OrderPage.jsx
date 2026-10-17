@@ -213,6 +213,8 @@ export default function OrderPage() {
     const total = lines.reduce((sum, line) => sum + line.price * line.quantity, 0);
     const restaurant = info?.restaurant;
     const open = Boolean(restaurant?.onlineOrdering);
+    // Demo ordering: orders go straight to the kitchen, no payment window
+    const demo = Boolean(restaurant?.orderingDemo);
     const phoneOk = isValidIndianMobile(customer.phone);
 
     const change = (id, delta) => setCart((current) => {
@@ -238,13 +240,20 @@ export default function OrderPage() {
         try {
             const details = { name: customer.name.trim(), phone: customer.phone };
             if (!kiosk) storage.write(CUSTOMER_KEY, details);
+            const body = {
+                items: lines.map((line) => ({ itemId: line._id, quantity: line.quantity })),
+                customer: details,
+                source: kiosk ? 'kiosk' : 'qr',
+            };
+            if (demo) {
+                const res = await posApi.post(`/public/${encodeURIComponent(restaurant.slug)}/orders`, body);
+                setCart({});
+                navigate(`/order/${res.data.order.publicId}${kiosk ? '?kiosk=1' : ''}`);
+                return;
+            }
             const [Razorpay, res] = await Promise.all([
                 loadCheckout(),
-                posApi.post(`/public/${encodeURIComponent(restaurant.slug)}/orders`, {
-                    items: lines.map((line) => ({ itemId: line._id, quantity: line.quantity })),
-                    customer: details,
-                    source: kiosk ? 'kiosk' : 'qr',
-                }),
+                posApi.post(`/public/${encodeURIComponent(restaurant.slug)}/orders`, body),
             ]);
             const { order, checkout } = res.data;
             const statusPath = `/order/${order.publicId}${kiosk ? '?kiosk=1' : ''}`;
@@ -332,10 +341,14 @@ export default function OrderPage() {
                     </div>
                     {error && <p role="alert" className="mt-4 rounded-2xl bg-red-50 px-4 py-3 text-sm font-medium text-red-700 ring-1 ring-red-200">{error}</p>}
                     <button type="submit" disabled={paying} className="mt-7 flex w-full items-center justify-between rounded-full bg-ink py-4 pl-7 pr-5 font-semibold text-paper transition-transform active:scale-[0.99] disabled:opacity-60">
-                        <span>{paying ? 'Opening payment…' : 'Pay now'}</span>
+                        <span>{demo ? (paying ? 'Placing order…' : 'Place order') : (paying ? 'Opening payment…' : 'Pay now')}</span>
                         <span className="rounded-full bg-gold px-4 py-1.5 font-code text-sm text-ink">{formatPrice(total)}{restaurant?.pricesIncludeGst ? '' : ' + GST'}</span>
                     </button>
-                    <p className="mt-3 flex items-center justify-center gap-1.5 text-xs text-ink/50"><PiShieldCheckDuotone className="text-base text-leaf" /> UPI or card · secured by Razorpay</p>
+                    {demo ? (
+                        <p className="mt-3 text-center text-xs text-ink/50">Demo ordering · no payment is taken</p>
+                    ) : (
+                        <p className="mt-3 flex items-center justify-center gap-1.5 text-xs text-ink/50"><PiShieldCheckDuotone className="text-base text-leaf" /> UPI or card · secured by Razorpay</p>
+                    )}
                 </>
             )}
         </form>
@@ -351,7 +364,7 @@ export default function OrderPage() {
                     ) : (
                         <Link to="/" className="flex items-center gap-2 font-accent text-2xl" aria-label={`Back to ${RESTAURANT.name}`}><PiArrowLeft className="text-base text-ink/50" /> {RESTAURANT.word}</Link>
                     )}
-                    <span className="hidden text-sm text-ink/55 sm:block">Order online · pay by UPI or card · collect with your token{restaurant?.hours ? ` · ${restaurant.hours}` : ''}</span>
+                    <span className="hidden text-sm text-ink/55 sm:block">Order online · {demo ? 'demo ordering, no payment' : 'pay by UPI or card'} · collect with your token{restaurant?.hours ? ` · ${restaurant.hours}` : ''}</span>
                     {count > 0 && (
                         <span className="ml-auto rounded-full bg-ink px-3 py-1 font-code text-xs text-paper lg:hidden">{count} · {formatPrice(total)}</span>
                     )}

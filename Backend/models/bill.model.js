@@ -57,8 +57,8 @@ const billSchema = new mongoose.Schema({
         cashReceived: Number,
         changeReturned: Number,
         reference: String,
-        // Paid online through Razorpay (website / QR / kiosk orders)
-        gateway: { type: String, enum: ['razorpay'] },
+        // Paid online through Razorpay (website / QR / kiosk orders); 'demo' = demo order, nothing was paid
+        gateway: { type: String, enum: ['razorpay', 'demo'] },
         gatewayOrderId: String,
         gatewayPaymentId: String,
         method: String,

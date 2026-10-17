@@ -68,6 +68,9 @@ const hotelSchema = new mongoose.Schema({
 
     // The public client demo restaurant (one-click sign-in, sample data that resets itself)
     isDemo: { type: Boolean, default: false },
+    // Show online ordering to a client before payments are set up: orders go straight to the
+    // kitchen with no payment taken. Real Razorpay payments take over as soon as they are configured.
+    onlineOrdersDemo: { type: Boolean, default: false },
     demoResetAt: Date,
 
     createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'user' }

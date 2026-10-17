@@ -31,8 +31,36 @@ const fail = (res, status, message) => res.status(status).json({ success: false,
 const findOrderingHotel = async (slug) => {
     if (!SLUG.test(String(slug || ''))) return null;
     const hotel = await Hotel.findOne({ slug }).lean();
-    if (!hotel || !Hotel.accessStatus(hotel).ok || !razorpay.acceptsOnlineOrders(hotel)) return null;
+    if (!hotel || !Hotel.accessStatus(hotel).ok || !razorpay.onlineOrderingMode(hotel)) return null;
     return hotel;
+};
+
+/**
+ * Demo ordering (no payments set up yet): the order becomes a bill with a token at once, marked
+ * as a demo so it can never be mistaken for, or refunded as, a real payment.
+ */
+const placeDemoOrder = async ({ hotel, settings, publicId, lines, totals, customer, source }) => {
+    const order = await OnlineOrder.create({
+        hotel: hotel._id,
+        publicId,
+        items: lines,
+        ...totals,
+        customer,
+        source,
+        razorpay: { orderId: `demo_${publicId}` }
+    });
+    const bill = await issueBill({
+        hotelId: hotel._id,
+        settings,
+        lines,
+        totals,
+        payment: { mode: 'upi', gateway: 'demo', reference: 'Demo order - no payment taken' },
+        customer,
+        source
+    });
+    order.set({ status: 'paid', bill: bill._id, paidAt: new Date() });
+    await order.save();
+    return order;
 };
 
 /** What the customer's order page shows - never the phone number or payment ids */
@@ -181,6 +209,13 @@ module.exports.createOrder = async (req, res) => {
         if (totals.total < 1) return fail(res, 400, 'The order total must be at least ₹1');
 
         const publicId = crypto.randomBytes(12).toString('base64url');
+        if (razorpay.onlineOrderingMode(hotel) === 'demo') {
+            const order = await placeDemoOrder({
+                hotel, settings, publicId, lines, totals, customer: { name, phone }, source: source === 'kiosk' ? 'kiosk' : 'qr'
+            });
+            return res.status(201).json({ success: true, demo: true, order: { publicId: order.publicId, total: order.total } });
+        }
+
         const gatewayOrder = await razorpay.createOrder({
             amount: totals.total,
             receipt: publicId,
