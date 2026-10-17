@@ -3,9 +3,11 @@
  * they come live from the restaurant's own settings in the billing system, so the
  * site never shows details the owner has not entered.
  *
- * VITE_RESTAURANT_SLUG picks the restaurant's record (its token TV address, /tv/<slug>).
+ * The site belongs to this one restaurant, so its record (token TV address /tv/<slug>) is
+ * built in. VITE_RESTAURANT_SLUG can still point a build at another record, e.g. for testing.
  */
-const slug = String(import.meta.env.VITE_RESTAURANT_SLUG || '').trim();
+const DEFAULT_SLUG = 'udupi-sri-krishna-naivedya';
+const slug = String(import.meta.env.VITE_RESTAURANT_SLUG || DEFAULT_SLUG).trim();
 
 export const RESTAURANT = {
     name: 'Udupi Sri Krishna Naivedya',
@@ -37,7 +39,7 @@ export const mapLinks = (address) => {
 
 /**
  * Public endpoints for this restaurant (menu, contact details, live tokens).
- * Null until VITE_RESTAURANT_SLUG is set, so the site never shows another restaurant's data.
+ * Until that record exists the requests simply find nothing and the site shows its own story only.
  */
 export const publicPaths = slug
     ? { info: `/public/${encodeURIComponent(slug)}/info`, display: `/public/${encodeURIComponent(slug)}/display` }
