@@ -22,6 +22,10 @@ const cookieOptions = () => ({
     httpOnly: true,  // Prevents XSS attacks
     secure: process.env.NODE_ENV === 'production',  // HTTPS only in production
     sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',  // Cross-origin support
+    // The website and the API are different sites, so browsers that block third-party cookies
+    // would drop a normal cookie and nobody could stay signed in. A partitioned cookie (CHIPS)
+    // is kept for the website that signed in only, so it is allowed.
+    partitioned: process.env.NODE_ENV === 'production',
     path: '/'  // Available across all routes
 });
 
@@ -120,8 +124,9 @@ const demoLogin = async (req, res) => {
 
 const logout = async (req, res) => {
     try {
-        // Clear cookie with same options as when it was set
+        // Clear cookie with same options as when it was set (and an older, unpartitioned one)
         res.clearCookie('token', cookieOptions());
+        res.clearCookie('token', { ...cookieOptions(), partitioned: false });
         return res.status(200).json({ success: true, message: 'Logout successful' });
     } catch (error) {
         console.error("❌ Logout error:", error);
