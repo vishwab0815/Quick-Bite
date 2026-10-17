@@ -682,6 +682,8 @@ const onlinePaymentsView = (hotel) => {
         keySecretReadable: Boolean(open(account.keySecret)),
         webhookSecretSaved: Boolean(open(account.webhookSecret)),
         demo: Boolean(hotel.onlineOrdersDemo),
+        // Filled in by the handlers: whether UPI is switched on for this Razorpay account
+        upiEnabled: null,
         // What customers get right now: 'razorpay', 'demo' or null
         ordering: razorpay.onlineOrderingMode(hotel)
     };
@@ -701,7 +703,9 @@ module.exports.getOnlinePayments = async (req, res) => {
     try {
         const hotel = await loadHotelWithSecrets(req, res);
         if (!hotel) return;
-        res.status(200).json({ success: true, online: onlinePaymentsView(hotel.toObject()) });
+        const online = onlinePaymentsView(hotel.toObject());
+        if (online.keyId) online.upiEnabled = await razorpay.upiEnabled(online.keyId);
+        res.status(200).json({ success: true, online });
     } catch (error) {
         return serverError(res, 'load online payments', error);
     }
@@ -757,7 +761,9 @@ module.exports.updateOnlinePayments = async (req, res) => {
         await hotel.save();
         forgetCachedHotel(hotel._id);
         AuditLog.record(req, 'hotel.online_payments', { hotel, details: changes });
-        res.status(200).json({ success: true, online: onlinePaymentsView(hotel.toObject()) });
+        const online = onlinePaymentsView(hotel.toObject());
+        if (online.keyId) online.upiEnabled = await razorpay.upiEnabled(online.keyId);
+        res.status(200).json({ success: true, online });
     } catch (error) {
         if (error instanceof razorpay.RazorpayError) return fail(res, 502, 'Could not reach Razorpay to check the keys. Please try again.');
         return serverError(res, 'update online payments', error);

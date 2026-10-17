@@ -283,19 +283,16 @@ export default function OrderPage() {
                 // UPI only: on a phone the customer picks their app (PhonePe, Google Pay, Paytm…) and
                 // approves there; on a computer or kiosk a QR code shows to scan. Entering a UPI ID
                 // stays as the fallback.
-                method: { upi: true, card: false, netbanking: false, wallet: false, emi: false, paylater: false },
-                config: {
-                    display: {
-                        blocks: {
-                            upi: {
-                                name: 'Pay with any UPI app',
-                                instruments: [{ method: 'upi', flows: ['intent', 'qr', 'collect'], apps: ['phonepe', 'google_pay', 'paytm', 'bhim'] }],
-                            },
+                ...(checkout.upiOnly && {
+                    method: { upi: true, card: false, netbanking: false, wallet: false, emi: false, paylater: false },
+                    config: {
+                        display: {
+                            blocks: { upi: { name: 'Pay with any UPI app', instruments: [{ method: 'upi' }] } },
+                            sequence: ['block.upi'],
+                            preferences: { show_default_blocks: false },
                         },
-                        sequence: ['block.upi'],
-                        preferences: { show_default_blocks: false },
                     },
-                },
+                }),
                 handler: async (response) => {
                     setCart({});
                     setNote('');

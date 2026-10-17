@@ -139,6 +139,28 @@ const refundPayment = (account, paymentId, { amount, notes } = {}) => request(ac
     notes
 });
 
+/*
+ * Whether UPI is switched on for a Razorpay account (Razorpay's public list of the account's
+ * payment methods, by key id). Cached for 10 minutes; unknown (null) if Razorpay can't be reached.
+ */
+const METHODS_CACHE_MS = 10 * 60 * 1000;
+const methodsCache = new Map();
+
+const upiEnabled = async (keyId) => {
+    const cached = methodsCache.get(keyId);
+    if (cached && cached.expiresAt > Date.now()) return cached.upi;
+    try {
+        const response = await fetch(`${API}/methods?key_id=${encodeURIComponent(keyId)}`, { signal: AbortSignal.timeout(5000) });
+        if (!response.ok) return null;
+        const methods = await response.json();
+        const upi = methods?.upi === true;
+        methodsCache.set(keyId, { upi, expiresAt: Date.now() + METHODS_CACHE_MS });
+        return upi;
+    } catch {
+        return null;
+    }
+};
+
 /** Check a key pair with Razorpay before saving it: true if Razorpay accepts it */
 const checkKeys = async (keyId, keySecret) => {
     try {
@@ -167,5 +189,6 @@ module.exports = {
     capturePayment,
     refundPayment,
     checkKeys,
+    upiEnabled,
     RazorpayError
 };

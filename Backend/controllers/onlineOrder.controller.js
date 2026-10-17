@@ -266,7 +266,10 @@ module.exports.createOrder = async (req, res) => {
                 currency: 'INR',
                 name: settings.name,
                 description: `${count} item${count === 1 ? '' : 's'} · ${settings.name}`,
-                prefill: { name, contact: `+${phone}` }
+                prefill: { name, contact: `+${phone}` },
+                // UPI only (apps on phones, QR on computers) when the account has UPI switched on;
+                // otherwise whatever the account allows, so checkout never comes up empty
+                upiOnly: (await razorpay.upiEnabled(account.keyId)) !== false
             }
         });
     } catch (error) {

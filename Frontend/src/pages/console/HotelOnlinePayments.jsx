@@ -92,6 +92,15 @@ export default function HotelOnlinePayments({ hotel }) {
                             {!online.keySecretReadable && <span className="font-semibold text-rose-600">· the saved secret can no longer be read - enter it again</span>}
                         </p>
                     )}
+                    {connected && online.upiEnabled === false && (
+                        <p className="mb-4 rounded-xl bg-rose-50 px-4 py-3 text-sm text-rose-800 ring-1 ring-rose-200">
+                            <b>UPI is switched off on this Razorpay account.</b> Customers can&apos;t pay by UPI app or QR until it is on - for now
+                            checkout shows the account&apos;s other methods. In Razorpay: Account &amp; Settings → Payment methods → UPI, or ask Razorpay support to enable UPI.
+                        </p>
+                    )}
+                    {connected && online.upiEnabled === true && (
+                        <p className="mb-4 text-sm font-medium text-emerald-700">UPI is on - customers pay with their UPI app or by scanning a QR.</p>
+                    )}
                     <div className="grid gap-4 sm:grid-cols-2">
                         <Field label="Key ID">
                             <input className={`${inputClass} font-mono`} value={form.keyId} onChange={(event) => setForm({ ...form, keyId: event.target.value })} placeholder="rzp_test_... or rzp_live_..." autoComplete="off" spellCheck="false" />

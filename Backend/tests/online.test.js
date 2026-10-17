@@ -38,6 +38,7 @@ global.fetch = async (url, options = {}) => {
     const { pathname } = new URL(url);
     const body = options.body ? JSON.parse(options.body) : {};
     if (url.startsWith('https://api.razorpay.com/v1')) {
+        if (pathname === '/v1/methods') return json(200, { upi: true, card: true });
         if (pathname === '/v1/payments') {
             // Key check: only the hotel's real key pair is accepted
             const [keyId, secret] = Buffer.from(String(options.headers.Authorization).slice(6), 'base64').toString().split(':');
@@ -196,6 +197,7 @@ describe('online orders (Razorpay)', () => {
         assert.equal(res.body.checkout.amount, 19000, 'amount in paise');
         assert.equal(res.body.checkout.key, 'rzp_test_key');
         assert.equal(res.body.checkout.prefill.contact, '+919876543210');
+        assert.equal(res.body.checkout.upiOnly, true, 'UPI only when the account has UPI');
         assert.ok(!JSON.stringify(res.body).includes(KEY_SECRET), 'the key secret never leaves the server');
         assert.equal(await Bill.countDocuments(), 0, 'no bill or token before payment');
     });
