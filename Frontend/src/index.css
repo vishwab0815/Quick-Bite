@@ -586,6 +586,21 @@ html.lenis body {
   color: rgba(15, 14, 12, 0.45);
 }
 
+/* Phone numbers: plain, upright digits that can't be misread (the serif's figures are old-style) */
+.site-field__box--digits input,
+.site-field__box--digits .site-field__prefix {
+  font-family: var(--font-pos);
+  font-weight: 600;
+  font-size: 1.5rem;
+  letter-spacing: 0.02em;
+  font-variant-numeric: tabular-nums lining-nums;
+}
+
+.site-field__box--digits .site-field__prefix {
+  font-weight: 500;
+  font-size: 1.25rem;
+}
+
 .site-field__hint {
   margin-top: 0.5rem;
   font-size: 0.75rem;
@@ -1021,6 +1036,14 @@ html.lenis body {
 }
 
 /* Headlines in Cormorant: a hair tighter; italics a touch heavier so the gold words hold up */
+/* Headline serif: modern, upright digits everywhere - its default old-style figures make a 1
+   look like a Roman "I" */
+.font-accent,
+.site-field__box input {
+  font-variant-numeric: lining-nums;
+  font-feature-settings: "lnum" 1;
+}
+
 .qb-site .font-accent {
   font-weight: 400;
   letter-spacing: -0.01em;

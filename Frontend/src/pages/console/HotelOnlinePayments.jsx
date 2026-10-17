@@ -1,9 +1,9 @@
 import { useEffect, useState } from 'react';
 import PropTypes from 'prop-types';
-import { FiCheck, FiCopy, FiRefreshCw } from 'react-icons/fi';
+import { FiRefreshCw } from 'react-icons/fi';
 import { Card } from '../../components/pos/DashboardCharts';
 import Skeleton from '../../components/pos/Skeleton';
-import { Button, ErrorNote, Field, inputClass } from '../../components/console/ui';
+import { Button, CopyText, ErrorNote, Field, inputClass } from '../../components/console/ui';
 import { consoleApi, apiError } from '../../utils/console';
 import { showToast } from '../../utils/toast';
 
@@ -15,29 +15,6 @@ const newWebhookSecret = () => {
     const bytes = crypto.getRandomValues(new Uint8Array(24));
     return btoa(String.fromCharCode(...bytes)).replace(/[^A-Za-z0-9]/g, '').slice(0, 28);
 };
-
-const CopyText = ({ value }) => {
-    const [copied, setCopied] = useState(false);
-    const copy = async () => {
-        try {
-            await navigator.clipboard.writeText(value);
-            setCopied(true);
-            setTimeout(() => setCopied(false), 1500);
-        } catch {
-            showToast.error('Copy failed - select the text instead');
-        }
-    };
-    return (
-        <span className="flex items-center gap-2">
-            <code className="min-w-0 flex-1 break-all rounded-lg bg-stone-100 px-3 py-2 font-mono text-xs text-stone-800">{value}</code>
-            <button type="button" onClick={copy} className="shrink-0 rounded-lg p-2 text-stone-500 ring-1 ring-stone-200 hover:text-stone-900" aria-label="Copy">
-                {copied ? <FiCheck /> : <FiCopy />}
-            </button>
-        </span>
-    );
-};
-
-CopyText.propTypes = { value: PropTypes.string.isRequired };
 
 const STATUS = {
     razorpay: ['bg-emerald-50 text-emerald-700 ring-emerald-200', 'Taking online orders - paid through Razorpay'],

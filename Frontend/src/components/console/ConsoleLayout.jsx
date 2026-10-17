@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { NavLink, Outlet, useLocation } from 'react-router-dom';
 import PropTypes from 'prop-types';
-import { FiActivity, FiCreditCard, FiGrid, FiHome, FiLogOut, FiMenu, FiShield, FiX } from 'react-icons/fi';
+import { FiActivity, FiCreditCard, FiGrid, FiHome, FiLogOut, FiMenu, FiMessageCircle, FiShield, FiX } from 'react-icons/fi';
 import { signOut } from '../../utils/console';
 import BrandMark from '../common/BrandMark';
 import { RESTAURANT } from '../../site/restaurant';
@@ -10,6 +10,7 @@ const NAV = [
     { to: '/console', label: 'Overview', icon: FiGrid, end: true },
     { to: '/console/hotels', label: 'Hotels', icon: FiHome },
     { to: '/console/payments', label: 'Payments', icon: FiCreditCard },
+    { to: '/console/whatsapp', label: 'WhatsApp', icon: FiMessageCircle },
     { to: '/console/activity', label: 'Activity log', icon: FiActivity },
 ];
 

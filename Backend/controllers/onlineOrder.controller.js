@@ -47,7 +47,7 @@ const loadPaymentHotel = async (hotelId) => {
  * Demo ordering (no payments set up yet): the order becomes a bill with a token at once, marked
  * as a demo so it can never be mistaken for, or refunded as, a real payment.
  */
-const placeDemoOrder = async ({ hotel, settings, publicId, lines, totals, customer, source }) => {
+const placeDemoOrder = async ({ hotel, settings, publicId, lines, totals, customer, source, note }) => {
     const order = await OnlineOrder.create({
         hotel: hotel._id,
         publicId,
@@ -55,6 +55,7 @@ const placeDemoOrder = async ({ hotel, settings, publicId, lines, totals, custom
         ...totals,
         customer,
         source,
+        note,
         razorpay: { orderId: `demo_${publicId}` }
     });
     const bill = await issueBill({
@@ -64,16 +65,18 @@ const placeDemoOrder = async ({ hotel, settings, publicId, lines, totals, custom
         totals,
         payment: { mode: 'upi', gateway: 'demo', reference: 'Demo order - no payment taken' },
         customer,
-        source
+        source,
+        note
     });
     order.set({ status: 'paid', bill: bill._id, paidAt: new Date() });
     await order.save();
+    sendReceiptInBackground(bill, settings, publicId);
     return order;
 };
 
 /** What the customer's order page shows - never the phone number or payment ids */
 const orderView = async (order) => {
-    const bill = order.bill ? await Bill.findById(order.bill).select('publicId tokenNumber status stations billNumber total').lean() : null;
+    const bill = order.bill ? await Bill.findById(order.bill).select('publicId tokenNumber status stations billNumber total payment.gateway payment.method updatedAt').lean() : null;
     const hotel = await Hotel.findById(order.hotel).select('name settings.address settings.phone').lean();
     return {
         publicId: order.publicId,
@@ -81,22 +84,29 @@ const orderView = async (order) => {
         total: order.total,
         items: order.items.map((line) => ({ name: line.name, quantity: line.quantity, amount: line.amount })),
         customerName: order.customer?.name,
+        // Only the last digits - enough for "we'll WhatsApp you on ••••3210"
+        phoneEnding: String(order.customer?.phone || '').slice(-4),
+        note: order.note,
         source: order.source,
         createdAt: order.createdAt,
+        paidAt: order.paidAt,
+        demo: bill?.payment?.gateway === 'demo',
+        paymentMethod: order.razorpay?.method || null,
         restaurant: { name: hotel?.name, address: hotel?.settings?.address, phone: hotel?.settings?.phone },
         bill: bill && {
             publicId: bill.publicId,
             tokenNumber: bill.tokenNumber,
             billNumber: bill.billNumber,
             status: bill.status,
+            updatedAt: bill.updatedAt,
             stations: bill.stations.map((station) => ({ counter: station.counter, status: station.status }))
         }
     };
 };
 
-/** Store the WhatsApp result on the bill (runs in the background) */
-const sendReceiptInBackground = (bill, settings) => {
-    whatsapp.sendBillReceipt(bill, settings)
+/** Send the WhatsApp confirmation, linking to the order's own tracking page; store the result (in the background) */
+const sendReceiptInBackground = (bill, settings, orderPublicId) => {
+    whatsapp.sendBillReceipt(bill, settings, { link: whatsapp.getTrackingUrl(orderPublicId) })
         .then((result) => Bill.updateOne({ _id: bill._id }, {
             $set: {
                 'receipt.whatsapp': {
@@ -167,7 +177,8 @@ const finalizeOrder = async (orderId, paymentId) => {
                 reference: payment.id
             },
             customer: { name: claimed.customer.name, phone: claimed.customer.phone },
-            source: claimed.source
+            source: claimed.source,
+            note: claimed.note
         });
 
         claimed.set({
@@ -179,7 +190,7 @@ const finalizeOrder = async (orderId, paymentId) => {
             'razorpay.method': payment.method
         });
         await claimed.save();
-        sendReceiptInBackground(bill, settings);
+        sendReceiptInBackground(bill, settings, claimed.publicId);
         return claimed;
     } catch (error) {
         await OnlineOrder.updateOne({ _id: claimed._id }, { $set: { finalizing: false } });
@@ -206,6 +217,7 @@ module.exports.createOrder = async (req, res) => {
         if (!hotel) return fail(res, 404, 'Online ordering is not available right now');
 
         const { items, customer = {}, source } = req.body;
+        const note = String(req.body.note || '').replace(/[<>]/g, '').replace(/\s+/g, ' ').trim().slice(0, 140) || undefined;
         // The name is optional - the mobile number is what the token is sent to
         const name = String(customer.name || '').trim().replace(/[<>]/g, '').slice(0, 60) || 'Guest';
         const phone = normalizeIndianPhone(customer.phone);
@@ -219,7 +231,7 @@ module.exports.createOrder = async (req, res) => {
         const publicId = crypto.randomBytes(12).toString('base64url');
         if (razorpay.onlineOrderingMode(hotel) === 'demo') {
             const order = await placeDemoOrder({
-                hotel, settings, publicId, lines, totals, customer: { name, phone }, source: source === 'kiosk' ? 'kiosk' : 'qr'
+                hotel, settings, publicId, lines, totals, customer: { name, phone }, source: source === 'kiosk' ? 'kiosk' : 'qr', note
             });
             return res.status(201).json({ success: true, demo: true, order: { publicId: order.publicId, total: order.total } });
         }
@@ -239,6 +251,7 @@ module.exports.createOrder = async (req, res) => {
             ...totals,
             customer: { name, phone },
             source: source === 'kiosk' ? 'kiosk' : 'qr',
+            note,
             razorpay: { orderId: gatewayOrder.id }
         });
 

@@ -66,8 +66,11 @@ global.fetch = async (url, options = {}) => {
         if (lookup) return fake.payments.has(lookup[1]) ? json(200, fake.payments.get(lookup[1])) : json(404, { error: { description: 'Not found' } });
     }
     if (url.startsWith('https://graph.facebook.com/')) {
+        const token = String(options.headers?.Authorization || '').replace('Bearer ', '');
+        if (token === 'BadToken000000000000000') return json(401, { error: { message: 'Invalid OAuth access token' } });
+        if ((options.method || 'GET') === 'GET') return json(200, { display_phone_number: '+91 90000 11111', verified_name: 'QuickBite Orders' });
         fake.messageSeq += 1;
-        fake.whatsapp.push({ to: body.to, template: body.template.name, parameters: body.template.components[0].parameters.map((p) => p.text) });
+        fake.whatsapp.push({ to: body.to, token, template: body.template.name, parameters: (body.template.components?.[0]?.parameters || []).map((p) => p.text) });
         return json(200, { messages: [{ id: `wamid.${fake.messageSeq}` }] });
     }
     return realFetch(url, options);
@@ -449,5 +452,56 @@ describe('WhatsApp (Cloud API)', () => {
         assert.equal(ok.text, '12345');
         const bad = await request(app).get('/pos/whatsapp/webhook').query({ 'hub.mode': 'subscribe', 'hub.verify_token': 'nope', 'hub.challenge': '1' });
         assert.equal(bad.status, 403);
+    });
+});
+
+describe('WhatsApp set up from the console', () => {
+    let platform;
+
+    before(async () => {
+        platform = await login('platform@quickbite.test');
+    });
+
+    it('checks the number with Meta, stores the token encrypted and never shows it', async () => {
+        const bad = await platform.put('/platform/whatsapp').send({ phoneNumberId: '123456789012', accessToken: 'BadToken000000000000000' });
+        assert.equal(bad.status, 400);
+        assert.match(bad.body.message, /Invalid OAuth/);
+
+        const res = await platform.put('/platform/whatsapp').send({
+            phoneNumberId: '123456789012', accessToken: 'ConsoleToken0000000000000', appSecret: 'abcdef0123456789abcdef0123456789',
+            verifyToken: 'console-verify-token', receiptTemplate: 'naivedya_bill', readyTemplate: 'naivedya_ready'
+        });
+        assert.equal(res.status, 200, res.body.message);
+        assert.equal(res.body.whatsapp.enabled, true);
+        assert.equal(res.body.whatsapp.displayNumber, '+91 90000 11111');
+        assert.equal(res.body.whatsapp.source, 'console');
+        assert.equal(res.body.whatsapp.accessTokenSaved, true);
+        assert.ok(!JSON.stringify(res.body).includes('ConsoleToken'));
+        const stored = await mongoose.connection.db.collection('platformsettings').findOne({ key: 'platform' });
+        assert.ok(stored.whatsapp.accessToken.startsWith('v1.'), 'encrypted at rest');
+    });
+
+    it("sends the order confirmation with the console's number and template, linking to the order page", async () => {
+        const started = await startOrder();
+        const paid = pay(started.body.checkout.orderId, started.body.checkout.amount);
+        await request(app).post(`/pos/public/orders/${started.body.order.publicId}/verify`).send(paid).expect(200);
+        await waitFor(() => fake.whatsapp.length > 0, 'the confirmation');
+        const [message] = fake.whatsapp;
+        assert.equal(message.token, 'ConsoleToken0000000000000');
+        assert.equal(message.template, 'naivedya_bill');
+        assert.equal(message.parameters.length, 6);
+        assert.equal(message.parameters[3], '2 x Masala Dosa, 1 x Filter Coffee');
+        assert.match(message.parameters[4], /^Paid ₹190\.00 by UPI$/);
+        assert.ok(message.parameters[5].endsWith(`/order/${started.body.order.publicId}`), 'links to the tracking page');
+    });
+
+    it('sends a test message, and falls back to the older setup when switched off', async () => {
+        const test = await platform.post('/platform/whatsapp/test').send({ phone: '98765 43210' });
+        assert.equal(test.status, 200, test.body.message);
+        assert.equal(fake.whatsapp.at(-1).template, 'hello_world');
+
+        const off = await platform.put('/platform/whatsapp').send({ enabled: false });
+        assert.equal(off.body.whatsapp.enabled, false);
+        assert.equal(off.body.whatsapp.source, 'environment');
     });
 });

@@ -61,7 +61,7 @@ const priceOrderLines = async (hotelId, items) => {
  * Number and save a bill: the token resets daily, the bill number runs per financial year.
  * Regular customers are remembered in the background.
  */
-const issueBill = async ({ hotelId, settings, lines, totals, payment, customer = {}, source = 'counter', createdBy }) => {
+const issueBill = async ({ hotelId, settings, lines, totals, payment, customer = {}, source = 'counter', note, createdBy }) => {
     const businessDate = getBusinessDate(new Date(), settings.timeZone);
     const financialYear = getFinancialYear(businessDate);
     const tokenNumber = await Sequence.next(`${hotelId}:token:${businessDate}`);
@@ -84,6 +84,7 @@ const issueBill = async ({ hotelId, settings, lines, totals, payment, customer =
         payment,
         customer,
         source: ['counter', 'kiosk', 'qr'].includes(source) ? source : 'counter',
+        ...(note && { note }),
         createdBy
     });
     await bill.save();

@@ -17,6 +17,10 @@ const { round2, getBusinessDate, shiftBusinessDate, slugify } = require('../util
 const { buildSummary, SUMMARY_FIELDS } = require('../utils/reports');
 const razorpay = require('../config/razorpay');
 const { seal, open } = require('../utils/secretBox');
+const whatsapp = require('../config/whatsapp');
+const PlatformSettings = require('../models/platformSettings.model');
+const { loadSettings, refreshPlatformSettings } = require('../utils/platformSettings');
+const { normalizeIndianPhone } = require('../utils/billing');
 
 const { DAY_MS } = Hotel;
 const PLATFORM_TIME_ZONE = 'Asia/Kolkata';
@@ -774,5 +778,144 @@ module.exports.disconnectOnlinePayments = async (req, res) => {
         res.status(200).json({ success: true, online: onlinePaymentsView(hotel.toObject()) });
     } catch (error) {
         return serverError(res, 'disconnect online payments', error);
+    }
+};
+
+/* ---------- WhatsApp: the platform's business number that messages every restaurant's customers ---------- */
+
+const PHONE_NUMBER_ID = /^\d{6,25}$/;
+const ACCESS_TOKEN = /^[A-Za-z0-9_\-.|]{20,1024}$/;
+const TEMPLATE_NAME = /^[a-z0-9_]{1,512}$/;
+const LANGUAGE = /^[a-z]{2,3}(_[A-Z]{2})?$/;
+const VERIFY_TOKEN = /^[\x21-\x7e]{8,128}$/;
+
+const whatsappView = (doc) => {
+    const saved = doc?.whatsapp || {};
+    return {
+        enabled: Boolean(saved.enabled),
+        phoneNumberId: saved.phoneNumberId || '',
+        accessTokenSaved: Boolean(open(saved.accessToken)),
+        appSecretSaved: Boolean(open(saved.appSecret)),
+        verifyToken: saved.verifyToken || '',
+        receiptTemplate: saved.receiptTemplate || 'order_receipt',
+        readyTemplate: saved.readyTemplate ?? 'order_ready',
+        language: saved.language || 'en',
+        displayNumber: saved.displayNumber || '',
+        verifiedName: saved.verifiedName || '',
+        checkedAt: saved.checkedAt || null,
+        // What is sending right now: 'cloud' (automatic) or 'link' (click-to-chat only), and from where
+        mode: whatsapp.getWhatsappMode(),
+        source: whatsapp.current().source
+    };
+};
+
+module.exports.getWhatsapp = async (req, res) => {
+    try {
+        res.status(200).json({ success: true, whatsapp: whatsappView(await loadSettings()) });
+    } catch (error) {
+        return serverError(res, 'load WhatsApp settings', error);
+    }
+};
+
+/**
+ * Save the WhatsApp settings. The number and token are checked with Meta before saving;
+ * the access token and app secret are stored encrypted.
+ */
+module.exports.updateWhatsapp = async (req, res) => {
+    try {
+        const doc = (await loadSettings()) || new PlatformSettings({ key: 'platform' });
+        const saved = doc.whatsapp;
+        const body = req.body || {};
+        const changes = {};
+        const text = (value) => String(value ?? '').trim();
+
+        const phoneNumberId = body.phoneNumberId !== undefined ? text(body.phoneNumberId) : saved.phoneNumberId;
+        if (phoneNumberId && !PHONE_NUMBER_ID.test(phoneNumberId)) return fail(res, 400, 'The Phone number ID is the long number shown under your WhatsApp number in Meta (digits only)');
+        const accessToken = text(body.accessToken) || open(saved.accessToken) || '';
+        if (text(body.accessToken) && !ACCESS_TOKEN.test(accessToken)) return fail(res, 400, 'That access token does not look right - copy it again from Meta');
+
+        for (const field of ['receiptTemplate', 'readyTemplate']) {
+            if (body[field] === undefined) continue;
+            const value = text(body[field]);
+            if (value && !TEMPLATE_NAME.test(value)) return fail(res, 400, 'Template names use lowercase letters, numbers and underscores, e.g. order_receipt');
+            if (field === 'receiptTemplate' && !value) return fail(res, 400, 'Enter the bill template name');
+            doc.set(`whatsapp.${field}`, value);
+            changes[field] = value;
+        }
+        if (body.language !== undefined) {
+            if (!LANGUAGE.test(text(body.language))) return fail(res, 400, 'Language code looks like en or en_US');
+            doc.set('whatsapp.language', text(body.language));
+        }
+        if (body.verifyToken !== undefined) {
+            if (text(body.verifyToken) && !VERIFY_TOKEN.test(text(body.verifyToken))) return fail(res, 400, 'The verify token must be 8 to 128 characters, without spaces');
+            doc.set('whatsapp.verifyToken', text(body.verifyToken));
+        }
+        if (text(body.appSecret)) {
+            if (!/^[a-f0-9]{16,64}$/i.test(text(body.appSecret))) return fail(res, 400, 'The app secret is the 32-character code in Meta: App settings, Basic');
+            doc.set('whatsapp.appSecret', seal(text(body.appSecret)));
+            changes.appSecret = 'updated';
+        }
+
+        const connectionChanged = phoneNumberId !== saved.phoneNumberId || Boolean(text(body.accessToken));
+        const enabling = body.enabled === true || (body.enabled === undefined && (saved.enabled || connectionChanged));
+        if (enabling) {
+            if (!phoneNumberId || !accessToken) return fail(res, 400, 'Enter the Phone number ID and the access token');
+            try {
+                const info = await whatsapp.checkConnection({ phoneNumberId, accessToken });
+                doc.set('whatsapp.displayNumber', info.displayNumber || '');
+                doc.set('whatsapp.verifiedName', info.verifiedName || '');
+                doc.set('whatsapp.checkedAt', new Date());
+            } catch (error) {
+                return fail(res, 400, `Meta did not accept these details: ${error.message}`);
+            }
+        }
+        doc.set('whatsapp.phoneNumberId', phoneNumberId);
+        if (text(body.accessToken)) {
+            doc.set('whatsapp.accessToken', seal(accessToken));
+            changes.accessToken = 'updated';
+        }
+        if (connectionChanged) changes.phoneNumberId = phoneNumberId;
+        doc.set('whatsapp.enabled', Boolean(enabling));
+        changes.enabled = Boolean(enabling);
+
+        await doc.save();
+        await refreshPlatformSettings();
+        AuditLog.record(req, 'whatsapp.settings', { details: changes });
+        res.status(200).json({ success: true, whatsapp: whatsappView(await loadSettings()) });
+    } catch (error) {
+        return serverError(res, 'save WhatsApp settings', error);
+    }
+};
+
+/** Send a test message: Meta's ready-made "hello_world", or a sample order confirmation */
+module.exports.testWhatsapp = async (req, res) => {
+    try {
+        const phone = normalizeIndianPhone(req.body?.phone);
+        if (!phone) return fail(res, 400, 'Enter a valid 10-digit mobile number');
+        const settings = whatsapp.current();
+        if (!settings.accessToken || !settings.phoneNumberId) return fail(res, 400, 'Save and turn on the WhatsApp settings first');
+
+        let sent;
+        if (req.body?.kind === 'receipt') {
+            const sample = {
+                tokenNumber: 12,
+                total: 190,
+                customer: { name: 'Meena' },
+                items: [{ quantity: 2, name: 'Masala Dose' }, { quantity: 1, name: 'Filter Coffee' }],
+                payment: { mode: 'upi' },
+                publicId: 'sample'
+            };
+            sent = await whatsapp.sendTemplate({
+                phone,
+                template: settings.receiptTemplate,
+                parameters: whatsapp.receiptParameters(sample, { name: 'Udupi Sri Krishna Naivedya' }, whatsapp.getTrackingUrl('sample')),
+                settings
+            });
+        } else {
+            sent = await whatsapp.sendTemplate({ phone, template: 'hello_world', language: 'en_US', settings });
+        }
+        res.status(200).json({ success: true, messageId: sent.messageId });
+    } catch (error) {
+        return fail(res, 400, `WhatsApp did not send it: ${error.message}`);
     }
 };

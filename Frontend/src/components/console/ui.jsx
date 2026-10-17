@@ -1,6 +1,6 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import PropTypes from 'prop-types';
-import { FiX } from 'react-icons/fi';
+import { FiCheck, FiCopy, FiX } from 'react-icons/fi';
 import { STATES } from '../../utils/console';
 
 export const StatusBadge = ({ state }) => {
@@ -232,3 +232,27 @@ Kpi.propTypes = {
     note: PropTypes.node,
     tone: PropTypes.oneOf(['warn']),
 };
+
+/** A value to copy (a URL, a secret, a template body), with a copy button */
+export const CopyText = ({ value, multiline = false }) => {
+    const [copied, setCopied] = useState(false);
+    const copy = async () => {
+        try {
+            await navigator.clipboard.writeText(value);
+            setCopied(true);
+            setTimeout(() => setCopied(false), 1500);
+        } catch {
+            // Clipboard blocked - the text can still be selected by hand
+        }
+    };
+    return (
+        <span className="flex items-start gap-2">
+            <code className={`min-w-0 flex-1 break-all rounded-lg bg-stone-100 px-3 py-2 font-mono text-xs text-stone-800 ${multiline ? 'whitespace-pre-wrap' : ''}`}>{value}</code>
+            <button type="button" onClick={copy} className="shrink-0 rounded-lg p-2 text-stone-500 ring-1 ring-stone-200 hover:text-stone-900" aria-label={copied ? 'Copied' : 'Copy'}>
+                {copied ? <FiCheck /> : <FiCopy />}
+            </button>
+        </span>
+    );
+};
+
+CopyText.propTypes = { value: PropTypes.string.isRequired, multiline: PropTypes.bool };

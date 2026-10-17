@@ -32,6 +32,8 @@ const onlineOrderSchema = new mongoose.Schema({
         phone: { type: String, required: true }
     },
     source: { type: String, enum: ['qr', 'kiosk'], default: 'qr' },
+    // Note for the kitchen, e.g. "less spicy"
+    note: { type: String, trim: true, maxlength: 140 },
     status: { type: String, enum: ['pending', 'paid', 'failed'], default: 'pending' },
     razorpay: {
         orderId: { type: String, required: true },

@@ -7,6 +7,7 @@ import Hotels from './Hotels';
 import HotelDetail from './HotelDetail';
 import Payments from './Payments';
 import Activity from './Activity';
+import WhatsappSettings from './WhatsappSettings';
 import { RESTAURANT } from '../../site/restaurant';
 
 /**
@@ -48,6 +49,7 @@ export default function ConsoleApp() {
                 <Route path="hotels" element={<Hotels />} />
                 <Route path="hotels/:id" element={<HotelDetail />} />
                 <Route path="payments" element={<Payments />} />
+                <Route path="whatsapp" element={<WhatsappSettings />} />
                 <Route path="activity" element={<Activity />} />
                 <Route path="*" element={<Navigate to="/console" replace />} />
             </Route>

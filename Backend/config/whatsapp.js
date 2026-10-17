@@ -2,32 +2,69 @@
  * WhatsApp messages to customers
  *
  * Two modes:
- * 1. Cloud API (automatic) - set WHATSAPP_TOKEN, WHATSAPP_PHONE_NUMBER_ID and
- *    WHATSAPP_TEMPLATE_NAME. Sends approved "Utility" template messages:
- *    - the bill, as soon as it is paid (WHATSAPP_TEMPLATE_NAME)
- *    - "your token is ready" when the kitchen marks it ready (WHATSAPP_READY_TEMPLATE, optional)
- *    Delivery / read receipts arrive on the webhook (WHATSAPP_VERIFY_TOKEN, WHATSAPP_APP_SECRET).
- * 2. Click-to-chat link (free fallback) - when the Cloud API is not configured
- *    (or fails), the counter gets a wa.me link with the receipt text pre-filled,
- *    which opens the hotel's WhatsApp Business app in one tap.
+ * 1. Cloud API (automatic) - the platform's WhatsApp Business number sends approved "Utility"
+ *    template messages for every restaurant (the restaurant's name is in the message):
+ *    - the order confirmation / bill, as soon as it is paid (bill template)
+ *    - "your order is ready" when every counter has marked it ready (ready template, optional)
+ *    Set up in the console (WhatsApp page; secrets stored encrypted), or - older setup - with
+ *    WHATSAPP_TOKEN, WHATSAPP_PHONE_NUMBER_ID, WHATSAPP_TEMPLATE_NAME, WHATSAPP_READY_TEMPLATE,
+ *    WHATSAPP_APP_SECRET and WHATSAPP_VERIFY_TOKEN in the environment. The console wins.
+ *    Delivery / read receipts arrive on the webhook /pos/whatsapp/webhook.
+ * 2. Click-to-chat link (free fallback) - when the Cloud API is not set up (or fails), the
+ *    counter gets a wa.me link with the receipt text pre-filled.
  *
- * Templates to create in Meta WhatsApp Manager (category "Utility", language en):
- *   Bill  - Hi {{1}}, thank you for ordering at {{2}}! Your token number is {{3}}.
- *           Bill no: {{4}}, Amount paid: {{5}}. View your receipt: {{6}}
- *           Please show your token at the counter.
- *   Ready - Hi {{1}}, your order at {{2}} is ready! Token {{3}} - please collect it
- *           from {{4}}.
+ * Templates to create in Meta WhatsApp Manager (category "Utility", language English):
+ *   order_receipt  🙏 Namaskara {{1}}!
+ *
+ *                  Your order at *{{2}}* is confirmed.
+ *
+ *                  🎟️ Token: *{{3}}*
+ *                  🍽️ {{4}}
+ *                  💰 {{5}}
+ *
+ *                  Track your order live: {{6}}
+ *
+ *                  Show your token at the counter to collect.
+ *   order_ready    🔔 {{1}}, your order at *{{2}}* is ready!
+ *
+ *                  Token *{{3}}* - please collect it from {{4}}.
+ *
+ *                  Enjoy your meal 🙏
  */
 
 const crypto = require('crypto');
 
-const isCloudApiConfigured = () => Boolean(
-    process.env.WHATSAPP_TOKEN &&
-    process.env.WHATSAPP_PHONE_NUMBER_ID &&
-    process.env.WHATSAPP_TEMPLATE_NAME
-);
+/* ---------- Settings: from the console (kept in memory, refreshed) or the environment ---------- */
+
+let stored = null;
+
+/** Settings saved in the console (decrypted); null to fall back to the environment */
+const useStoredSettings = (settings) => {
+    stored = settings;
+};
+
+const settingsFromEnv = () => ({
+    accessToken: process.env.WHATSAPP_TOKEN || '',
+    phoneNumberId: process.env.WHATSAPP_PHONE_NUMBER_ID || '',
+    receiptTemplate: process.env.WHATSAPP_TEMPLATE_NAME || '',
+    readyTemplate: process.env.WHATSAPP_READY_TEMPLATE || '',
+    language: process.env.WHATSAPP_TEMPLATE_LANG || 'en',
+    appSecret: process.env.WHATSAPP_APP_SECRET || '',
+    verifyToken: process.env.WHATSAPP_VERIFY_TOKEN || '',
+    source: 'environment'
+});
+
+/** The settings in use right now */
+const current = () => (stored?.enabled && stored.accessToken && stored.phoneNumberId ? { ...stored, source: 'console' } : settingsFromEnv());
+
+const isCloudApiConfigured = () => {
+    const settings = current();
+    return Boolean(settings.accessToken && settings.phoneNumberId && settings.receiptTemplate);
+};
 
 const getWhatsappMode = () => (isCloudApiConfigured() ? 'cloud' : 'link');
+
+/* ---------- Message content ---------- */
 
 const formatINR = (amount) => `₹${Number(amount).toFixed(2)}`;
 
@@ -37,6 +74,28 @@ const getReceiptBaseUrl = () => (process.env.PUBLIC_RECEIPT_BASE_URL || process.
     .replace(/\/+$/, '');
 
 const getReceiptUrl = (bill) => `${getReceiptBaseUrl()}/receipt/${bill.publicId}`;
+
+/** The customer's own order-tracking page (online orders) */
+const getTrackingUrl = (orderPublicId) => `${getReceiptBaseUrl()}/order/${orderPublicId}`;
+
+const MODE_LABEL = { cash: 'Cash', upi: 'UPI', card: 'Card' };
+
+/** "2 x Masala Dose, 1 x Filter Coffee" - one line (template values cannot hold line breaks) */
+const itemsSummary = (bill, max = 110) => {
+    const parts = bill.items.map((item) => `${item.quantity} x ${item.name}`);
+    let text = '';
+    for (let index = 0; index < parts.length; index++) {
+        const next = text ? `${text}, ${parts[index]}` : parts[index];
+        if (next.length > max) return `${text} and ${parts.length - index} more`;
+        text = next;
+    }
+    return text;
+};
+
+const paymentLine = (bill) => {
+    if (bill.payment?.gateway === 'demo') return `${formatINR(bill.total)} (demo order, no payment)`;
+    return `Paid ${formatINR(bill.total)}${MODE_LABEL[bill.payment?.mode] ? ` by ${MODE_LABEL[bill.payment.mode]}` : ''}`;
+};
 
 /**
  * Plain-text receipt used for the click-to-chat link
@@ -69,85 +128,94 @@ const buildReceiptText = (bill, settings) => {
 
 const buildWhatsappLink = (phone, text) => `https://wa.me/${phone}?text=${encodeURIComponent(text)}`;
 
-const graphUrl = () => {
-    const version = process.env.WHATSAPP_API_VERSION || 'v23.0';
-    return `https://graph.facebook.com/${version}/${process.env.WHATSAPP_PHONE_NUMBER_ID}/messages`;
+/* ---------- Cloud API ---------- */
+
+const graphBase = () => `https://graph.facebook.com/${process.env.WHATSAPP_API_VERSION || 'v23.0'}`;
+
+const graphRequest = async (settings, method, path, body) => {
+    const response = await fetch(`${graphBase()}${path}`, {
+        method,
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${settings.accessToken}` },
+        body: body ? JSON.stringify(body) : undefined,
+        signal: AbortSignal.timeout(10000)
+    });
+    const data = await response.json().catch(() => ({}));
+    if (response.ok) return data;
+    const error = new Error(data?.error?.message || `WhatsApp API error (HTTP ${response.status})`);
+    error.status = response.status;
+    throw error;
 };
 
 /** Send one template message; returns the WhatsApp message id */
-const sendTemplate = async ({ phone, template, parameters }) => {
-    const response = await fetch(graphUrl(), {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${process.env.WHATSAPP_TOKEN}` },
-        body: JSON.stringify({
-            messaging_product: 'whatsapp',
-            to: phone,
-            type: 'template',
-            template: {
-                name: template,
-                language: { code: process.env.WHATSAPP_TEMPLATE_LANG || 'en' },
+const sendTemplate = async ({ phone, template, parameters = [], language, settings = current() }) => {
+    const data = await graphRequest(settings, 'POST', `/${settings.phoneNumberId}/messages`, {
+        messaging_product: 'whatsapp',
+        to: phone,
+        type: 'template',
+        template: {
+            name: template,
+            language: { code: language || settings.language || 'en' },
+            ...(parameters.length && {
                 components: [{ type: 'body', parameters: parameters.map((text) => ({ type: 'text', text: String(text) })) }]
-            }
-        }),
-        signal: AbortSignal.timeout(10000)
+            })
+        }
     });
-    const body = await response.json().catch(() => ({}));
-    if (response.ok) return { messageId: body?.messages?.[0]?.id };
-    throw new Error(body?.error?.message || `WhatsApp API error (HTTP ${response.status})`);
+    return { messageId: data?.messages?.[0]?.id };
 };
 
-const sendTemplateMessage = (bill, settings, phone) => sendTemplate({
-    phone,
-    template: process.env.WHATSAPP_TEMPLATE_NAME,
-    parameters: [
-        bill.customer?.name || 'Customer',
-        settings.name,
-        `#${bill.tokenNumber}`,
-        bill.billNumber,
-        formatINR(bill.total),
-        getReceiptUrl(bill)
-    ]
-});
+/** The values for the bill template ({{1}} to {{6}}, see the top of this file) */
+const receiptParameters = (bill, settings, link) => [
+    bill.customer?.name || 'there',
+    settings.name,
+    `#${bill.tokenNumber}`,
+    itemsSummary(bill),
+    paymentLine(bill),
+    link || getReceiptUrl(bill)
+];
 
 /**
- * Send a bill receipt on WhatsApp.
+ * Send the order confirmation / bill on WhatsApp. `link` is where it points (the order
+ * tracking page for online orders; the receipt otherwise).
  * Never throws - always returns a status plus a click-to-chat link as fallback.
  * @returns {{ status: 'sent'|'link'|'failed', link: string, messageId?: string, error?: string }}
  */
-const sendBillReceipt = async (bill, settings) => {
+const sendBillReceipt = async (bill, settings, { link } = {}) => {
     const phone = bill.customer?.phone;
     if (!phone) {
         return { status: 'failed', link: null, error: 'Customer phone number is required' };
     }
 
-    const link = buildWhatsappLink(phone, buildReceiptText(bill, settings));
+    const chatLink = buildWhatsappLink(phone, buildReceiptText(bill, settings));
 
     if (!isCloudApiConfigured()) {
-        return { status: 'link', link };
+        return { status: 'link', link: chatLink };
     }
 
     try {
-        const { messageId } = await sendTemplateMessage(bill, settings, phone);
+        const whatsapp = current();
+        const { messageId } = await sendTemplate({ phone, template: whatsapp.receiptTemplate, parameters: receiptParameters(bill, settings, link), settings: whatsapp });
         console.log(`✅ WhatsApp receipt sent for bill ${bill.billNumber}`);
-        return { status: 'sent', link, messageId };
+        return { status: 'sent', link: chatLink, messageId };
     } catch (error) {
         console.error(`❌ WhatsApp receipt failed for bill ${bill.billNumber}:`, error.message);
-        return { status: 'failed', link, error: error.message };
+        return { status: 'failed', link: chatLink, error: error.message };
     }
 };
 
 /**
- * "Your token is ready" - sent once, when every counter on the bill has marked it ready.
+ * "Your order is ready" - sent once, when every counter on the bill has marked it ready.
  * Only with the Cloud API and a ready template; never throws.
  * @returns {Promise<{ status: 'sent'|'failed'|'skipped', messageId?: string, error?: string }>}
  */
 const sendReadyNotice = async (bill, settings) => {
     const phone = bill.customer?.phone;
-    if (!phone || !isCloudApiConfigured() || !process.env.WHATSAPP_READY_TEMPLATE) return { status: 'skipped' };
+    const whatsapp = current();
+    if (!phone || !isCloudApiConfigured() || !whatsapp.readyTemplate) return { status: 'skipped' };
     try {
         const { messageId } = await sendTemplate({
             phone,
-            template: process.env.WHATSAPP_READY_TEMPLATE,
+            template: whatsapp.readyTemplate,
+            settings: whatsapp,
             parameters: [
                 bill.customer?.name || 'Customer',
                 settings.name,
@@ -163,17 +231,23 @@ const sendReadyNotice = async (bill, settings) => {
     }
 };
 
+/** Check an access token and phone number id with Meta: the number's name, or an error */
+const checkConnection = async (settings) => {
+    const data = await graphRequest(settings, 'GET', `/${encodeURIComponent(settings.phoneNumberId)}?fields=display_phone_number,verified_name,quality_rating`);
+    return { displayNumber: data.display_phone_number, verifiedName: data.verified_name, quality: data.quality_rating };
+};
+
 /** Webhook handshake: Meta calls GET ?hub.mode=subscribe&hub.verify_token=...&hub.challenge=... */
-const verifyWebhookHandshake = (query) => Boolean(
-    process.env.WHATSAPP_VERIFY_TOKEN &&
-    query['hub.mode'] === 'subscribe' &&
-    query['hub.verify_token'] === process.env.WHATSAPP_VERIFY_TOKEN
-);
+const verifyWebhookHandshake = (query) => {
+    const { verifyToken } = current();
+    return Boolean(verifyToken && query['hub.mode'] === 'subscribe' && query['hub.verify_token'] === verifyToken);
+};
 
 /** Webhook body signature: X-Hub-Signature-256 = sha256=HMAC(raw body, app secret) */
 const verifyWebhookSignature = (rawBody, header) => {
-    if (!process.env.WHATSAPP_APP_SECRET || !rawBody || !header) return false;
-    const expected = `sha256=${crypto.createHmac('sha256', process.env.WHATSAPP_APP_SECRET).update(rawBody).digest('hex')}`;
+    const { appSecret } = current();
+    if (!appSecret || !rawBody || !header) return false;
+    const expected = `sha256=${crypto.createHmac('sha256', appSecret).update(rawBody).digest('hex')}`;
     const a = Buffer.from(expected);
     const b = Buffer.from(String(header));
     return a.length === b.length && crypto.timingSafeEqual(a, b);
@@ -191,13 +265,20 @@ const statusUpdates = (payload) => (payload?.entry || [])
     }));
 
 module.exports = {
+    useStoredSettings,
+    current,
+    isCloudApiConfigured,
     getWhatsappMode,
     getReceiptBaseUrl,
     getReceiptUrl,
+    getTrackingUrl,
     buildReceiptText,
     buildWhatsappLink,
+    receiptParameters,
+    sendTemplate,
     sendBillReceipt,
     sendReadyNotice,
+    checkConnection,
     verifyWebhookHandshake,
     verifyWebhookSignature,
     statusUpdates

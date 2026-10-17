@@ -35,6 +35,10 @@ platformRouter.get('/hotels/:id/online-payments', Platform.getOnlinePayments);
 platformRouter.put('/hotels/:id/online-payments', Platform.updateOnlinePayments);
 platformRouter.delete('/hotels/:id/online-payments', Platform.disconnectOnlinePayments);
 
+platformRouter.get('/whatsapp', Platform.getWhatsapp);
+platformRouter.put('/whatsapp', Platform.updateWhatsapp);
+platformRouter.post('/whatsapp/test', Platform.testWhatsapp);
+
 platformRouter.get('/payments', Platform.listPayments);
 platformRouter.get('/audit', Platform.listAudit);
 

@@ -217,7 +217,7 @@ module.exports.getKitchenTickets = async (req, res) => {
         }
 
         const bills = await Bill.find(query)
-            .select('tokenNumber billNumber items stations status createdAt customer.name source')
+            .select('tokenNumber billNumber items stations status createdAt customer.name source note')
             .sort({ tokenNumber: 1 })
             .lean();
 

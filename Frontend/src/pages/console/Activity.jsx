@@ -14,6 +14,7 @@ const ACTIONS = {
     'payment.record': 'Recorded payment',
     'login.password_reset': 'Reset a password',
     'hotel.online_payments': 'Online payments',
+    'whatsapp.settings': 'WhatsApp settings',
 };
 
 const describe = (entry) => {
@@ -24,6 +25,7 @@ const describe = (entry) => {
         case 'login.password_reset': return details.email;
         case 'hotel.create': return `Owner ${details.owner}`;
         case 'hotel.update': return Object.keys(details).join(', ');
+        case 'whatsapp.settings':
         case 'hotel.online_payments': return Object.entries(details).map(([key, value]) => `${key}: ${value}`).join(', ');
         default: return '';
     }

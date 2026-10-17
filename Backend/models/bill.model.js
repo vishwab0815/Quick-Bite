@@ -43,6 +43,8 @@ const billSchema = new mongoose.Schema({
         validate: [(items) => items.length > 0, 'Bill must contain at least one item']
     },
     stations: [stationSchema],
+    // The customer's note for the kitchen (online orders), e.g. "less spicy"
+    note: { type: String, trim: true, maxlength: 140 },
     subtotal: { type: Number, required: true, min: 0 },
     taxableAmount: { type: Number, required: true, min: 0 },
     gstScheme: { type: String, enum: ['regular', 'composition'], default: 'regular' },

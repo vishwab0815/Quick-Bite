@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import PropTypes from 'prop-types';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
-import { PiArrowLeft, PiCheckBold, PiMinusBold, PiPencilSimpleLine, PiPlusBold, PiShieldCheckDuotone, PiShoppingBagOpenDuotone, PiX } from 'react-icons/pi';
+import { PiArrowLeft, PiCheckBold, PiMagnifyingGlass, PiMinusBold, PiNotePencilDuotone, PiPencilSimpleLine, PiPlusBold, PiShieldCheckDuotone, PiShoppingBagOpenDuotone, PiX } from 'react-icons/pi';
 import { RESTAURANT, publicPaths } from '../../site/restaurant';
 import { dishPhoto } from '../../utils/foodPhotos';
 import { formatPrice, isValidIndianMobile, posApi } from '../../utils/pos';
@@ -10,6 +10,13 @@ const CART_KEY = 'naivedya-cart';
 const CUSTOMER_KEY = 'naivedya-customer';
 const CHECKOUT_SCRIPT = 'https://checkout.razorpay.com/v1/checkout.js';
 const MAX_EACH = 20;
+
+/** How ordering works, in three steps */
+const STEPS = (demo) => [
+    ['Pick your dishes', 'Tap to add'],
+    [demo ? 'Place the order' : 'Pay by UPI or card', demo ? 'No payment in demo' : 'Secure, takes seconds'],
+    ['Collect with your token', "We tell you when it's ready"],
+];
 
 const storage = {
     read: (key, fallback) => {
@@ -121,7 +128,7 @@ const CustomerFields = ({ customer, onChange, remembered, editing, onEdit }) => 
         <div className="grid gap-5">
             <label className="site-field">
                 <span className="site-field__label">Mobile number</span>
-                <span className="site-field__box">
+                <span className="site-field__box site-field__box--digits">
                     <span className="site-field__prefix">+91</span>
                     <input
                         value={formatMobile(customer.phone)}
@@ -170,6 +177,9 @@ export default function OrderPage() {
     const [active, setActive] = useState('');
     const [paying, setPaying] = useState(false);
     const [error, setError] = useState('');
+    const [query, setQuery] = useState('');
+    const [note, setNote] = useState('');
+    const [noteOpen, setNoteOpen] = useState(false);
     const sectionRefs = useRef({});
 
     useEffect(() => {
@@ -188,13 +198,15 @@ export default function OrderPage() {
     const menu = useMemo(() => info?.menu || [], [info]);
     const groups = useMemo(() => {
         const byCategory = new Map();
+        const search = query.trim().toLowerCase();
         for (const item of menu) {
+            if (search && !`${item.name} ${item.category || ''}`.toLowerCase().includes(search)) continue;
             const key = item.category || 'Menu';
             if (!byCategory.has(key)) byCategory.set(key, []);
             byCategory.get(key).push(item);
         }
         return [...byCategory.entries()];
-    }, [menu]);
+    }, [menu, query]);
 
     // The highlighted chip follows the category on screen
     useEffect(() => {
@@ -244,10 +256,12 @@ export default function OrderPage() {
                 items: lines.map((line) => ({ itemId: line._id, quantity: line.quantity })),
                 customer: details,
                 source: kiosk ? 'kiosk' : 'qr',
+                ...(note.trim() && { note: note.trim() }),
             };
             if (demo) {
                 const res = await posApi.post(`/public/${encodeURIComponent(restaurant.slug)}/orders`, body);
                 setCart({});
+                setNote('');
                 navigate(`/order/${res.data.order.publicId}${kiosk ? '?kiosk=1' : ''}`);
                 return;
             }
@@ -269,6 +283,7 @@ export default function OrderPage() {
                 method: { upi: true, card: true, netbanking: false, wallet: false, emi: false, paylater: false },
                 handler: async (response) => {
                     setCart({});
+                    setNote('');
                     try {
                         await posApi.post(`/public/orders/${order.publicId}/verify`, response);
                     } catch {
@@ -334,20 +349,38 @@ export default function OrderPage() {
                 <>
                     <p className="mt-2 flex items-baseline justify-between border-t border-ink/15 pt-4">
                         <span className="text-sm text-ink/60">{restaurant?.pricesIncludeGst ? 'Total · taxes included' : 'Total before GST'}</span>
-                        <span className="font-accent text-4xl tabular-nums">{formatPrice(total)}</span>
+                        <span className="font-display text-3xl font-bold tabular-nums">{formatPrice(total)}</span>
                     </p>
+                    {noteOpen ? (
+                        <label className="mt-4 block">
+                            <span className="mb-1.5 flex items-center gap-1.5 text-xs font-semibold text-ink/60"><PiNotePencilDuotone className="text-base text-gold" /> Note for the kitchen</span>
+                            <input
+                                value={note}
+                                onChange={(event) => setNote(event.target.value.slice(0, 140))}
+                                maxLength={140}
+                                placeholder="e.g. less spicy, no onion"
+                                className="w-full rounded-2xl bg-white px-4 py-3 text-sm outline-none ring-1 ring-ink/10 focus:ring-2 focus:ring-gold"
+                                autoFocus
+                            />
+                        </label>
+                    ) : (
+                        <button type="button" onClick={() => setNoteOpen(true)} className="mt-4 flex items-center gap-1.5 text-sm font-semibold text-ink/60 hover:text-ink">
+                            <PiNotePencilDuotone className="text-base text-gold" /> Add a note for the kitchen
+                        </button>
+                    )}
                     <div className="mt-7">
                         <CustomerFields customer={customer} onChange={(next) => { setCustomer(next); if (error) setError(''); }} remembered={remembered} editing={editing} onEdit={() => setEditing(true)} />
                     </div>
                     {error && <p role="alert" className="mt-4 rounded-2xl bg-red-50 px-4 py-3 text-sm font-medium text-red-700 ring-1 ring-red-200">{error}</p>}
                     <button type="submit" disabled={paying} className="mt-7 flex w-full items-center justify-between rounded-full bg-ink py-4 pl-7 pr-5 font-semibold text-paper transition-transform active:scale-[0.99] disabled:opacity-60">
-                        <span>{demo ? (paying ? 'Placing order…' : 'Place order') : (paying ? 'Opening payment…' : 'Pay now')}</span>
-                        <span className="rounded-full bg-gold px-4 py-1.5 font-code text-sm text-ink">{formatPrice(total)}{restaurant?.pricesIncludeGst ? '' : ' + GST'}</span>
+                        <span>{demo ? (paying ? 'Placing order…' : 'Place order') : (paying ? 'Opening payment…' : 'Pay with UPI or card')}</span>
+                        <span className="rounded-full bg-gold px-4 py-1.5 text-sm font-bold tabular-nums text-ink">{formatPrice(total)}{restaurant?.pricesIncludeGst ? '' : ' + GST'}</span>
                     </button>
+                    <p className="mt-4 text-center text-xs text-ink/50">Pick up at the counter - show your token when it&apos;s ready.</p>
                     {demo ? (
-                        <p className="mt-3 text-center text-xs text-ink/50">Demo ordering · no payment is taken</p>
+                        <p className="mt-1 text-center text-xs text-ink/50">Demo ordering · no payment is taken</p>
                     ) : (
-                        <p className="mt-3 flex items-center justify-center gap-1.5 text-xs text-ink/50"><PiShieldCheckDuotone className="text-base text-leaf" /> UPI or card · secured by Razorpay</p>
+                        <p className="mt-1 flex items-center justify-center gap-1.5 text-xs text-ink/50"><PiShieldCheckDuotone className="text-base text-leaf" /> Payments secured by Razorpay</p>
                     )}
                 </>
             )}
@@ -366,11 +399,23 @@ export default function OrderPage() {
                     )}
                     <span className="hidden text-sm text-ink/55 sm:block">Order online · {demo ? 'demo ordering, no payment' : 'pay by UPI or card'} · collect with your token{restaurant?.hours ? ` · ${restaurant.hours}` : ''}</span>
                     {count > 0 && (
-                        <span className="ml-auto rounded-full bg-ink px-3 py-1 font-code text-xs text-paper lg:hidden">{count} · {formatPrice(total)}</span>
+                        <span className="ml-auto rounded-full bg-ink px-3 py-1 text-xs font-semibold tabular-nums text-paper lg:hidden">{count} · {formatPrice(total)}</span>
                     )}
                 </div>
                 {/* Category chips */}
-                <nav className="mx-auto flex max-w-7xl gap-2 overflow-x-auto px-4 pb-3 [scrollbar-width:none] sm:px-6" aria-label="Categories">
+                <nav className="mx-auto flex max-w-7xl items-center gap-2 overflow-x-auto px-4 pb-3 [scrollbar-width:none] sm:px-6" aria-label="Categories">
+                    <label className="flex shrink-0 items-center gap-1.5 rounded-full bg-white px-3.5 py-2 ring-1 ring-ink/10 focus-within:ring-2 focus-within:ring-gold">
+                        <PiMagnifyingGlass className="text-ink/45" aria-hidden="true" />
+                        <input
+                            value={query}
+                            onChange={(event) => setQuery(event.target.value)}
+                            type="search"
+                            placeholder="Search"
+                            aria-label="Search dishes"
+                            className="w-[4.5rem] bg-transparent text-sm outline-none transition-[width] focus:w-36 [&::-webkit-search-cancel-button]:hidden"
+                        />
+                        {query && <button type="button" onClick={() => setQuery('')} aria-label="Clear search" className="text-ink/45"><PiX /></button>}
+                    </label>
                     {groups.map(([category]) => (
                         <button
                             key={category}
@@ -388,6 +433,24 @@ export default function OrderPage() {
             <div className="mx-auto grid max-w-7xl gap-8 px-4 pt-6 sm:px-6 lg:grid-cols-[minmax(0,1fr)_400px] lg:gap-10">
                 {/* The menu, category by category */}
                 <main>
+                    {!kiosk && !query && (
+                        <section className="mb-8 rounded-[28px] bg-ink p-6 text-paper sm:p-8">
+                            <p className="font-kn text-lg text-gold">{RESTAURANT.wordKn}</p>
+                            <h1 className="mt-1 font-accent text-[clamp(2.4rem,7vw,3.6rem)] leading-[0.95]">Order ahead, <em className="text-gold">skip the queue.</em></h1>
+                            {restaurant?.hours && <p className="mt-3 text-sm text-paper/60">Open {restaurant.hours}{restaurant.address ? ` · ${restaurant.address}` : ''}</p>}
+                            <ol className="mt-6 grid gap-3 text-sm sm:grid-cols-3">
+                                {STEPS(demo).map(([title, text], index) => (
+                                    <li key={title} className="flex items-center gap-3 rounded-2xl bg-white/5 px-4 py-3 ring-1 ring-white/10">
+                                        <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-gold text-xs font-bold text-ink">{index + 1}</span>
+                                        <span><span className="block font-semibold">{title}</span><span className="text-xs text-paper/55">{text}</span></span>
+                                    </li>
+                                ))}
+                            </ol>
+                        </section>
+                    )}
+                    {query && groups.length === 0 && (
+                        <p className="py-16 text-center text-ink/50">No dishes match &ldquo;{query}&rdquo;.</p>
+                    )}
                     {groups.map(([category, items]) => (
                         <section key={category} ref={(node) => { sectionRefs.current[category] = node; }} data-category={category} className="mb-10 scroll-mt-28">
                             <h2 className="mb-4 flex items-baseline gap-3 font-accent text-3xl">{category} <span className="font-code text-xs tracking-[0.2em] text-ink/40">{items.length}</span></h2>

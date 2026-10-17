@@ -147,6 +147,12 @@ export default function KitchenScreen() {
                     ))}
                 </ul>
 
+                {ticket.note && (
+                    <p className="mx-5 mb-3 rounded-xl bg-amber-50 px-3 py-2 text-sm font-semibold text-amber-900 ring-1 ring-amber-200">
+                        Note: {ticket.note}
+                    </p>
+                )}
+
                 {!counterParam && ticket.stations.length > 1 && (
                     <div className="flex flex-wrap gap-1.5 px-5 pb-3">
                         {ticket.stations.map((station) => (

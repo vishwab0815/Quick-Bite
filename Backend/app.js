@@ -180,4 +180,7 @@ app.use((err, req, res, next) => {
 
 connectToDB();
 
+// Platform settings saved in the console (WhatsApp), kept in step on every instance
+require('./utils/platformSettings').startPlatformSettings(connectToDB.ready);
+
 module.exports = app;
