@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { memo, useEffect, useRef, useState } from 'react';
 import PropTypes from 'prop-types';
 import Mandala from './Mandala';
 import { RESTAURANT } from '../../site/restaurant';
@@ -14,34 +14,58 @@ const PART_MS = 1400;
  * mandala flares, and the two halves of the curtain part.
  */
 const Preloader = ({ heroSrc, onReveal, onDone }) => {
-    const [loaded, setLoaded] = useState(false);
-    const [shown, setShown] = useState(0);
     const [phase, setPhase] = useState('loading');
-    const startedAt = useRef(Date.now());
+    const loaded = useRef(false);
+    const barRef = useRef(null);
+    const countRef = useRef(null);
 
+    // The opening photo (and the fonts the name is set in) must be ready before the curtain parts
     useEffect(() => {
         const image = new Image();
-        image.onload = () => setLoaded(true);
-        image.onerror = () => setLoaded(true);
+        image.decoding = 'async';
+        const done = () => {
+            const fonts = document.fonts?.ready || Promise.resolve();
+            // Decode off the main thread, so the first frame of the reveal doesn't stall on it
+            Promise.all([image.decode?.().catch(() => {}), fonts]).finally(() => {
+                loaded.current = true;
+            });
+        };
+        image.onload = done;
+        image.onerror = () => {
+            loaded.current = true;
+        };
         image.src = heroSrc;
     }, [heroSrc]);
 
+    // The counter and the line are written straight to the page - no re-rendering 20 times a second
     useEffect(() => {
         if (phase !== 'loading') return undefined;
-        const timer = setInterval(() => {
-            const elapsed = Date.now() - startedAt.current;
-            const target = Math.min(loaded ? 1 : 0.9, elapsed / MIN_MS, 1);
-            setShown((value) => Math.max(Math.min(1, elapsed / MAX_MS), value + (target - value) * 0.16));
-        }, 50);
-        return () => clearInterval(timer);
-    }, [phase, loaded]);
-
-    useEffect(() => {
-        if (phase === 'loading' && (shown >= 0.99 || prefersReducedMotion())) {
+        if (prefersReducedMotion()) {
             setPhase('parting');
             onReveal();
+            return undefined;
         }
-    }, [phase, shown, onReveal]);
+        const startedAt = performance.now();
+        let shown = 0;
+        let lastCount = -1;
+        const timer = setInterval(() => {
+            const elapsed = performance.now() - startedAt;
+            const target = Math.min(loaded.current ? 1 : 0.9, elapsed / MIN_MS, 1);
+            shown = Math.max(Math.min(1, elapsed / MAX_MS), shown + (target - shown) * 0.16);
+            const count = Math.round(shown * 100);
+            if (count !== lastCount) {
+                lastCount = count;
+                if (barRef.current) barRef.current.style.transform = `scaleX(${shown.toFixed(3)})`;
+                if (countRef.current) countRef.current.textContent = String(count);
+            }
+            if (shown >= 0.99) {
+                clearInterval(timer);
+                setPhase('parting');
+                onReveal();
+            }
+        }, 50);
+        return () => clearInterval(timer);
+    }, [phase, onReveal]);
 
     useEffect(() => {
         if (phase !== 'parting') return undefined;
@@ -69,9 +93,9 @@ const Preloader = ({ heroSrc, onReveal, onDone }) => {
                 </div>
                 <div className="mt-8 flex w-[min(320px,64vw)] items-center gap-4">
                     <span className="relative h-px flex-1 bg-paper/15">
-                        <span className="absolute inset-y-0 left-0 bg-gold" style={{ width: `${(shown * 100).toFixed(1)}%` }} />
+                        <span ref={barRef} className="absolute inset-0 origin-left bg-gold" style={{ transform: 'scaleX(0)' }} />
                     </span>
-                    <span className="w-10 text-right font-accent text-2xl tabular-nums text-paper/80">{Math.round(shown * 100)}</span>
+                    <span ref={countRef} className="w-10 text-right font-accent text-2xl tabular-nums text-paper/80">0</span>
                 </div>
             </div>
 
@@ -86,4 +110,4 @@ Preloader.propTypes = {
     onDone: PropTypes.func.isRequired,
 };
 
-export default Preloader;
+export default memo(Preloader);

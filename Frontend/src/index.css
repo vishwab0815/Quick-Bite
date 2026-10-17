@@ -288,8 +288,13 @@ html.lenis body {
 }
 
 .mandala__ring {
-  transform-origin: 0 0;
-  transform-box: view-box;
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  transform-origin: 50% 50%;
+  will-change: transform;
 }
 
 .mandala__ring--1 {
@@ -353,8 +358,11 @@ html.lenis body {
 }
 
 @keyframes mandala-turn {
+  from {
+    transform: rotate(0deg);
+  }
   to {
-    rotate: 360deg;
+    transform: rotate(360deg);
   }
 }
 
@@ -450,6 +458,22 @@ html.lenis body {
 .kaapi-scene {
   position: absolute;
   inset: 0;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 1.1s ease;
+}
+
+.kaapi-scene.is-ready {
+  opacity: 1;
+}
+
+/* A still of the chai glass, for devices that get no live 3D or lose the GPU */
+.kaapi-poster {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
   pointer-events: none;
 }
 
@@ -698,8 +722,7 @@ html.lenis body {
   width: 28px;
   height: 8px;
   border-radius: 999px;
-  background: rgba(0, 0, 0, 0.55);
-  filter: blur(3px);
+  background: radial-gradient(closest-side, rgba(0, 0, 0, 0.6), rgba(0, 0, 0, 0.25) 60%, transparent);
   animation: map-pin-shadow 2.8s ease-in-out infinite;
 }
 
@@ -764,7 +787,7 @@ html.lenis body {
   }
 }
 
-/* Small gold shapes drifting at different depths (--drift from scroll, -1..1) */
+/* Small gold shapes drifting at different depths (moved with `translate` as the page scrolls) */
 .map-float {
   position: absolute;
   display: block;
@@ -772,6 +795,7 @@ html.lenis body {
   background: linear-gradient(135deg, var(--color-gold), #8a5a12);
   box-shadow: 0 20px 40px -10px rgba(0, 0, 0, 0.7);
   animation: map-float-spin 14s linear infinite;
+  will-change: transform, translate;
 }
 
 .map-float--1 {
@@ -779,7 +803,6 @@ html.lenis body {
   height: 22px;
   left: -8%;
   top: 12%;
-  transform: translateY(calc(var(--drift, 0) * -90px));
 }
 
 .map-float--2 {
@@ -789,7 +812,6 @@ html.lenis body {
   top: 30%;
   animation-duration: 20s;
   animation-direction: reverse;
-  transform: translateY(calc(var(--drift, 0) * 60px));
 }
 
 .map-float--3 {
@@ -799,7 +821,6 @@ html.lenis body {
   bottom: -9%;
   opacity: 0.8;
   animation-duration: 24s;
-  transform: translateY(calc(var(--drift, 0) * -40px));
 }
 
 @keyframes map-float-spin {
@@ -1067,6 +1088,63 @@ html.lenis body {
 
 .site-button:hover {
   transform: translateY(-2px);
+}
+
+/* The ask-first map button (data saver and slow devices) */
+.map-card__ask {
+  position: absolute;
+  left: 50%;
+  top: 30%;
+  z-index: 1;
+  transform: translateX(-50%);
+  border-radius: 999px;
+  padding: 0.6rem 1.1rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--color-paper);
+  background: rgba(255, 255, 255, 0.08);
+  box-shadow: inset 0 0 0 1px rgba(230, 168, 60, 0.45);
+}
+
+/* The loader's shimmering name repaints on its own layer, never the mandala's */
+.site-loader__word {
+  will-change: transform;
+}
+
+/* ---------- Lighter rendering on touch screens ----------
+   Frosted glass blurs everything behind it again on every scrolled frame, which phone GPUs
+   feel. On touch screens the same panels are a little more opaque instead, which reads the same. */
+@media (hover: none), (pointer: coarse) {
+  .site-nav.is-scrolled .site-nav__bar {
+    background: rgba(15, 14, 12, 0.9);
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+  }
+
+  .map-place {
+    background: rgba(15, 14, 12, 0.93);
+    backdrop-filter: none;
+  }
+
+  .rw--soft .rw__word {
+    filter: blur(3px);
+  }
+}
+
+/* Very slow devices: the soft paragraphs fade and rise without the blur */
+[data-tier="low"] .rw--soft .rw__word {
+  filter: none;
+}
+
+/* Endless animations rest while their part of the page is off screen */
+[data-offscreen] .site-marquee__track,
+[data-offscreen] .site-bob,
+[data-offscreen] .map-pin__head,
+[data-offscreen] .map-pin__shadow,
+[data-offscreen] .map-pin__ring,
+[data-offscreen] .map-float,
+[data-offscreen] .animate-pulse {
+  animation-play-state: paused;
 }
 
 @media (prefers-reduced-motion: reduce) {

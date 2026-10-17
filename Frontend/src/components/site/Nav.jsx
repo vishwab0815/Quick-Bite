@@ -3,6 +3,7 @@ import PropTypes from 'prop-types';
 import { Link } from 'react-router-dom';
 import { PiArrowUpRight, PiListLight, PiNavigationArrowFill, PiPhoneDuotone, PiXLight } from 'react-icons/pi';
 import { RESTAURANT, mapLinks } from '../../site/restaurant';
+import { subscribeScroll } from './motion';
 
 const LINKS = [
     { id: 'morning', label: 'Morning', chapter: 'Morning' },
@@ -25,27 +26,16 @@ const Nav = ({ chapter, hasMenu, onlineOrdering, restaurant, goTo }) => {
     const maps = mapLinks(restaurant?.address);
     const phone = restaurant?.phone;
 
-    useEffect(() => {
-        let frame = 0;
-        const onScroll = () => {
-            if (frame) return;
-            frame = requestAnimationFrame(() => {
-                frame = 0;
-                const y = window.scrollY;
-                setScrolled(y > window.innerHeight * 0.6);
-                // Hide only on a clear downward move, well below the top
-                setHidden(y > lastY.current + 6 && y > window.innerHeight);
-                if (y < lastY.current - 6 || y <= 0) setHidden(false);
-                lastY.current = y;
-            });
-        };
-        onScroll();
-        window.addEventListener('scroll', onScroll, { passive: true });
-        return () => {
-            cancelAnimationFrame(frame);
-            window.removeEventListener('scroll', onScroll);
-        };
-    }, []);
+    // On the page's one scroll frame; React only hears about it when the state really flips
+    useEffect(() => subscribeScroll({
+        update: (y, height) => {
+            setScrolled(y > height * 0.6);
+            // Hide only on a clear downward move, well below the top; show again on the way up
+            if (y > lastY.current + 6 && y > height) setHidden(true);
+            else if (y < lastY.current - 6 || y <= 0) setHidden(false);
+            if (Math.abs(y - lastY.current) > 6 || y <= 0) lastY.current = y;
+        },
+    }), []);
 
     // The open menu locks the page and closes on Escape
     useEffect(() => {

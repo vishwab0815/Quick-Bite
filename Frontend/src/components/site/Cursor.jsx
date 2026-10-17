@@ -16,15 +16,20 @@ const Cursor = () => {
         if (!enabled) return undefined;
         const target = { x: -100, y: -100 };
         const current = { x: -100, y: -100 };
-        let frame = requestAnimationFrame(function loop() {
+        // Runs only while the ring is catching up with the pointer, then rests
+        let frame = 0;
+        const loop = () => {
             current.x += (target.x - current.x) * 0.2;
             current.y += (target.y - current.y) * 0.2;
+            const settled = Math.abs(target.x - current.x) < 0.1 && Math.abs(target.y - current.y) < 0.1;
+            if (settled) Object.assign(current, target);
             if (ringRef.current) ringRef.current.style.transform = `translate3d(${current.x}px, ${current.y}px, 0)`;
-            frame = requestAnimationFrame(loop);
-        });
+            frame = settled ? 0 : requestAnimationFrame(loop);
+        };
         const onMove = (event) => {
             target.x = event.clientX;
             target.y = event.clientY;
+            if (!frame) frame = requestAnimationFrame(loop);
             const hit = event.target.closest?.('[data-cursor], a, button');
             setActive(Boolean(hit));
             setLabel(hit?.dataset?.cursor || '');

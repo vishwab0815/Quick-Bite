@@ -1,3 +1,4 @@
+import { memo } from 'react';
 import PropTypes from 'prop-types';
 
 /** Points on a circle, as "x,y" strings */
@@ -31,39 +32,53 @@ const tickRing = (count, inner, outer) => Array.from({ length: count }, (_, inde
     return <line key={index} x1={x1} y1={y1} x2={x2} y2={y2} />;
 });
 
+/** One ring, drawn in its own SVG so it can turn on the GPU without repainting */
+const Ring = ({ index, fill = false, children }) => (
+    <svg
+        viewBox="-110 -110 220 220"
+        className={`mandala__ring mandala__ring--${index}`}
+        fill={fill ? 'currentColor' : 'none'}
+        stroke={fill ? 'none' : 'currentColor'}
+        strokeWidth="0.7"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+    >
+        {children}
+    </svg>
+);
+
+Ring.propTypes = { index: PropTypes.number.isRequired, fill: PropTypes.bool, children: PropTypes.node };
+
 /**
  * A gold mandala in line art: rings of petals, dots and ticks that draw themselves on and
  * turn at different speeds and directions. The centre (inside radius 46) is left clear for
- * the name. Pure SVG, so it is crisp at any size.
+ * the name. Pure SVG, so it is crisp at any size; each ring is its own layer, so the turning
+ * is done by the GPU and keeps going smoothly even while the page is busy loading.
  */
 const Mandala = ({ className = '' }) => (
-    <svg viewBox="-110 -110 220 220" className={`mandala ${className}`} aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="0.7" strokeLinecap="round" strokeLinejoin="round">
-        <g className="mandala__ring mandala__ring--1">
+    <div className={`mandala ${className}`} aria-hidden="true">
+        <Ring index={1}>
             <circle r="106" pathLength="1" />
             <circle r="100" pathLength="1" strokeDasharray="0.3 1.2" strokeWidth="0.5" />
             <g>{tickRing(72, 101.5, 104.5)}</g>
-        </g>
-        <g className="mandala__ring mandala__ring--2">
+        </Ring>
+        <Ring index={2}>
             <path d={petalRing(32, 84, 97, 0.07)} pathLength="1" />
             <circle r="84" pathLength="1" strokeWidth="0.5" />
-        </g>
-        <g className="mandala__ring mandala__ring--3" fill="currentColor" stroke="none">
-            {dotRing(32, 80.5, 0.9)}
-        </g>
-        <g className="mandala__ring mandala__ring--4">
+        </Ring>
+        <Ring index={3} fill>{dotRing(32, 80.5, 0.9)}</Ring>
+        <Ring index={4}>
             <path d={petalRing(20, 62, 77, 0.11)} pathLength="1" />
             <circle r="62" pathLength="1" strokeWidth="0.5" />
-        </g>
-        <g className="mandala__ring mandala__ring--5">
+        </Ring>
+        <Ring index={5}>
             <path d={petalRing(12, 48, 59, 0.18)} pathLength="1" />
             <circle r="47" pathLength="1" strokeDasharray="0.1 0.8" strokeWidth="0.5" />
-        </g>
-        <g className="mandala__ring mandala__ring--6" fill="currentColor" stroke="none">
-            {dotRing(12, 44.5, 0.8)}
-        </g>
-    </svg>
+        </Ring>
+        <Ring index={6} fill>{dotRing(12, 44.5, 0.8)}</Ring>
+    </div>
 );
 
 Mandala.propTypes = { className: PropTypes.string };
 
-export default Mandala;
+export default memo(Mandala);

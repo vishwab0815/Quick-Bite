@@ -1,5 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
-import Lenis from 'lenis';
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Nav from '../components/site/Nav';
 import Preloader from '../components/site/Preloader';
 import Cursor from '../components/site/Cursor';
@@ -8,24 +7,51 @@ import { OotaChapter, OrderChapter, StackedDishes } from '../components/site/Cha
 import Morning from '../components/site/Morning';
 import MenuSection from '../components/site/MenuSection';
 import Visit from '../components/site/Visit';
-import { prefersReducedMotion } from '../components/site/motion';
+import { documentBox, prefersReducedMotion, setChapter, subscribeScroll, useChapter } from '../components/site/motion';
 import { RESTAURANT, publicPaths } from '../site/restaurant';
 import { posApi } from '../utils/pos';
 
 const LIVE_REFRESH_MS = 15000;
 const heroSrc = () => (window.matchMedia('(max-width: 767px)').matches ? '/site/hero-m.webp' : '/site/hero.webp');
 
+// Weighted smooth scrolling is for mouse wheels and trackpads. Touch screens already scroll
+// smoothly on the compositor; running Lenis there only adds main-thread work and lag.
+const wantsSmoothScroll = () => !prefersReducedMotion() && window.matchMedia('(pointer: fine)').matches;
+
+// The sections never change when the live token board refreshes, so they skip those re-renders
+const MemoHero = memo(Hero);
+const MemoStatement = memo(Statement);
+const MemoMorning = memo(Morning);
+const MemoOota = memo(OotaChapter);
+const MemoDishes = memo(StackedDishes);
+const MemoOrder = memo(OrderChapter);
+const MemoMenu = memo(MenuSection);
+const MemoVisit = memo(Visit);
+
+/** The small "03 — Morning" marker; re-renders on its own when the chapter changes */
+const ChapterMarker = () => {
+    const chapter = useChapter();
+    return (
+        <p className={`site-marker pointer-events-none fixed bottom-6 left-5 z-50 hidden items-center gap-3 font-code text-[10px] uppercase tracking-[0.35em] text-white mix-blend-difference transition-opacity duration-500 sm:left-10 md:flex ${chapter.name === 'Welcome' ? 'opacity-0' : 'opacity-100'}`} aria-hidden="true">
+            <span className="tabular-nums">{String(chapter.number).padStart(2, '0')}</span>
+            <span className="h-px w-10 bg-white/60" />
+            <span key={chapter.name} className="qb-fade">{chapter.name}</span>
+        </p>
+    );
+};
+
+const ChapterNav = (props) => <Nav chapter={useChapter().name} {...props} />;
+
 /**
  * Udupi Sri Krishna Naivedya - the restaurant's own website. Every chapter fills the screen:
- * welcome, the offering, morning, lunch on a leaf, the table, ordering online (when it is
- * switched on), today's menu (live from the counter) and how to visit.
+ * welcome, the offering, morning, lunch, the table, ordering online (when it is switched on),
+ * today's menu (live from the counter) and how to visit.
  */
 export default function Landing() {
     const [info, setInfo] = useState(null);
     const [board, setBoard] = useState(null);
     const [loading, setLoading] = useState(true);
     const [revealed, setRevealed] = useState(false);
-    const [chapter, setChapter] = useState({ number: 1, name: 'Welcome' });
     const [hero] = useState(heroSrc);
     const lenisRef = useRef(null);
     const progressRef = useRef(null);
@@ -44,19 +70,39 @@ export default function Landing() {
         return () => clearInterval(timer);
     }, []);
 
-    // Smooth, weighted scrolling (skipped for people who prefer less motion)
+    // Smooth, weighted scrolling on computers (loaded on its own, after the page is up)
     useEffect(() => {
-        if (prefersReducedMotion()) return undefined;
-        const lenis = new Lenis({ lerp: 0.085, wheelMultiplier: 0.9 });
-        lenisRef.current = lenis;
-        let frame = requestAnimationFrame(function loop(time) {
-            lenis.raf(time);
+        if (!wantsSmoothScroll()) return undefined;
+        let lenis = null;
+        let frame = 0;
+        let cancelled = false;
+        import('lenis').then(({ default: Lenis }) => {
+            if (cancelled) return;
+            lenis = new Lenis({ lerp: 0.085, wheelMultiplier: 0.9 });
+            lenisRef.current = lenis;
+            if (document.documentElement.style.overflow === 'hidden') lenis.stop();
+            const loop = (time) => {
+                lenis.raf(time);
+                frame = requestAnimationFrame(loop);
+            };
             frame = requestAnimationFrame(loop);
-        });
+        }).catch(() => {});
         return () => {
+            cancelled = true;
             cancelAnimationFrame(frame);
-            lenis.destroy();
+            lenis?.destroy();
             lenisRef.current = null;
+        };
+    }, []);
+
+    // Coming back to this page (reload, back button) shouldn't open half-way down behind the
+    // loader; the rest of the app keeps the browser's normal scroll restoring
+    useEffect(() => {
+        if (!('scrollRestoration' in history)) return undefined;
+        const previous = history.scrollRestoration;
+        history.scrollRestoration = 'manual';
+        return () => {
+            history.scrollRestoration = previous;
         };
     }, []);
 
@@ -75,44 +121,55 @@ export default function Landing() {
         };
     }, [loading]);
 
-    // Reading progress line, and which chapter is on screen
+    // Reading progress line, and which chapter is on screen - from cached section positions
     useEffect(() => {
-        let frame = 0;
-        const update = () => {
-            frame = 0;
-            const max = document.documentElement.scrollHeight - window.innerHeight;
-            if (progressRef.current) progressRef.current.style.transform = `scaleX(${max > 0 ? window.scrollY / max : 0})`;
-            const middle = window.innerHeight / 2;
-            const sections = [...(pageRef.current?.querySelectorAll('[data-chapter]') || [])];
-            const index = sections.findLastIndex((section) => section.getBoundingClientRect().top <= middle);
-            if (index >= 0) {
-                const name = sections[index].dataset.chapter;
-                setChapter((current) => (current.name === name ? current : { number: index + 1, name }));
-            }
-        };
-        const onScroll = () => {
-            if (!frame) frame = requestAnimationFrame(update);
-        };
-        update();
-        window.addEventListener('scroll', onScroll, { passive: true });
-        return () => {
-            cancelAnimationFrame(frame);
-            window.removeEventListener('scroll', onScroll);
-        };
+        let sections = [];
+        let max = 1;
+        let lastScale = -1;
+        return subscribeScroll({
+            measure: (height) => {
+                sections = [...(pageRef.current?.querySelectorAll('[data-chapter]') || [])]
+                    .map((node) => ({ top: documentBox(node).top, name: node.dataset.chapter }));
+                max = Math.max(1, document.documentElement.scrollHeight - height);
+                lastScale = -1;
+            },
+            update: (y, height) => {
+                const scale = Math.min(1, Math.max(0, y / max));
+                if (Math.abs(scale - lastScale) > 0.0005) {
+                    lastScale = scale;
+                    if (progressRef.current) progressRef.current.style.transform = `scaleX(${scale.toFixed(4)})`;
+                }
+                const middle = y + height / 2;
+                let index = -1;
+                for (let i = 0; i < sections.length; i += 1) if (sections[i].top <= middle) index = i;
+                if (index >= 0) setChapter(index + 1, sections[index].name);
+            },
+        });
+    }, []);
+
+    // Endless animations (marquee, map pin, pulsing dots) rest while their section is off screen
+    useEffect(() => {
+        if (typeof IntersectionObserver === 'undefined') return undefined;
+        const watcher = new IntersectionObserver((entries) => {
+            for (const entry of entries) entry.target.toggleAttribute('data-offscreen', !entry.isIntersecting);
+        }, { rootMargin: '20% 0px' });
+        for (const section of pageRef.current?.querySelectorAll('main > section') || []) watcher.observe(section);
+        return () => watcher.disconnect();
     }, [info]);
 
     const reveal = useCallback(() => setRevealed(true), []);
     const finishLoading = useCallback(() => setLoading(false), []);
 
-    const goTo = (id) => (event) => {
+    const goTo = useCallback((id) => (event) => {
         event.preventDefault();
         const target = document.getElementById(id);
         if (!target) return;
         if (lenisRef.current) lenisRef.current.scrollTo(target, { duration: 1.6 });
-        else target.scrollIntoView({ block: 'start' });
-    };
+        else target.scrollIntoView({ block: 'start', behavior: prefersReducedMotion() ? 'auto' : 'smooth' });
+    }, []);
+    const onMenu = useMemo(() => goTo('menu'), [goTo]);
 
-    const menu = info?.menu || [];
+    const menu = useMemo(() => info?.menu || [], [info]);
     const restaurant = info?.restaurant;
     const onlineOrdering = Boolean(restaurant?.onlineOrdering);
 
@@ -120,32 +177,26 @@ export default function Landing() {
         <div ref={pageRef} className="qb-site min-h-screen bg-ink text-paper">
             {loading && <Preloader heroSrc={hero} onReveal={reveal} onDone={finishLoading} />}
             <Cursor />
-            <div ref={progressRef} className="fixed inset-x-0 top-0 z-[60] h-px origin-left bg-gold" style={{ transform: 'scaleX(0)' }} aria-hidden="true" />
+            <div ref={progressRef} className="fixed inset-x-0 top-0 z-[60] h-px origin-left bg-gold will-change-transform" style={{ transform: 'scaleX(0)' }} aria-hidden="true" />
 
-            <Nav chapter={chapter.name} hasMenu={menu.length > 0} onlineOrdering={onlineOrdering} restaurant={restaurant} goTo={goTo} />
-
-            {/* Chapter marker */}
-            <p className={`pointer-events-none fixed bottom-6 left-5 z-50 hidden items-center gap-3 font-code text-[10px] uppercase tracking-[0.35em] text-white mix-blend-difference transition-opacity duration-500 sm:left-10 md:flex ${chapter.name === 'Welcome' ? 'opacity-0' : 'opacity-100'}`} aria-hidden="true">
-                <span className="tabular-nums">{String(chapter.number).padStart(2, '0')}</span>
-                <span className="h-px w-10 bg-white/60" />
-                <span key={chapter.name} className="qb-fade">{chapter.name}</span>
-            </p>
+            <ChapterNav hasMenu={menu.length > 0} onlineOrdering={onlineOrdering} restaurant={restaurant} goTo={goTo} />
+            <ChapterMarker />
 
             <main>
-                <Hero
+                <MemoHero
                     revealed={revealed}
                     onlineOrdering={onlineOrdering}
                     hasMenu={menu.length > 0}
                     hours={restaurant?.hours}
-                    onMenu={goTo('menu')}
+                    onMenu={onMenu}
                 />
-                <Statement />
-                <Morning />
-                <OotaChapter />
-                <StackedDishes />
-                {onlineOrdering && <OrderChapter />}
-                {menu.length > 0 && <MenuSection menu={menu} pricesIncludeGst={Boolean(restaurant?.pricesIncludeGst)} onlineOrdering={onlineOrdering} />}
-                <Visit restaurant={restaurant} board={board} onlineOrdering={onlineOrdering} />
+                <MemoStatement warmup={revealed} />
+                <MemoMorning />
+                <MemoOota />
+                <MemoDishes />
+                {onlineOrdering && <MemoOrder />}
+                {menu.length > 0 && <MemoMenu menu={menu} pricesIncludeGst={Boolean(restaurant?.pricesIncludeGst)} onlineOrdering={onlineOrdering} />}
+                <MemoVisit restaurant={restaurant} board={board} onlineOrdering={onlineOrdering} />
             </main>
         </div>
     );

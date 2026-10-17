@@ -23,10 +23,14 @@ export default defineConfig({
   build: {
     rollupOptions: {
       output: {
-        // Long-lived vendor chunks: app updates don't make browsers re-download React
+        // Long-lived vendor chunks: app updates don't make browsers re-download React.
+        // three.js (the 3D chai glass) and Lenis (smooth scroll) stay out of the shared vendor
+        // chunk, so they are only downloaded by the page that uses them, when it needs them.
         manualChunks(id) {
           if (!id.includes('node_modules')) return undefined;
           if (/[\\/]node_modules[\\/](react|react-dom|react-router|react-router-dom|scheduler)[\\/]/.test(id)) return 'react';
+          if (/[\\/]node_modules[\\/]three[\\/]/.test(id)) return 'three';
+          if (/[\\/]node_modules[\\/]lenis[\\/]/.test(id)) return undefined;
           return 'vendor';
         },
       },

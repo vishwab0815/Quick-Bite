@@ -1,11 +1,13 @@
-import { Suspense, lazy, useRef } from 'react';
+import { Suspense, lazy, useCallback, useEffect, useRef, useState } from 'react';
 import PropTypes from 'prop-types';
 import { PiArrowDownLight, PiArrowUpRight } from 'react-icons/pi';
 import { RESTAURANT } from '../../site/restaurant';
-import { prefersReducedMotion, useInView, useMediaQuery, useScrollProgress } from './motion';
+import { deviceTier, prefersReducedMotion, useInView, useMediaQuery, useScrollProgress, whenIdle } from './motion';
+import { RevealFade, RevealImage, RevealLetters, RevealWords } from './Reveal';
 
 const KaapiScene = lazy(() => import('./KaapiScene'));
-import { RevealFade, RevealImage, RevealLetters, RevealWords } from './Reveal';
+// After the opening photo and words have finished arriving
+const WARM_AFTER_MS = 2600;
 
 /**
  * Opening screen (one full screen): the name, set large and rising letter by letter, beside
@@ -94,19 +96,40 @@ Hero.propTypes = {
  * One full screen, one thought: what "naivedya" means - beside a filter-kaapi set modelled
  * in 3D, with gold cubes orbiting it (see KaapiScene).
  */
-export const Statement = () => {
+export const Statement = ({ warmup = false }) => {
     const sectionRef = useRef(null);
     const near = useInView(sectionRef, { threshold: 0, rootMargin: '60% 0px' });
     const wide = useMediaQuery('(min-width: 768px)');
+    // Devices on data saver or with very little power, and people who prefer less motion, see a
+    // still of the glass; so does anyone whose browser has no WebGL or loses it.
+    const [still, setStill] = useState(() => prefersReducedMotion() || deviceTier() === 'low');
+    const [warm, setWarm] = useState(false);
+    const onFail = useCallback(() => setStill(true), []);
+
+    // Get the 3D scene ready in a quiet moment after the opening has played, so it is already
+    // drawn by the time anyone scrolls here (scrolling here sooner starts it at once)
+    useEffect(() => {
+        if (still || !warmup) return undefined;
+        let cancelIdle = () => {};
+        const timer = setTimeout(() => {
+            cancelIdle = whenIdle(() => setWarm(true), 3000);
+        }, WARM_AFTER_MS);
+        return () => {
+            clearTimeout(timer);
+            cancelIdle();
+        };
+    }, [still, warmup]);
 
     return (
         <section ref={sectionRef} data-chapter="Offering" className="relative flex min-h-[100svh] items-center justify-center overflow-hidden bg-ink px-5 py-28 text-center sm:px-10">
             {/* The chai glass, modelled in 3D, with gold cubes drifting across the whole screen.
                 On phones the scene sits in the top part of the screen above the words. */}
             <div className="kaapi-host absolute inset-x-0 top-0 h-[40svh] md:inset-0 md:h-auto" aria-hidden="true">
-                {near && !prefersReducedMotion() && (
+                {still ? (
+                    <img src="/site/3d/chai-poster.webp" alt="" loading="lazy" decoding="async" className="kaapi-poster md:left-auto md:right-[4%] md:w-[44%]" />
+                ) : (near || warm) && (
                     <Suspense fallback={null}>
-                        <KaapiScene wide={wide} />
+                        <KaapiScene wide={wide} onFail={onFail} />
                     </Suspense>
                 )}
             </div>
@@ -135,3 +158,5 @@ export const Statement = () => {
         </section>
     );
 };
+
+Statement.propTypes = { warmup: PropTypes.bool };

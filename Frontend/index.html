@@ -7,10 +7,29 @@
     <meta name="description" content="Udupi Sri Krishna Naivedya, Yelahanka, Bengaluru. Udupi breakfast, kaapi and meals - today&apos;s menu live from our counter." />
     <meta name="theme-color" content="#0c0a09" />
 
-    <!-- Google Fonts -->
+    <!-- The restaurant's home page: paint the dark background at once (no white flash before
+         the app starts) and start the opening photo downloading alongside the app's code. -->
+    <script>
+      (function () {
+        if (location.pathname !== '/') return;
+        document.documentElement.style.background = '#0f0e0c';
+        var phone = window.matchMedia('(max-width: 767px)').matches;
+        var link = document.createElement('link');
+        link.rel = 'preload';
+        link.as = 'image';
+        link.type = 'image/webp';
+        link.href = phone ? '/site/hero-m.webp' : '/site/hero.webp';
+        link.setAttribute('fetchpriority', 'high');
+        document.head.appendChild(link);
+      })();
+    </script>
+
+    <!-- Google Fonts, loaded without holding up the first paint -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;1,300;1,400;1,500&family=Bricolage+Grotesque:opsz,wght@12..96,400..800&family=JetBrains+Mono:wght@400;500;700&family=Noto+Serif+Kannada:wght@400;600&display=swap" rel="stylesheet">
+    <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;1,300;1,400;1,500&family=Bricolage+Grotesque:opsz,wght@12..96,400..800&family=JetBrains+Mono:wght@400;500;700&family=Noto+Serif+Kannada:wght@400;600&display=swap">
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;1,300;1,400;1,500&family=Bricolage+Grotesque:opsz,wght@12..96,400..800&family=JetBrains+Mono:wght@400;500;700&family=Noto+Serif+Kannada:wght@400;600&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
+    <noscript><link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;1,300;1,400;1,500&family=Bricolage+Grotesque:opsz,wght@12..96,400..800&family=JetBrains+Mono:wght@400;500;700&family=Noto+Serif+Kannada:wght@400;600&display=swap" rel="stylesheet"></noscript>
 
     <title>Udupi Sri Krishna Naivedya · Yelahanka</title>
   </head>

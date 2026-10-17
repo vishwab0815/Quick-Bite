@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'react';
 import PropTypes from 'prop-types';
 import { PiArrowUpRight } from 'react-icons/pi';
-import { clamp01, prefersReducedMotion, useInView, useScrollProgress } from './motion';
+import { clamp01, documentBox, prefersReducedMotion, subscribeScroll, useInView, useScrollProgress } from './motion';
 import { RevealFade, RevealImage, RevealWords } from './Reveal';
 
 const Label = ({ children, className = '' }) => (
@@ -80,39 +80,49 @@ DishCard.propTypes = { dish: PropTypes.object.isRequired, index: PropTypes.numbe
 export const StackedDishes = () => {
     const listRef = useRef(null);
 
+    // Card positions are worked out from the list's cached position (cards are sticky, so measuring
+    // them while stuck would be wrong anyway, and measuring every frame forces layout). Each style is
+    // written only when its value actually changes, and cards far off screen are left alone.
     useEffect(() => {
-        if (prefersReducedMotion()) return undefined;
-        let frame = 0;
-        const update = () => {
-            frame = 0;
-            const cards = [...(listRef.current?.children || [])];
-            cards.forEach((card, index) => {
-                const next = cards[index + 1];
-                const inner = card.firstElementChild;
-                const covered = next ? clamp01(1 - next.getBoundingClientRect().top / window.innerHeight) : 0;
-                if (inner) {
-                    inner.style.transform = `scale(${(1 - covered * 0.1).toFixed(4)})`;
-                    inner.style.borderRadius = `${(covered * 28).toFixed(1)}px`;
-                    const shade = inner.querySelector('[data-shade]');
-                    if (shade) shade.style.opacity = (covered * 0.75).toFixed(3);
-                    const photo = inner.querySelector('[data-photo]');
-                    const rect = card.getBoundingClientRect();
-                    const drift = clamp01((window.innerHeight - rect.top) / (window.innerHeight * 2));
-                    if (photo) photo.style.transform = `translate3d(0, ${((0.5 - drift) * 10).toFixed(2)}%, 0) scale(1.15)`;
-                }
-            });
+        if (prefersReducedMotion() || !listRef.current) return undefined;
+        const cards = [...listRef.current.children].map((card) => {
+            const inner = card.firstElementChild;
+            return { inner, shade: inner?.querySelector('[data-shade]'), photo: inner?.querySelector('[data-photo]'), last: {} };
+        });
+        const write = (card, key, value, apply) => {
+            if (card.last[key] === value) return;
+            card.last[key] = value;
+            apply(value);
         };
-        const onScroll = () => {
-            if (!frame) frame = requestAnimationFrame(update);
-        };
-        update();
-        window.addEventListener('scroll', onScroll, { passive: true });
-        window.addEventListener('resize', onScroll);
-        return () => {
-            cancelAnimationFrame(frame);
-            window.removeEventListener('scroll', onScroll);
-            window.removeEventListener('resize', onScroll);
-        };
+        let listTop = 0;
+        let cardHeight = 1;
+        return subscribeScroll({
+            measure: () => {
+                const box = documentBox(listRef.current);
+                listTop = box.top;
+                cardHeight = Math.max(1, box.height / cards.length);
+                for (const card of cards) card.last = {};
+            },
+            update: (y, height) => {
+                const listBottom = listTop + cardHeight * cards.length;
+                // Where a sticky card sits on screen: its own place, stuck at the top, pushed off by the list's end
+                const topOf = (index) => Math.min(Math.max(listTop + index * cardHeight - y, 0), listBottom - y - cardHeight);
+                cards.forEach((card, index) => {
+                    if (!card.inner) return;
+                    const top = topOf(index);
+                    if (top > height * 1.5 || top < -cardHeight * 1.5) return;
+                    const covered = index < cards.length - 1 ? clamp01(1 - topOf(index + 1) / height) : 0;
+                    write(card, 'scale', (1 - covered * 0.1).toFixed(4), (value) => { card.inner.style.transform = `scale(${value})`; });
+                    // Whole pixels only: the corner rounding repaints, so it changes at most 28 times
+                    write(card, 'radius', Math.round(covered * 28), (value) => { card.inner.style.borderRadius = `${value}px`; });
+                    write(card, 'shade', (covered * 0.75).toFixed(2), (value) => { if (card.shade) card.shade.style.opacity = value; });
+                    const drift = clamp01((height - top) / (height * 2));
+                    write(card, 'drift', ((0.5 - drift) * 10).toFixed(2), (value) => {
+                        if (card.photo) card.photo.style.transform = `translate3d(0, ${value}%, 0) scale(1.15)`;
+                    });
+                });
+            },
+        });
     }, []);
 
     return (

@@ -45,16 +45,20 @@ const MenuSection = ({ menu, pricesIncludeGst, onlineOrdering }) => {
     // The floating photo trails the pointer with a little lag
     useEffect(() => {
         if (!follow) return undefined;
+        // Runs only while the photo is catching up with the pointer, then rests
         let frame = 0;
         const loop = () => {
-            current.current.x += (target.current.x - current.current.x) * 0.16;
-            current.current.y += (target.current.y - current.current.y) * 0.16;
-            if (floatRef.current) floatRef.current.style.transform = `translate3d(${current.current.x}px, ${current.current.y}px, 0) translate(-50%, -50%)`;
-            frame = requestAnimationFrame(loop);
+            const now = current.current;
+            const goal = target.current;
+            now.x += (goal.x - now.x) * 0.16;
+            now.y += (goal.y - now.y) * 0.16;
+            const settled = Math.abs(goal.x - now.x) < 0.1 && Math.abs(goal.y - now.y) < 0.1;
+            if (floatRef.current) floatRef.current.style.transform = `translate3d(${now.x}px, ${now.y}px, 0) translate(-50%, -50%)`;
+            frame = settled ? 0 : requestAnimationFrame(loop);
         };
-        frame = requestAnimationFrame(loop);
         const onMove = (event) => {
             target.current = { x: event.clientX, y: event.clientY };
+            if (!frame) frame = requestAnimationFrame(loop);
         };
         window.addEventListener('pointermove', onMove, { passive: true });
         return () => {

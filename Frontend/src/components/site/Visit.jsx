@@ -1,12 +1,59 @@
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import PropTypes from 'prop-types';
 import { Link } from 'react-router-dom';
 import { PiArrowUpRight, PiClockDuotone, PiMapPinFill, PiNavigationArrowFill, PiPhoneDuotone, PiWhatsappLogoDuotone } from 'react-icons/pi';
 import { RESTAURANT, mapLinks } from '../../site/restaurant';
-import { prefersReducedMotion, useInView, useMediaQuery, useScrollProgress } from './motion';
+import { deviceTier, prefersReducedMotion, subscribeScroll, useInView, useMediaQuery, useScrollProgress, whenIdle } from './motion';
 import { RevealFade, RevealWords } from './Reveal';
 
 const MAX_TILT = 7;
+const SETTLE_MS = 450;
+
+/**
+ * When to load the Google map. It is a heavy page of its own, and on phones it shares the
+ * main thread with this one - loading it mid-scroll makes the scroll stutter. So:
+ * computers load it as it comes near; phones wait until the card is on screen and the
+ * scrolling has paused; on data saver or a very slow device it waits for a tap ('ask').
+ */
+const useMapWhenSettled = (ref, near, fine) => {
+    const [state, setState] = useState(false);
+    useEffect(() => {
+        if (!near || state) return undefined;
+        if (fine) {
+            setState(true);
+            return undefined;
+        }
+        if (deviceTier() === 'low') {
+            setState('ask');
+            return undefined;
+        }
+        const node = ref.current;
+        let visible = false;
+        let lastScroll = performance.now();
+        let cancelIdle = () => {};
+        const unsubscribe = subscribeScroll({
+            update: () => {
+                lastScroll = performance.now();
+            },
+        });
+        const watcher = new IntersectionObserver(([entry]) => {
+            visible = entry.isIntersecting;
+        }, { threshold: 0.35 });
+        if (node) watcher.observe(node);
+        const timer = setInterval(() => {
+            if (!visible || performance.now() - lastScroll < SETTLE_MS) return;
+            clearInterval(timer);
+            cancelIdle = whenIdle(() => setState(true), 1200);
+        }, 150);
+        return () => {
+            unsubscribe();
+            watcher.disconnect();
+            clearInterval(timer);
+            cancelIdle();
+        };
+    }, [ref, near, fine, state]);
+    return state;
+};
 
 const Detail = ({ icon, label, children, delay = 0 }) => {
     const Icon = icon;
@@ -35,6 +82,9 @@ const MapCard = ({ links, address, hours }) => {
     const [loaded, setLoaded] = useState(false);
     const fine = useMediaQuery('(hover: hover) and (pointer: fine)');
     const tilt = fine && !prefersReducedMotion();
+    const showMap = useMapWhenSettled(cardRef, near, fine);
+    const [asked, setAsked] = useState(false);
+    const mapOn = showMap === true || asked;
 
     const onMove = (event) => {
         if (!tilt || !cardRef.current) return;
@@ -57,7 +107,12 @@ const MapCard = ({ links, address, hours }) => {
                 <div className="map-card__corner map-card__corner--br" aria-hidden="true" />
 
                 <div className="map-card__map">
-                    {near && (
+                    {showMap === 'ask' && !asked && (
+                        <button type="button" onClick={() => setAsked(true)} className="map-card__ask">
+                            Show the map
+                        </button>
+                    )}
+                    {mapOn && (
                         <iframe
                             title={`Map of ${RESTAURANT.name}`}
                             src={links.embed}
@@ -91,9 +146,9 @@ const MapCard = ({ links, address, hours }) => {
             </div>
 
             {/* Small floating shapes, drifting at different depths */}
-            <span className="map-float map-float--1" aria-hidden="true" />
-            <span className="map-float map-float--2" aria-hidden="true" />
-            <span className="map-float map-float--3" aria-hidden="true" />
+            <span className="map-float map-float--1" data-drift="-90" aria-hidden="true" />
+            <span className="map-float map-float--2" data-drift="60" aria-hidden="true" />
+            <span className="map-float map-float--3" data-drift="-40" aria-hidden="true" />
         </div>
     );
 };
@@ -119,9 +174,13 @@ const Visit = ({ restaurant, board, onlineOrdering }) => {
     const tel = phone ? `tel:${phone.replace(/[^\d+]/g, '')}` : null;
     const whatsapp = phone ? `https://wa.me/${phone.replace(/\D/g, '').replace(/^0/, '').replace(/^(\d{10})$/, '91$1')}` : null;
 
-    // The floating shapes drift at different speeds as the section scrolls
+    // The floating shapes drift at different speeds as the section scrolls. Each one is moved
+    // directly (a custom property on the container would restyle the whole section every frame).
     useScrollProgress(sectionRef, (progress) => {
-        floatsRef.current?.style.setProperty('--drift', ((progress - 0.5) * 2).toFixed(3));
+        const drift = (progress - 0.5) * 2;
+        for (const node of floatsRef.current?.querySelectorAll('[data-drift]') || []) {
+            node.style.translate = `0 ${(drift * Number(node.dataset.drift)).toFixed(1)}px`;
+        }
     }, 'pass');
 
     return (
