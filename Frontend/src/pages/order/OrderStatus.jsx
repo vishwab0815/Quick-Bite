@@ -162,7 +162,7 @@ export default function OrderStatus() {
         <div className={`qb-site min-h-[100dvh] text-ink transition-colors duration-700 ${ready ? 'bg-emerald-50' : 'bg-paper'}`}>
             <div className="mx-auto flex min-h-[100dvh] max-w-md flex-col px-5 pb-10 pt-5">
                 <header className="flex items-center justify-between">
-                    <Link to={kiosk ? '/order?kiosk=1' : '/'} className="font-accent text-2xl">{RESTAURANT.word}</Link>
+                    <Link to={kiosk ? '/order?kiosk=1' : RESTAURANT.path} className="font-accent text-2xl">{RESTAURANT.word}</Link>
                     {order && <span className="font-code text-[11px] text-ink/50">Ordered {timeOf(order.createdAt)}</span>}
                 </header>
 
@@ -277,7 +277,7 @@ export default function OrderStatus() {
                             )}
                         </div>
                         {!kiosk && (
-                            <Link to={served ? '/order' : '/'} className="text-center text-sm font-semibold text-ink/60 underline-offset-4 hover:underline">
+                            <Link to={served ? '/order' : RESTAURANT.path} className="text-center text-sm font-semibold text-ink/60 underline-offset-4 hover:underline">
                                 {served ? 'Order again' : `Back to ${RESTAURANT.word}`}
                             </Link>
                         )}

@@ -5,7 +5,10 @@ import 'react-toastify/dist/ReactToastify.css';
 import ErrorBoundary from './components/common/ErrorBoundary';
 
 // Each area is downloaded only when it's first opened
+// QuickBite product page (the root of the site)
 const Landing = lazy(() => import('./pages/Landing'));
+// Udupi Sri Krishna Naivedya's own website
+const RestaurantSite = lazy(() => import('./pages/RestaurantSite'));
 const Signin = lazy(() => import('./pages/Signin'));
 // Customers order and pay online (website, table QR, self-order kiosk)
 const OrderPage = lazy(() => import('./pages/order/OrderPage'));
@@ -28,6 +31,7 @@ const App = () => (
         <Suspense fallback={<PageLoader />}>
             <Routes>
                 <Route path="/" element={<Landing />} />
+                <Route path="/naivedya" element={<RestaurantSite />} />
                 <Route path="/signin" element={<Signin />} />
                 <Route path="/order" element={<OrderPage />} />
                 <Route path="/order/:publicId" element={<OrderStatus />} />

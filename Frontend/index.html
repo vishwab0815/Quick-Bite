@@ -4,14 +4,14 @@
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg">
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="description" content="Udupi Sri Krishna Naivedya, Yelahanka, Bengaluru. Udupi breakfast, kaapi and meals - today&apos;s menu live from our counter." />
+    <meta name="description" content="QuickBite - counter billing and token system for busy restaurants. Bills in seconds, tokens on screen, receipts on WhatsApp and a live owner dashboard." />
     <meta name="theme-color" content="#0c0a09" />
 
-    <!-- The restaurant's home page: paint the dark background at once (no white flash before
+    <!-- The restaurant's website: paint the dark background at once (no white flash before
          the app starts) and start the opening photo downloading alongside the app's code. -->
     <script>
       (function () {
-        if (location.pathname !== '/') return;
+        if (location.pathname.replace(/\/+$/, '') !== '/naivedya') return;
         document.documentElement.style.background = '#0f0e0c';
         var phone = window.matchMedia('(max-width: 767px)').matches;
         var link = document.createElement('link');
@@ -27,11 +27,11 @@
     <!-- Google Fonts, loaded without holding up the first paint -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;1,300;1,400;1,500&family=Bricolage+Grotesque:opsz,wght@12..96,400..800&family=JetBrains+Mono:wght@400;500;700&family=Noto+Serif+Kannada:wght@400;600&display=swap">
-    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;1,300;1,400;1,500&family=Bricolage+Grotesque:opsz,wght@12..96,400..800&family=JetBrains+Mono:wght@400;500;700&family=Noto+Serif+Kannada:wght@400;600&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
-    <noscript><link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;1,300;1,400;1,500&family=Bricolage+Grotesque:opsz,wght@12..96,400..800&family=JetBrains+Mono:wght@400;500;700&family=Noto+Serif+Kannada:wght@400;600&display=swap" rel="stylesheet"></noscript>
+    <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;1,300;1,400;1,500&family=Instrument+Serif:ital@0;1&family=Bricolage+Grotesque:opsz,wght@12..96,400..800&family=JetBrains+Mono:wght@400;500;700&family=Noto+Serif+Kannada:wght@400;600&display=swap">
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;1,300;1,400;1,500&family=Instrument+Serif:ital@0;1&family=Bricolage+Grotesque:opsz,wght@12..96,400..800&family=JetBrains+Mono:wght@400;500;700&family=Noto+Serif+Kannada:wght@400;600&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
+    <noscript><link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;1,300;1,400;1,500&family=Instrument+Serif:ital@0;1&family=Bricolage+Grotesque:opsz,wght@12..96,400..800&family=JetBrains+Mono:wght@400;500;700&family=Noto+Serif+Kannada:wght@400;600&display=swap" rel="stylesheet"></noscript>
 
-    <title>Udupi Sri Krishna Naivedya · Yelahanka</title>
+    <title>QuickBite - Billing &amp; token system for busy restaurants</title>
   </head>
   <body>
     <div id="root"></div>

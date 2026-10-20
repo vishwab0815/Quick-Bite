@@ -47,7 +47,7 @@ const ChapterNav = (props) => <Nav chapter={useChapter().name} {...props} />;
  * welcome, the offering, morning, lunch, the table, ordering online (when it is switched on),
  * today's menu (live from the counter) and how to visit.
  */
-export default function Landing() {
+export default function RestaurantSite() {
     const [info, setInfo] = useState(null);
     const [board, setBoard] = useState(null);
     const [loading, setLoading] = useState(true);

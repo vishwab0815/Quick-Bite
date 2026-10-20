@@ -19,6 +19,8 @@ export const RESTAURANT = {
     area: 'Yelahanka',
     city: 'Bengaluru',
     slug,
+    // The restaurant's website (the root of the site is the QuickBite product page)
+    path: '/naivedya',
     mapsUrl: `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent('Udupi Sri Krishna Naivedya, Yelahanka, Bengaluru')}`,
 };
 

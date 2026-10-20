@@ -328,7 +328,7 @@ export default function OrderPage() {
                     <p className="mt-4 max-w-md text-paper/70">Until then, come in - we&apos;re at {RESTAURANT.area}, {RESTAURANT.city}.</p>
                     <div className="mt-8 flex flex-wrap gap-3">
                         <a href={RESTAURANT.mapsUrl} target="_blank" rel="noreferrer" className="site-button bg-gold text-ink">Directions</a>
-                        <Link to="/" className="site-button border border-paper/25">Back to {RESTAURANT.word}</Link>
+                        <Link to={RESTAURANT.path} className="site-button border border-paper/25">Back to {RESTAURANT.word}</Link>
                     </div>
                 </div>
             </div>
@@ -407,7 +407,7 @@ export default function OrderPage() {
                     {kiosk ? (
                         <span className="font-accent text-2xl">{RESTAURANT.word}</span>
                     ) : (
-                        <Link to="/" className="flex items-center gap-2 font-accent text-2xl" aria-label={`Back to ${RESTAURANT.name}`}><PiArrowLeft className="text-base text-ink/50" /> {RESTAURANT.word}</Link>
+                        <Link to={RESTAURANT.path} className="flex items-center gap-2 font-accent text-2xl" aria-label={`Back to ${RESTAURANT.name}`}><PiArrowLeft className="text-base text-ink/50" /> {RESTAURANT.word}</Link>
                     )}
                     <span className="hidden text-sm text-ink/55 sm:block">Order online · {demo ? 'demo ordering, no payment' : 'pay by UPI'} · collect with your token{restaurant?.hours ? ` · ${restaurant.hours}` : ''}</span>
                     {count > 0 && (

@@ -1220,3 +1220,417 @@ html.lenis body {
     animation: none;
   }
 }
+
+/* ---------- QuickBite product page (the root of the site) ---------- */
+
+/* Its own headline font, and smooth in-page scrolling, on this page only */
+.qb-landing {
+  --font-accent: "Instrument Serif", ui-serif, Georgia, serif;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  html:has(.qb-landing) {
+    scroll-behavior: smooth;
+  }
+}
+
+/* Scroll reveal: content rises in as it enters the viewport */
+.reveal {
+  opacity: 0;
+  transform: translateY(28px);
+  transition:
+    opacity 900ms cubic-bezier(0.16, 1, 0.3, 1),
+    transform 900ms cubic-bezier(0.16, 1, 0.3, 1);
+  transition-delay: var(--reveal-delay, 0ms);
+}
+
+.reveal.is-visible {
+  opacity: 1;
+  transform: none;
+}
+
+/* Endless feature ticker */
+@keyframes marquee {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-50%);
+  }
+}
+
+.marquee-track {
+  animation: marquee 38s linear infinite;
+}
+
+.marquee-reverse {
+  animation-direction: reverse;
+}
+
+.marquee:hover .marquee-track {
+  animation-play-state: paused;
+}
+
+/* Hero: cards rise in one after another, then drift gently */
+@keyframes hero-card-in {
+  from {
+    opacity: 0;
+    transform: translateY(28px) scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes hero-float {
+  0%,
+  100% {
+    translate: 0 0;
+  }
+  50% {
+    translate: 0 -10px;
+  }
+}
+
+.hero-card {
+  opacity: 0;
+  animation:
+    hero-card-in 0.9s cubic-bezier(0.22, 1, 0.36, 1) var(--enter, 0ms) forwards,
+    hero-float 7s ease-in-out var(--float, 0s) infinite;
+}
+
+/* Hero: a soft saffron glow that follows the mouse */
+.hero-glow::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(640px circle at var(--mx, 22%) var(--my, 28%), rgba(255, 90, 31, 0.2), transparent 62%),
+    radial-gradient(900px circle at 88% 115%, rgba(255, 90, 31, 0.14), transparent 60%);
+}
+
+/* Headlines: each line slides up from behind a mask */
+.line-mask {
+  display: block;
+  overflow: hidden;
+  padding: 0 0.06em 0.12em 0;
+  margin-bottom: -0.12em;
+}
+
+.line-mask > span {
+  display: block;
+  transform: translateY(112%);
+  transition: transform 1200ms cubic-bezier(0.16, 1, 0.3, 1) var(--d, 0ms);
+}
+
+.is-visible .line-mask > span {
+  transform: none;
+}
+
+/* Manifesto: words light up as the paragraph scrolls past (--p 0..1 set from JS) */
+.scroll-word {
+  opacity: clamp(0.15, calc(var(--p, 0) * (var(--n) + 4) - var(--i)), 1);
+  transition: opacity 150ms linear;
+}
+
+/* Split-flap token board */
+.flap-cell {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 0.78em;
+  height: 1.22em;
+  overflow: hidden;
+  border-radius: 0.14em;
+  background: linear-gradient(180deg, #2a2724 0 50%, #1f1d1a 50% 100%);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06), 0 2px 0 rgba(0, 0, 0, 0.5);
+  perspective: 200px;
+}
+
+.flap-cell::after {
+  content: "";
+  position: absolute;
+  inset: 50% 0 auto;
+  height: 1px;
+  background: rgba(0, 0, 0, 0.75);
+}
+
+.flap-char {
+  display: inline-block;
+  animation: flap 110ms cubic-bezier(0.3, 0, 0.2, 1);
+}
+
+@keyframes flap {
+  from {
+    transform: rotateX(85deg);
+    opacity: 0.3;
+  }
+  to {
+    transform: none;
+    opacity: 1;
+  }
+}
+
+/* Thermal receipt: torn bottom edge, and it feeds out of the printer in steps */
+.receipt-edge {
+  height: 10px;
+  background: #fff;
+  -webkit-mask: conic-gradient(from 135deg at top, #0000, #000 1deg 89deg, #0000 90deg) 50% / 20px 100% repeat-x;
+  mask: conic-gradient(from 135deg at top, #0000, #000 1deg 89deg, #0000 90deg) 50% / 20px 100% repeat-x;
+}
+
+.receipt-print {
+  transform: translateY(-100%);
+}
+
+.is-visible .receipt-print {
+  transform: none;
+  transition: transform 2600ms steps(34, end) 250ms;
+}
+
+/* ---------- "One order, ninety seconds" scenes ---------- */
+.story-layer,
+.story-copy {
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(16px) scale(0.98);
+  transition:
+    opacity 450ms ease,
+    transform 700ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.story-layer.is-active,
+.story-copy.is-active {
+  opacity: 1;
+  pointer-events: auto;
+  transform: none;
+}
+
+.story-rise {
+  opacity: 0;
+  transform: translateY(24px);
+  transition:
+    opacity 600ms ease 100ms,
+    transform 800ms cubic-bezier(0.16, 1, 0.3, 1) 100ms;
+}
+
+.is-active .story-rise {
+  opacity: 1;
+  transform: none;
+}
+
+.story-typing {
+  display: inline-block;
+  width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  vertical-align: bottom;
+}
+
+.is-active .story-typing {
+  animation: story-typing 700ms steps(8) 300ms forwards;
+}
+
+@keyframes story-typing {
+  to {
+    width: 8ch;
+  }
+}
+
+.story-caret {
+  animation: story-blink 1s steps(1) infinite;
+}
+
+@keyframes story-blink {
+  50% {
+    opacity: 0;
+  }
+}
+
+.story-pop {
+  opacity: 0;
+  transform: translateY(8px);
+  transition:
+    opacity 400ms ease var(--d, 0ms),
+    transform 500ms cubic-bezier(0.16, 1, 0.3, 1) var(--d, 0ms);
+}
+
+.is-active .story-pop {
+  opacity: 1;
+  transform: none;
+}
+
+/* Confirm button turns into the token */
+.story-confirm {
+  position: relative;
+  background: var(--color-saffron);
+  color: var(--color-ink);
+  transition: background-color 300ms ease;
+}
+
+.story-confirm-idle,
+.story-confirm-done {
+  transition: opacity 250ms ease;
+}
+
+.story-confirm-done {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+}
+
+.is-active .story-confirm {
+  background: var(--color-leaf);
+  transition-delay: 1.8s;
+}
+
+.is-active .story-confirm-idle {
+  opacity: 0;
+  transition-delay: 1.8s;
+}
+
+.is-active .story-confirm-done {
+  opacity: 1;
+  transition-delay: 1.8s;
+}
+
+/* Receipt rolls out of the printer */
+.story-feed {
+  transform: translateY(-100%);
+}
+
+.is-active .story-feed {
+  transform: none;
+  transition: transform 1600ms steps(26, end) 350ms;
+}
+
+/* Kitchen: the cook taps Ready */
+.story-tap::after {
+  content: "";
+  position: absolute;
+  inset: -4px;
+  border: 2px solid var(--color-leaf);
+  border-radius: 14px;
+  opacity: 0;
+}
+
+.is-active .story-tap {
+  animation: story-tap 1ms 1.3s forwards;
+}
+
+.is-active .story-tap::after {
+  animation: story-ring 1100ms ease-out 1.1s 2;
+}
+
+@keyframes story-tap {
+  to {
+    background: var(--color-leaf);
+    color: var(--color-ink);
+  }
+}
+
+@keyframes story-ring {
+  from {
+    opacity: 0.9;
+    transform: scale(0.92);
+  }
+  to {
+    opacity: 0;
+    transform: scale(1.25);
+  }
+}
+
+/* Token TV: the called number pulses */
+.is-active .story-call {
+  animation: story-call 1600ms ease-in-out 400ms infinite;
+}
+
+@keyframes story-call {
+  0%,
+  100% {
+    box-shadow: 0 0 0 0 rgba(34, 192, 122, 0.55);
+  }
+  50% {
+    box-shadow: 0 0 0 16px rgba(34, 192, 122, 0);
+  }
+}
+
+.story-bubble {
+  opacity: 0;
+  transform: translateY(14px) scale(0.95);
+  transform-origin: top left;
+  transition:
+    opacity 400ms ease 350ms,
+    transform 600ms cubic-bezier(0.16, 1, 0.3, 1) 350ms;
+}
+
+.is-active .story-bubble {
+  opacity: 1;
+  transform: none;
+}
+
+.story-bar {
+  height: 4%;
+  transition: height 900ms cubic-bezier(0.16, 1, 0.3, 1) var(--d, 0ms);
+}
+
+.is-active .story-bar {
+  height: var(--h);
+}
+
+
+@media (prefers-reduced-motion: reduce) {
+  .reveal {
+    opacity: 1;
+    transform: none;
+    transition: none;
+  }
+
+  .hero-card {
+    opacity: 1;
+    animation: none;
+  }
+
+  .marquee-track,
+  .flap-char,
+  .story-caret,
+  .is-active .story-typing,
+  .is-active .story-tap,
+  .is-active .story-tap::after,
+  .is-active .story-call {
+    animation: none;
+  }
+
+  .line-mask > span,
+  .receipt-print,
+  .story-feed {
+    transform: none;
+    transition: none;
+  }
+
+  .scroll-word {
+    opacity: 1;
+  }
+
+  .story-typing {
+    width: 8ch;
+  }
+
+  .story-layer,
+  .story-copy,
+  .story-rise,
+  .story-pop,
+  .story-bubble,
+  .story-bar,
+  .story-confirm,
+  .story-confirm-idle,
+  .story-confirm-done {
+    transition: none;
+  }
+}
