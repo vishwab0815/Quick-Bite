@@ -41,6 +41,12 @@ const onlineOrderSchema = new mongoose.Schema({
         method: String,
         lastError: String
     },
+    // Simulated UPI payments: the order's own payment link (/pay/<id>), valid for a few minutes
+    payLink: {
+        id: { type: String },
+        expiresAt: Date,
+        reference: String
+    },
     // Set while the bill is being created, so the Checkout callback and the webhook
     // can never both create a bill for the same payment
     finalizing: { type: Boolean, default: false },
@@ -50,5 +56,6 @@ const onlineOrderSchema = new mongoose.Schema({
 
 onlineOrderSchema.index({ 'razorpay.orderId': 1 }, { unique: true });
 onlineOrderSchema.index({ hotel: 1, createdAt: -1 });
+onlineOrderSchema.index({ 'payLink.id': 1 }, { unique: true, sparse: true });
 
 module.exports = mongoose.model('OnlineOrder', onlineOrderSchema);

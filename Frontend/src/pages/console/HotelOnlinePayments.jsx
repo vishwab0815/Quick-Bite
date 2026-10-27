@@ -18,7 +18,7 @@ const newWebhookSecret = () => {
 
 const STATUS = {
     razorpay: ['bg-emerald-50 text-emerald-700 ring-emerald-200', 'Taking online orders - paid through Razorpay'],
-    demo: ['bg-amber-50 text-amber-800 ring-amber-200', 'Demo ordering - orders go to the kitchen, no payment is taken'],
+    simulated: ['bg-amber-50 text-amber-800 ring-amber-200', 'Simulated UPI payments - customers scan a QR / open a payment link and tap Pay; no money moves'],
     off: ['bg-stone-100 text-stone-600 ring-stone-200', 'Online ordering is off'],
 };
 
@@ -160,10 +160,10 @@ export default function HotelOnlinePayments({ hotel }) {
                 </div>
             </form>
 
-            <Card title="Demo ordering" subtitle="For showing the ordering flow before payments are set up. Orders go straight to the kitchen with a token - no payment is taken. Razorpay takes over once it is on.">
+            <Card title="Simulated UPI payments (test)" subtitle="For showing the whole flow before real payments go live: each order gets its own UPI QR / payment link, and tapping Pay completes it - no money moves. While on, it is used instead of Razorpay.">
                 <label className="flex items-center gap-2.5 text-sm font-medium text-stone-700">
-                    <input type="checkbox" className="h-4 w-4 accent-stone-900" checked={online.demo} disabled={saving} onChange={(event) => send({ demo: event.target.checked }, event.target.checked ? 'Demo ordering on' : 'Demo ordering off')} />
-                    Allow demo orders (no payment)
+                    <input type="checkbox" className="h-4 w-4 accent-stone-900" checked={online.demo} disabled={saving} onChange={(event) => send({ demo: event.target.checked }, event.target.checked ? 'Simulated payments on' : 'Simulated payments off - Razorpay is used')} />
+                    Use simulated UPI payments
                 </label>
             </Card>
         </div>

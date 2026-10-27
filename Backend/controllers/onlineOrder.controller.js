@@ -23,6 +23,9 @@ const { getBusinessSettings, computeTotals, normalizeIndianPhone } = require('..
 
 const SLUG = /^[a-z0-9-]{1,60}$/;
 const PUBLIC_ID = /^[A-Za-z0-9_-]{8,64}$/;
+const PAY_LINK_ID = /^pay_[A-Za-z0-9]{12,32}$/;
+// A simulated payment link stays open this long
+const PAY_LINK_MS = 10 * 60 * 1000;
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 const fail = (res, status, message) => res.status(status).json({ success: false, message });
@@ -43,35 +46,47 @@ const loadPaymentHotel = async (hotelId) => {
     return { hotel, account };
 };
 
+/** Random letters and digits (payment link ids) */
+const randomCode = (length) => {
+    const alphabet = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789';
+    return Array.from(crypto.randomBytes(length), (byte) => alphabet[byte % alphabet.length]).join('');
+};
+
+/** A 12-digit UPI-style transaction reference */
+const transactionReference = () => `${6 + (crypto.randomBytes(1)[0] % 4)}${Array.from(crypto.randomBytes(11), (byte) => byte % 10).join('')}`;
+
 /**
- * Demo ordering (no payments set up yet): the order becomes a bill with a token at once, marked
- * as a demo so it can never be mistaken for, or refunded as, a real payment.
+ * Turn a claimed, paid order into a bill with a token: the kitchen sees it at once and the
+ * customer gets the WhatsApp confirmation. `claimed` must have been claimed (finalizing: true).
  */
-const placeDemoOrder = async ({ hotel, settings, publicId, lines, totals, customer, source, note }) => {
-    const order = await OnlineOrder.create({
-        hotel: hotel._id,
-        publicId,
-        items: lines,
-        ...totals,
-        customer,
-        source,
-        note,
-        razorpay: { orderId: `demo_${publicId}` }
-    });
-    const bill = await issueBill({
-        hotelId: hotel._id,
-        settings,
-        lines,
-        totals,
-        payment: { mode: 'upi', gateway: 'demo', reference: 'Demo order - no payment taken' },
-        customer,
-        source,
-        note
-    });
-    order.set({ status: 'paid', bill: bill._id, paidAt: new Date() });
-    await order.save();
-    sendReceiptInBackground(bill, settings, publicId);
-    return order;
+const issueOrderBill = async (claimed, hotel, payment, orderFields = {}) => {
+    try {
+        const settings = getBusinessSettings(hotel);
+        const bill = await issueBill({
+            hotelId: hotel._id,
+            settings,
+            lines: claimed.items.map((line) => line.toObject()),
+            totals: {
+                subtotal: claimed.subtotal,
+                taxableAmount: claimed.taxableAmount,
+                cgst: claimed.cgst,
+                sgst: claimed.sgst,
+                roundOff: claimed.roundOff,
+                total: claimed.total
+            },
+            payment,
+            customer: { name: claimed.customer.name, phone: claimed.customer.phone },
+            source: claimed.source,
+            note: claimed.note
+        });
+        claimed.set({ status: 'paid', bill: bill._id, paidAt: new Date(), finalizing: false, ...orderFields });
+        await claimed.save();
+        sendReceiptInBackground(bill, settings, claimed.publicId);
+        return claimed;
+    } catch (error) {
+        await OnlineOrder.updateOne({ _id: claimed._id }, { $set: { finalizing: false } });
+        throw error;
+    }
 };
 
 /** What the customer's order page shows - never the phone number or payment ids */
@@ -90,8 +105,10 @@ const orderView = async (order) => {
         source: order.source,
         createdAt: order.createdAt,
         paidAt: order.paidAt,
-        demo: bill?.payment?.gateway === 'demo',
+        // A test payment (simulated UPI, or an older demo order): no money moved
+        testPayment: ['simulated', 'demo'].includes(bill?.payment?.gateway),
         paymentMethod: order.razorpay?.method || null,
+        paymentReference: order.payLink?.reference || null,
         restaurant: { name: hotel?.name, address: hotel?.settings?.address, phone: hotel?.settings?.phone },
         bill: bill && {
             publicId: bill.publicId,
@@ -154,48 +171,14 @@ const finalizeOrder = async (orderId, paymentId) => {
         throw new OrderError('Still confirming your payment. Please refresh in a moment.', 409);
     }
 
-    try {
-        const settings = getBusinessSettings(hotel);
-        const bill = await issueBill({
-            hotelId: hotel._id,
-            settings,
-            lines: claimed.items.map((line) => line.toObject()),
-            totals: {
-                subtotal: claimed.subtotal,
-                taxableAmount: claimed.taxableAmount,
-                cgst: claimed.cgst,
-                sgst: claimed.sgst,
-                roundOff: claimed.roundOff,
-                total: claimed.total
-            },
-            payment: {
-                mode: payment.method === 'upi' ? 'upi' : 'card',
-                gateway: 'razorpay',
-                gatewayOrderId: claimed.razorpay.orderId,
-                gatewayPaymentId: payment.id,
-                method: payment.method,
-                reference: payment.id
-            },
-            customer: { name: claimed.customer.name, phone: claimed.customer.phone },
-            source: claimed.source,
-            note: claimed.note
-        });
-
-        claimed.set({
-            status: 'paid',
-            bill: bill._id,
-            paidAt: new Date(),
-            finalizing: false,
-            'razorpay.paymentId': payment.id,
-            'razorpay.method': payment.method
-        });
-        await claimed.save();
-        sendReceiptInBackground(bill, settings, claimed.publicId);
-        return claimed;
-    } catch (error) {
-        await OnlineOrder.updateOne({ _id: claimed._id }, { $set: { finalizing: false } });
-        throw error;
-    }
+    return issueOrderBill(claimed, hotel, {
+        mode: payment.method === 'upi' ? 'upi' : 'card',
+        gateway: 'razorpay',
+        gatewayOrderId: claimed.razorpay.orderId,
+        gatewayPaymentId: payment.id,
+        method: payment.method,
+        reference: payment.id
+    }, { 'razorpay.paymentId': payment.id, 'razorpay.method': payment.method });
 };
 
 const handleError = (res, error, what) => {
@@ -229,11 +212,25 @@ module.exports.createOrder = async (req, res) => {
         if (totals.total < 1) return fail(res, 400, 'The order total must be at least ₹1');
 
         const publicId = crypto.randomBytes(12).toString('base64url');
-        if (razorpay.onlineOrderingMode(hotel) === 'demo') {
-            const order = await placeDemoOrder({
-                hotel, settings, publicId, lines, totals, customer: { name, phone }, source: source === 'kiosk' ? 'kiosk' : 'qr', note
+        if (razorpay.onlineOrderingMode(hotel) === 'simulated') {
+            // A test UPI payment: the order waits on its own payment link until someone pays it
+            const order = await OnlineOrder.create({
+                hotel: hotel._id,
+                publicId,
+                items: lines,
+                ...totals,
+                customer: { name, phone },
+                source: source === 'kiosk' ? 'kiosk' : 'qr',
+                note,
+                razorpay: { orderId: `sim_${publicId}` },
+                payLink: { id: `pay_${randomCode(16)}`, expiresAt: new Date(Date.now() + PAY_LINK_MS) }
             });
-            return res.status(201).json({ success: true, demo: true, order: { publicId: order.publicId, total: order.total } });
+            return res.status(201).json({
+                success: true,
+                simulated: true,
+                order: { publicId: order.publicId, total: order.total },
+                payment: { id: order.payLink.id, amount: order.total, expiresAt: order.payLink.expiresAt, payee: settings.name }
+            });
         }
 
         const account = razorpay.accountFor(hotel);
@@ -311,6 +308,87 @@ module.exports.getOrder = async (req, res) => {
         res.status(200).json({ success: true, order: await orderView(order) });
     } catch (error) {
         handleError(res, error, 'loading the order');
+    }
+};
+
+/* ---------- Simulated UPI payments: the order's own payment link ---------- */
+
+const UPI_HANDLE = (hotel) => hotel.settings?.upiVpa || `${hotel.slug.replace(/-/g, '').slice(0, 20)}@upi`;
+
+/** What the payment page shows */
+const payLinkView = async (order) => {
+    const hotel = await Hotel.findById(order.hotel).select('name slug settings.upiVpa').lean();
+    const expired = !order.bill && order.payLink.expiresAt < new Date();
+    return {
+        id: order.payLink.id,
+        status: order.bill ? 'paid' : expired ? 'expired' : 'pending',
+        amount: order.total,
+        payee: hotel?.name,
+        upiId: hotel ? UPI_HANDLE(hotel) : '',
+        orderPublicId: order.publicId,
+        // A short code people can read out: letters and digits only
+        orderCode: order.publicId.replace(/[^A-Za-z0-9]/g, '').slice(0, 6).toUpperCase(),
+        items: order.items.map((line) => ({ name: line.name, quantity: line.quantity })),
+        expiresAt: order.payLink.expiresAt,
+        paidAt: order.paidAt || null,
+        reference: order.payLink.reference || null
+    };
+};
+
+/**
+ * Public: a payment link (what scanning the QR opens)
+ */
+module.exports.getPayLink = async (req, res) => {
+    try {
+        if (!PAY_LINK_ID.test(req.params.linkId)) return fail(res, 404, 'This payment link is not valid');
+        const order = await OnlineOrder.findOne({ 'payLink.id': req.params.linkId });
+        if (!order) return fail(res, 404, 'This payment link is not valid');
+        res.set('Cache-Control', 'no-store');
+        res.status(200).json({ success: true, payment: await payLinkView(order) });
+    } catch (error) {
+        handleError(res, error, 'loading the payment');
+    }
+};
+
+/**
+ * Public: pay a simulated payment link. The order becomes a bill with a token, exactly as a
+ * real payment would make it; paying twice is harmless (the second answers with the first).
+ */
+module.exports.paySimulated = async (req, res) => {
+    try {
+        if (!PAY_LINK_ID.test(req.params.linkId)) return fail(res, 404, 'This payment link is not valid');
+        let order = await OnlineOrder.findOne({ 'payLink.id': req.params.linkId });
+        if (!order) return fail(res, 404, 'This payment link is not valid');
+        if (order.bill) return res.status(200).json({ success: true, payment: await payLinkView(order) });
+        if (order.payLink.expiresAt < new Date()) return fail(res, 410, 'This payment request has expired. Please start the order again.');
+
+        const hotel = await Hotel.findById(order.hotel).lean();
+        if (!hotel || razorpay.onlineOrderingMode(hotel) !== 'simulated') return fail(res, 409, 'Test payments are switched off for this restaurant');
+
+        const reference = transactionReference();
+        const claimed = await OnlineOrder.findOneAndUpdate(
+            { _id: order._id, bill: null, finalizing: { $ne: true }, 'payLink.expiresAt': { $gt: new Date() } },
+            { $set: { finalizing: true } },
+            { new: true }
+        );
+        if (!claimed) {
+            for (let attempt = 0; attempt < 20; attempt++) {
+                await sleep(250);
+                order = await OnlineOrder.findById(order._id);
+                if (order?.bill) return res.status(200).json({ success: true, payment: await payLinkView(order) });
+            }
+            return fail(res, 409, 'Still confirming the payment. Please refresh in a moment.');
+        }
+
+        const paid = await issueOrderBill(claimed, hotel, {
+            mode: 'upi',
+            gateway: 'simulated',
+            method: 'upi',
+            reference: `Test UPI ${reference}`
+        }, { 'razorpay.method': 'upi', 'razorpay.paymentId': `sim_${reference}`, 'payLink.reference': reference });
+        res.status(200).json({ success: true, payment: await payLinkView(paid) });
+    } catch (error) {
+        handleError(res, error, 'completing the payment');
     }
 };
 

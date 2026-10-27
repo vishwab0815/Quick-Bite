@@ -5,6 +5,7 @@ import { PiArrowLeft, PiCheckBold, PiMagnifyingGlass, PiMinusBold, PiNotePencilD
 import { RESTAURANT, publicPaths } from '../../site/restaurant';
 import { dishPhoto } from '../../utils/foodPhotos';
 import { formatPrice, isValidIndianMobile, posApi } from '../../utils/pos';
+import UpiCheckout from '../../components/order/UpiCheckout';
 
 const CART_KEY = 'naivedya-cart';
 const CUSTOMER_KEY = 'naivedya-customer';
@@ -12,9 +13,9 @@ const CHECKOUT_SCRIPT = 'https://checkout.razorpay.com/v1/checkout.js';
 const MAX_EACH = 20;
 
 /** How ordering works, in three steps */
-const STEPS = (demo) => [
+const STEPS = [
     ['Pick your dishes', 'Tap to add'],
-    [demo ? 'Place the order' : 'Pay by UPI', demo ? 'No payment in demo' : 'PhonePe, Google Pay, any UPI app'],
+    ['Pay by UPI', 'Scan the QR or use your UPI app'],
     ['Collect with your token', "We tell you when it's ready"],
 ];
 
@@ -176,6 +177,8 @@ export default function OrderPage() {
     const [sheet, setSheet] = useState(false);
     const [active, setActive] = useState('');
     const [paying, setPaying] = useState(false);
+    // The UPI payment in progress (simulated payments): { payment, publicId }
+    const [upi, setUpi] = useState(null);
     const [error, setError] = useState('');
     const [query, setQuery] = useState('');
     const [note, setNote] = useState('');
@@ -225,8 +228,8 @@ export default function OrderPage() {
     const total = lines.reduce((sum, line) => sum + line.price * line.quantity, 0);
     const restaurant = info?.restaurant;
     const open = Boolean(restaurant?.onlineOrdering);
-    // Demo ordering: orders go straight to the kitchen, no payment window
-    const demo = Boolean(restaurant?.orderingDemo);
+    // Test UPI payments (no money moves): our own QR / payment link instead of Razorpay
+    const simulated = restaurant?.paymentMode === 'simulated';
     const phoneOk = isValidIndianMobile(customer.phone);
 
     const change = (id, delta) => setCart((current) => {
@@ -258,11 +261,11 @@ export default function OrderPage() {
                 source: kiosk ? 'kiosk' : 'qr',
                 ...(note.trim() && { note: note.trim() }),
             };
-            if (demo) {
+            if (simulated) {
                 const res = await posApi.post(`/public/${encodeURIComponent(restaurant.slug)}/orders`, body);
-                setCart({});
-                setNote('');
-                navigate(`/order/${res.data.order.publicId}${kiosk ? '?kiosk=1' : ''}`);
+                setUpi({ payment: res.data.payment, publicId: res.data.order.publicId });
+                setSheet(false);
+                setPaying(false);
                 return;
             }
             const [Razorpay, res] = await Promise.all([
@@ -385,12 +388,12 @@ export default function OrderPage() {
                     </div>
                     {error && <p role="alert" className="mt-4 rounded-2xl bg-red-50 px-4 py-3 text-sm font-medium text-red-700 ring-1 ring-red-200">{error}</p>}
                     <button type="submit" disabled={paying} className="mt-7 flex w-full items-center justify-between rounded-full bg-ink py-4 pl-7 pr-5 font-semibold text-paper transition-transform active:scale-[0.99] disabled:opacity-60">
-                        <span>{demo ? (paying ? 'Placing order…' : 'Place order') : (paying ? 'Opening UPI…' : 'Pay with UPI')}</span>
+                        <span>{paying ? 'Opening UPI…' : 'Pay with UPI'}</span>
                         <span className="rounded-full bg-gold px-4 py-1.5 text-sm font-bold tabular-nums text-ink">{formatPrice(total)}{restaurant?.pricesIncludeGst ? '' : ' + GST'}</span>
                     </button>
                     <p className="mt-4 text-center text-xs text-ink/50">Pick up at the counter - show your token when it&apos;s ready.</p>
-                    {demo ? (
-                        <p className="mt-1 text-center text-xs text-ink/50">Demo ordering · no payment is taken</p>
+                    {simulated ? (
+                        <p className="mt-1 text-center text-xs text-ink/50">Test payments · no money is moved</p>
                     ) : (
                         <p className="mt-1 flex items-center justify-center gap-1.5 text-xs text-ink/50"><PiShieldCheckDuotone className="text-base text-leaf" /> Payments secured by Razorpay</p>
                     )}
@@ -409,7 +412,7 @@ export default function OrderPage() {
                     ) : (
                         <Link to={RESTAURANT.path} className="flex items-center gap-2 font-accent text-2xl" aria-label={`Back to ${RESTAURANT.name}`}><PiArrowLeft className="text-base text-ink/50" /> {RESTAURANT.word}</Link>
                     )}
-                    <span className="hidden text-sm text-ink/55 sm:block">Order online · {demo ? 'demo ordering, no payment' : 'pay by UPI'} · collect with your token{restaurant?.hours ? ` · ${restaurant.hours}` : ''}</span>
+                    <span className="hidden text-sm text-ink/55 sm:block">Order online · pay by UPI · collect with your token{restaurant?.hours ? ` · ${restaurant.hours}` : ''}</span>
                     {count > 0 && (
                         <span className="ml-auto rounded-full bg-ink px-3 py-1 text-xs font-semibold tabular-nums text-paper lg:hidden">{count} · {formatPrice(total)}</span>
                     )}
@@ -451,7 +454,7 @@ export default function OrderPage() {
                             <h1 className="mt-1 font-accent text-[clamp(2.4rem,7vw,3.6rem)] leading-[0.95]">Order ahead, <em className="text-gold">skip the queue.</em></h1>
                             {restaurant?.hours && <p className="mt-3 text-sm text-paper/60">Open {restaurant.hours}{restaurant.address ? ` · ${restaurant.address}` : ''}</p>}
                             <ol className="mt-6 grid gap-3 text-sm sm:grid-cols-3">
-                                {STEPS(demo).map(([title, text], index) => (
+                                {STEPS.map(([title, text], index) => (
                                     <li key={title} className="flex items-center gap-3 rounded-2xl bg-white/5 px-4 py-3 ring-1 ring-white/10">
                                         <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-gold text-xs font-bold text-ink">{index + 1}</span>
                                         <span><span className="block font-semibold">{title}</span><span className="text-xs text-paper/55">{text}</span></span>
@@ -484,6 +487,19 @@ export default function OrderPage() {
                     </div>
                 </aside>
             </div>
+
+            {upi && (
+                <UpiCheckout
+                    payment={upi.payment}
+                    kiosk={kiosk}
+                    onClose={() => setUpi(null)}
+                    onDone={() => {
+                        setCart({});
+                        setNote('');
+                        navigate(`/order/${upi.publicId}${kiosk ? '?kiosk=1' : ''}`);
+                    }}
+                />
+            )}
 
             {/* Phones: cart bar, then the order as a sheet */}
             {count > 0 && !sheet && (

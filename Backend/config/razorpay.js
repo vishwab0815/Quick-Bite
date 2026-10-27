@@ -56,12 +56,13 @@ const accountFor = (hotel) => {
 };
 
 /**
- * How this hotel takes online orders: 'razorpay' (paid), 'demo' (no payment - for showing the
- * ordering flow before payments are set up) or null (not at all). Razorpay always wins.
+ * How this hotel takes online orders: 'simulated' (a test UPI payment - a QR / payment link with
+ * a Pay button, no money moves), 'razorpay' (real payments) or null (not at all). While the
+ * simulation is switched on it takes priority, so a hotel can be shown before payments go live.
  */
 const onlineOrderingMode = (hotel) => {
+    if (hotel?.onlineOrdersDemo) return 'simulated';
     if (acceptsOnlineOrders(hotel)) return 'razorpay';
-    if (hotel?.onlineOrdersDemo) return 'demo';
     return null;
 };
 

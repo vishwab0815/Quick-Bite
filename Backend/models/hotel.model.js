@@ -68,8 +68,9 @@ const hotelSchema = new mongoose.Schema({
 
     // The public client demo restaurant (one-click sign-in, sample data that resets itself)
     isDemo: { type: Boolean, default: false },
-    // Show online ordering to a client before payments are set up: orders go straight to the
-    // kitchen with no payment taken. Real Razorpay payments take over as soon as they are configured.
+    // Simulated UPI payments: customers get a real-looking UPI QR / payment link with a Pay button,
+    // but no money moves. For showing the whole flow before real payments go live; while on, it
+    // takes priority over Razorpay.
     onlineOrdersDemo: { type: Boolean, default: false },
 
     // The hotel's own Razorpay account for online orders - customers' money goes straight to

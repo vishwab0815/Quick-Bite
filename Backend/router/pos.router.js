@@ -43,6 +43,9 @@ const publicLimiter = (max) => rateLimit({
 posRouter.post('/public/:slug/orders', publicLimiter(30), OnlineOrderController.createOrder);
 posRouter.post('/public/orders/:publicId/verify', publicLimiter(60), OnlineOrderController.verifyPayment);
 posRouter.get('/public/orders/:publicId', OnlineOrderController.getOrder);
+// Simulated UPI payments: the payment link a QR code opens, and its Pay button
+posRouter.get('/public/pay/:linkId', OnlineOrderController.getPayLink);
+posRouter.post('/public/pay/:linkId', publicLimiter(30), OnlineOrderController.paySimulated);
 
 // Webhooks (signed - their raw bodies are kept in app.js so the signatures can be checked)
 posRouter.post('/payments/razorpay/webhook', OnlineOrderController.razorpayWebhook);

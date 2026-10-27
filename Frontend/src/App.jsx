@@ -13,6 +13,8 @@ const Signin = lazy(() => import('./pages/Signin'));
 // Customers order and pay online (website, table QR, self-order kiosk)
 const OrderPage = lazy(() => import('./pages/order/OrderPage'));
 const OrderStatus = lazy(() => import('./pages/order/OrderStatus'));
+// A UPI payment request: what scanning an order's QR code opens
+const PayPage = lazy(() => import('./pages/order/PayPage'));
 // Counter billing: all counter screens in one bundle so tab switches are instant
 const PosApp = lazy(() => import('./pages/pos/PosApp'));
 const TokenDisplay = lazy(() => import('./pages/pos/TokenDisplay'));
@@ -35,6 +37,7 @@ const App = () => (
                 <Route path="/signin" element={<Signin />} />
                 <Route path="/order" element={<OrderPage />} />
                 <Route path="/order/:publicId" element={<OrderStatus />} />
+                <Route path="/pay/:linkId" element={<PayPage />} />
 
                 {/* Hotel staff & owners */}
                 <Route path="/pos/*" element={<PosApp />} />

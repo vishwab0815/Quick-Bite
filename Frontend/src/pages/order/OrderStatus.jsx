@@ -258,7 +258,8 @@ export default function OrderStatus() {
                             )}
                             <p className="mt-3 flex items-baseline justify-between border-t border-ink/10 pt-3">
                                 <span className="text-sm font-semibold">
-                                    {order.demo ? 'Demo order · no payment taken' : `Paid${METHOD_LABEL[order.paymentMethod] ? ` · ${METHOD_LABEL[order.paymentMethod]}` : ''}`}
+                                    {`Paid${METHOD_LABEL[order.paymentMethod] ? ` · ${METHOD_LABEL[order.paymentMethod]}` : ''}${order.testPayment ? ' (test)' : ''}`}
+                                    {order.paymentReference && <span className="block font-code text-[11px] font-normal text-ink/45">UPI Ref {order.paymentReference}</span>}
                                 </span>
                                 <span className="font-display text-xl font-bold tabular-nums">{formatPrice(order.total)}</span>
                             </p>

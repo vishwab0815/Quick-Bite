@@ -302,44 +302,86 @@ describe('online orders (Razorpay)', () => {
     });
 });
 
-describe('demo ordering (no payments set up)', () => {
-    it('takes the order straight to the kitchen with no payment, clearly marked as a demo', async () => {
+describe('simulated UPI payments (test mode, no money moves)', () => {
+    let idli;
+
+    before(async () => {
         const Hotel = require('../models/hotel.model');
         const MenuItem = require('../models/menuItem.model');
         const hotel = await Hotel.create({
-            name: 'Demo Hotel', slug: 'demo-orders', onlineOrdersDemo: true,
+            name: 'Sim Hotel', slug: 'sim-orders', onlineOrdersDemo: true,
             subscription: { plan: 'trial', paidUntil: new Date(Date.now() + DAY_MS) },
         });
-        const idli = await MenuItem.create({ hotel: hotel._id, name: 'Idli', price: 40, counter: 'Tiffin' });
-
-        const info = (await request(app).get('/pos/public/demo-orders/info')).body.restaurant;
-        assert.equal(info.onlineOrdering, true);
-        assert.equal(info.orderingDemo, true);
-        const ordersBefore = fake.orderSeq;
-
-        const res = await request(app).post('/pos/public/demo-orders/orders')
-            .send({ items: [{ itemId: String(idli._id), quantity: 3 }], customer: { phone: '9876543210' } });
-        assert.equal(res.status, 201, res.body.message);
-        assert.equal(res.body.demo, true);
-        assert.equal(res.body.checkout, undefined, 'no payment window');
-        assert.equal(fake.orderSeq, ordersBefore, 'Razorpay is never called');
-
-        const order = (await request(app).get(`/pos/public/orders/${res.body.order.publicId}`)).body.order;
-        assert.equal(order.status, 'paid');
-        assert.ok(order.bill.tokenNumber >= 1, 'the customer gets a token');
-        const bill = await Bill.findOne({ publicId: order.bill.publicId });
-        assert.equal(bill.total, 120);
-        assert.equal(bill.payment.gateway, 'demo');
+        idli = await MenuItem.create({ hotel: hotel._id, name: 'Idli', price: 40, counter: 'Tiffin' });
     });
 
-    it('lets real Razorpay payments take over once they are set up', async () => {
+    const order = () => request(app).post('/pos/public/sim-orders/orders')
+        .send({ items: [{ itemId: String(idli._id), quantity: 3 }], customer: { phone: '9876543210' } });
+
+    it('gives the order its own payment link, without calling Razorpay or making a token yet', async () => {
+        const info = (await request(app).get('/pos/public/sim-orders/info')).body.restaurant;
+        assert.equal(info.onlineOrdering, true);
+        assert.equal(info.paymentMode, 'simulated');
+        const ordersBefore = fake.orderSeq;
+        const billsBefore = await Bill.countDocuments();
+
+        const res = await order();
+        assert.equal(res.status, 201, res.body.message);
+        assert.equal(res.body.simulated, true);
+        assert.match(res.body.payment.id, /^pay_[A-Za-z0-9]{16}$/);
+        assert.equal(res.body.payment.amount, 120);
+        assert.equal(fake.orderSeq, ordersBefore, 'Razorpay is never called');
+        assert.equal(await Bill.countDocuments(), billsBefore, 'no token before it is paid');
+
+        const link = (await request(app).get(`/pos/public/pay/${res.body.payment.id}`)).body.payment;
+        assert.equal(link.status, 'pending');
+        assert.equal(link.payee, 'Sim Hotel');
+        assert.equal(link.upiId, 'simorders@upi');
+        assert.equal(link.amount, 120);
+    });
+
+    it('paying the link makes the bill and token, exactly once', async () => {
+        const res = await order();
+        const linkId = res.body.payment.id;
+        const [first, second] = await Promise.all([
+            request(app).post(`/pos/public/pay/${linkId}`),
+            request(app).post(`/pos/public/pay/${linkId}`),
+        ]);
+        assert.equal(first.status, 200, first.body.message);
+        assert.equal(second.status, 200, second.body.message);
+        assert.equal(first.body.payment.status, 'paid');
+        assert.match(first.body.payment.reference, /^\d{12}$/);
+        assert.equal(second.body.payment.reference, first.body.payment.reference);
+
+        const tracked = (await request(app).get(`/pos/public/orders/${res.body.order.publicId}`)).body.order;
+        assert.equal(tracked.status, 'paid');
+        assert.equal(tracked.testPayment, true);
+        assert.ok(tracked.bill.tokenNumber >= 1);
+        assert.equal(await Bill.countDocuments({ publicId: tracked.bill.publicId }), 1);
+        const bill = await Bill.findOne({ publicId: tracked.bill.publicId });
+        assert.equal(bill.payment.gateway, 'simulated');
+        assert.equal(bill.payment.mode, 'upi');
+        assert.equal(bill.total, 120);
+    });
+
+    it('refuses an expired or unknown link', async () => {
+        const res = await order();
+        await OnlineOrder.updateOne({ publicId: res.body.order.publicId }, { $set: { 'payLink.expiresAt': new Date(Date.now() - 1000) } });
+        assert.equal((await request(app).get(`/pos/public/pay/${res.body.payment.id}`)).body.payment.status, 'expired');
+        assert.equal((await request(app).post(`/pos/public/pay/${res.body.payment.id}`)).status, 410);
+        assert.equal((await request(app).post('/pos/public/pay/pay_doesnotexist1234')).status, 404);
+        assert.equal((await request(app).get('/pos/public/pay/not-a-link')).status, 404);
+    });
+
+    it('hands over to real Razorpay payments when the simulation is switched off', async () => {
         const Hotel = require('../models/hotel.model');
         await Hotel.updateOne({ slug: 'naivedya' }, { $set: { onlineOrdersDemo: true } });
-        const res = await startOrder();
-        assert.equal(res.status, 201);
-        assert.equal(res.body.demo, undefined);
-        assert.ok(res.body.checkout.orderId.startsWith('order_'));
+        assert.equal((await startOrder()).body.simulated, true, 'the simulation takes priority while on');
         await Hotel.updateOne({ slug: 'naivedya' }, { $set: { onlineOrdersDemo: false } });
+        await new Promise((resolve) => setTimeout(resolve, 50));
+        const res = await startOrder();
+        assert.equal(res.body.simulated, undefined);
+        assert.ok(res.body.checkout.orderId.startsWith('order_'));
     });
 });
 

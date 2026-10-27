@@ -605,8 +605,8 @@ module.exports.getPublicInfo = async (req, res) => {
                 hours: settings.hours,
                 pricesIncludeGst: settings.gstScheme === 'composition' || settings.pricesIncludeGst,
                 onlineOrdering: Boolean(razorpay.onlineOrderingMode(hotel)),
-                // Demo ordering: the order page says no payment is taken
-                orderingDemo: razorpay.onlineOrderingMode(hotel) === 'demo'
+                // 'razorpay' or 'simulated' (test UPI payments - no money moves)
+                paymentMode: razorpay.onlineOrderingMode(hotel)
             },
             menu
         });
