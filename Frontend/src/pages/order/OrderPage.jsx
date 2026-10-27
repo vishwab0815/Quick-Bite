@@ -12,13 +12,6 @@ const CUSTOMER_KEY = 'naivedya-customer';
 const CHECKOUT_SCRIPT = 'https://checkout.razorpay.com/v1/checkout.js';
 const MAX_EACH = 20;
 
-/** How ordering works, in three steps */
-const STEPS = [
-    ['Pick your dishes', 'Tap to add'],
-    ['Pay by UPI', 'Scan the QR or use your UPI app'],
-    ['Collect with your token', "We tell you when it's ready"],
-];
-
 const storage = {
     read: (key, fallback) => {
         try {
@@ -222,7 +215,7 @@ export default function OrderPage() {
             let current = nodes[0];
             for (const node of nodes) if (node.getBoundingClientRect().top <= line) current = node;
             // At the very bottom the last category is the one being read
-            if (window.innerHeight + window.scrollY >= document.documentElement.scrollHeight - 4) current = nodes[nodes.length - 1];
+            if (window.scrollY > 0 && window.innerHeight + window.scrollY >= document.documentElement.scrollHeight - 4) current = nodes[nodes.length - 1];
             setActive(current.dataset.category);
         };
         const onScroll = () => {
@@ -466,21 +459,6 @@ export default function OrderPage() {
             <div className="mx-auto grid max-w-7xl gap-8 px-4 pt-6 sm:px-6 lg:grid-cols-[minmax(0,1fr)_400px] lg:gap-10">
                 {/* The menu, category by category */}
                 <main>
-                    {!kiosk && !query && (
-                        <section className="mb-8 rounded-[28px] bg-ink p-6 text-paper sm:p-8">
-                            <p className="font-kn text-lg text-gold">{RESTAURANT.wordKn}</p>
-                            <h1 className="mt-1 font-accent text-[clamp(2.4rem,7vw,3.6rem)] leading-[0.95]">Order ahead, <em className="text-gold">skip the queue.</em></h1>
-                            {restaurant?.hours && <p className="mt-3 text-sm text-paper/60">Open {restaurant.hours}{restaurant.address ? ` · ${restaurant.address}` : ''}</p>}
-                            <ol className="mt-6 grid gap-3 text-sm sm:grid-cols-3">
-                                {STEPS.map(([title, text], index) => (
-                                    <li key={title} className="flex items-center gap-3 rounded-2xl bg-white/5 px-4 py-3 ring-1 ring-white/10">
-                                        <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-gold text-xs font-bold text-ink">{index + 1}</span>
-                                        <span><span className="block font-semibold">{title}</span><span className="text-xs text-paper/55 lg:max-xl:hidden">{text}</span></span>
-                                    </li>
-                                ))}
-                            </ol>
-                        </section>
-                    )}
                     {query && groups.length === 0 && (
                         <p className="py-16 text-center text-ink/50">No dishes match &ldquo;{query}&rdquo;.</p>
                     )}
@@ -499,7 +477,7 @@ export default function OrderPage() {
 
                 {/* Order panel: always there on wide screens */}
                 <aside className="hidden lg:block">
-                    <div className="sticky top-32 max-h-[calc(100dvh-9rem)] overflow-y-auto overscroll-contain rounded-[28px] bg-white px-6 pb-0 pt-6 shadow-[0_30px_60px_-40px_rgba(15,14,12,0.5)] ring-1 ring-ink/5 [--panel-bg:#fff] [scrollbar-width:thin]">
+                    <div className="sticky top-32 max-h-[calc(100dvh-9rem)] overflow-y-auto overscroll-contain rounded-[28px] bg-white px-6 pb-0 pt-6 shadow-[0_30px_60px_-40px_rgba(15,14,12,0.5)] ring-1 ring-ink/5 [--panel-bg:#fff] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
                         <h2 className="font-accent text-3xl">Your order</h2>
                         <div className="mt-2">{orderPanel}</div>
                     </div>
@@ -535,7 +513,7 @@ export default function OrderPage() {
             )}
             {sheet && (
                 <div className="fixed inset-0 z-40 flex items-end justify-center bg-ink/60 backdrop-blur-sm lg:hidden" onClick={() => !paying && setSheet(false)} role="presentation">
-                    <div onClick={(event) => event.stopPropagation()} className="qb-sheet max-h-[92dvh] w-full max-w-lg overflow-y-auto overscroll-contain rounded-t-[28px] bg-paper px-6 pb-0 pt-6 [--panel-bg:var(--color-paper)]" role="dialog" aria-modal="true" aria-labelledby="order-title">
+                    <div onClick={(event) => event.stopPropagation()} className="qb-sheet max-h-[92dvh] w-full max-w-lg overflow-y-auto overscroll-contain rounded-t-[28px] bg-paper px-6 pb-0 pt-6 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden [--panel-bg:var(--color-paper)]" role="dialog" aria-modal="true" aria-labelledby="order-title">
                         <div className="flex items-center justify-between">
                             <h2 id="order-title" className="font-accent text-4xl">Your order</h2>
                             <button type="button" onClick={() => setSheet(false)} disabled={paying} className="flex h-10 w-10 items-center justify-center rounded-full ring-1 ring-ink/15" aria-label="Close"><PiX /></button>
