@@ -211,16 +211,31 @@ export default function OrderPage() {
         return [...byCategory.entries()];
     }, [menu, query]);
 
-    // The highlighted chip follows the category on screen
+    // The highlighted chip follows the category at the top of the screen (the first one until then)
     useEffect(() => {
-        const nodes = Object.values(sectionRefs.current).filter(Boolean);
-        if (nodes.length === 0 || typeof IntersectionObserver === 'undefined') return undefined;
-        const observer = new IntersectionObserver((entries) => {
-            const visible = entries.filter((entry) => entry.isIntersecting).sort((a, b) => a.boundingClientRect.top - b.boundingClientRect.top);
-            if (visible[0]) setActive(visible[0].target.dataset.category);
-        }, { rootMargin: '-120px 0px -60% 0px' });
-        nodes.forEach((node) => observer.observe(node));
-        return () => observer.disconnect();
+        const nodes = groups.map(([category]) => sectionRefs.current[category]).filter(Boolean);
+        if (nodes.length === 0) return undefined;
+        let frame = 0;
+        const update = () => {
+            frame = 0;
+            const line = (document.querySelector('[data-order-header]')?.offsetHeight || 120) + 24;
+            let current = nodes[0];
+            for (const node of nodes) if (node.getBoundingClientRect().top <= line) current = node;
+            // At the very bottom the last category is the one being read
+            if (window.innerHeight + window.scrollY >= document.documentElement.scrollHeight - 4) current = nodes[nodes.length - 1];
+            setActive(current.dataset.category);
+        };
+        const onScroll = () => {
+            if (!frame) frame = requestAnimationFrame(update);
+        };
+        update();
+        window.addEventListener('scroll', onScroll, { passive: true });
+        window.addEventListener('resize', onScroll);
+        return () => {
+            cancelAnimationFrame(frame);
+            window.removeEventListener('scroll', onScroll);
+            window.removeEventListener('resize', onScroll);
+        };
     }, [groups]);
 
     const lines = menu.filter((item) => cart[item._id] > 0).map((item) => ({ ...item, quantity: cart[item._id] }));
@@ -341,7 +356,7 @@ export default function OrderPage() {
     const orderPanel = (
         <form onSubmit={pay} className="flex flex-col">
             {lines.length === 0 ? (
-                <div className="py-10 text-center text-ink/50">
+                <div className="pb-12 pt-10 text-center text-ink/50">
                     <PiShoppingBagOpenDuotone className="mx-auto text-4xl text-gold" />
                     <p className="mt-3 text-sm">Nothing yet - tap a dish to add it.</p>
                 </div>
@@ -387,16 +402,19 @@ export default function OrderPage() {
                         <CustomerFields customer={customer} onChange={(next) => { setCustomer(next); if (error) setError(''); }} remembered={remembered} editing={editing} onEdit={() => setEditing(true)} />
                     </div>
                     {error && <p role="alert" className="mt-4 rounded-2xl bg-red-50 px-4 py-3 text-sm font-medium text-red-700 ring-1 ring-red-200">{error}</p>}
-                    <button type="submit" disabled={paying} className="mt-7 flex w-full items-center justify-between rounded-full bg-ink py-4 pl-7 pr-5 font-semibold text-paper transition-transform active:scale-[0.99] disabled:opacity-60">
-                        <span>{paying ? 'Opening UPI…' : 'Pay with UPI'}</span>
-                        <span className="rounded-full bg-gold px-4 py-1.5 text-sm font-bold tabular-nums text-ink">{formatPrice(total)}{restaurant?.pricesIncludeGst ? '' : ' + GST'}</span>
-                    </button>
-                    <p className="mt-4 text-center text-xs text-ink/50">Pick up at the counter - show your token when it&apos;s ready.</p>
-                    {simulated ? (
-                        <p className="mt-1 text-center text-xs text-ink/50">Test payments · no money is moved</p>
-                    ) : (
-                        <p className="mt-1 flex items-center justify-center gap-1.5 text-xs text-ink/50"><PiShieldCheckDuotone className="text-base text-leaf" /> Payments secured by Razorpay</p>
-                    )}
+                    {/* Pinned to the bottom of the panel, so it is in reach however long the order is */}
+                    <div className="sticky bottom-0 -mx-6 mt-6 bg-[var(--panel-bg)] px-6 pb-[calc(1.25rem+env(safe-area-inset-bottom))] pt-3 shadow-[0_-14px_20px_-14px_rgba(15,14,12,0.18)]">
+                        <button type="submit" disabled={paying} className="flex w-full items-center justify-between gap-3 rounded-full bg-ink py-4 pl-7 pr-5 font-semibold text-paper transition-transform active:scale-[0.99] disabled:opacity-60">
+                            <span className="whitespace-nowrap">{paying ? 'Opening UPI…' : 'Pay with UPI'}</span>
+                            <span className="whitespace-nowrap rounded-full bg-gold px-4 py-1.5 text-sm font-bold tabular-nums text-ink">{formatPrice(total)}{restaurant?.pricesIncludeGst ? '' : ' + GST'}</span>
+                        </button>
+                        <p className="mt-3 text-center text-xs text-ink/50">Pick up at the counter - show your token when it&apos;s ready.</p>
+                        {simulated ? (
+                            <p className="mt-1 text-center text-xs text-ink/50">Test payments · no money is moved</p>
+                        ) : (
+                            <p className="mt-1 flex items-center justify-center gap-1.5 text-xs text-ink/50"><PiShieldCheckDuotone className="text-base text-leaf" /> Payments secured by Razorpay</p>
+                        )}
+                    </div>
                 </>
             )}
         </form>
@@ -405,7 +423,7 @@ export default function OrderPage() {
     return (
         <div className="qb-site min-h-[100dvh] bg-paper pb-28 text-ink lg:pb-10">
             {/* Slim header */}
-            <header className="sticky top-0 z-30 border-b border-ink/10 bg-paper/90 backdrop-blur-lg">
+            <header data-order-header className="sticky top-0 z-30 border-b border-ink/10 bg-paper/90 backdrop-blur-lg">
                 <div className="mx-auto flex max-w-7xl items-center gap-4 px-4 py-3 sm:px-6">
                     {kiosk ? (
                         <span className="font-accent text-2xl">{RESTAURANT.word}</span>
@@ -457,7 +475,7 @@ export default function OrderPage() {
                                 {STEPS.map(([title, text], index) => (
                                     <li key={title} className="flex items-center gap-3 rounded-2xl bg-white/5 px-4 py-3 ring-1 ring-white/10">
                                         <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-gold text-xs font-bold text-ink">{index + 1}</span>
-                                        <span><span className="block font-semibold">{title}</span><span className="text-xs text-paper/55">{text}</span></span>
+                                        <span><span className="block font-semibold">{title}</span><span className="text-xs text-paper/55 lg:max-xl:hidden">{text}</span></span>
                                     </li>
                                 ))}
                             </ol>
@@ -481,7 +499,7 @@ export default function OrderPage() {
 
                 {/* Order panel: always there on wide screens */}
                 <aside className="hidden lg:block">
-                    <div className="sticky top-28 rounded-[28px] bg-white p-6 shadow-[0_30px_60px_-40px_rgba(15,14,12,0.5)] ring-1 ring-ink/5">
+                    <div className="sticky top-32 max-h-[calc(100dvh-9rem)] overflow-y-auto overscroll-contain rounded-[28px] bg-white px-6 pb-0 pt-6 shadow-[0_30px_60px_-40px_rgba(15,14,12,0.5)] ring-1 ring-ink/5 [--panel-bg:#fff] [scrollbar-width:thin]">
                         <h2 className="font-accent text-3xl">Your order</h2>
                         <div className="mt-2">{orderPanel}</div>
                     </div>
@@ -504,15 +522,20 @@ export default function OrderPage() {
             {/* Phones: cart bar, then the order as a sheet */}
             {count > 0 && !sheet && (
                 <div className="fixed inset-x-0 bottom-0 z-30 p-4 pb-[calc(1rem+env(safe-area-inset-bottom))] lg:hidden">
-                    <button type="button" onClick={() => setSheet(true)} className="qb-pop mx-auto flex w-full max-w-xl items-center justify-between gap-4 rounded-full bg-ink py-3 pl-6 pr-3 text-paper shadow-[0_20px_50px_-15px_rgba(15,14,12,0.7)]">
-                        <span className="flex items-center gap-3"><PiShoppingBagOpenDuotone className="text-xl text-gold" /> {count} item{count === 1 ? '' : 's'} · <b className="tabular-nums">{formatPrice(total)}</b></span>
-                        <span className="flex items-center gap-1.5 rounded-full bg-gold px-5 py-2.5 text-sm font-semibold text-ink"><PiCheckBold /> Checkout</span>
+                    <button type="button" onClick={() => setSheet(true)} className="qb-pop mx-auto flex w-full max-w-xl items-center justify-between gap-3 rounded-full bg-ink py-3 pl-5 pr-3 text-paper shadow-[0_20px_50px_-15px_rgba(15,14,12,0.7)] min-[360px]:pl-6">
+                        <span className="flex min-w-0 items-center gap-2 whitespace-nowrap text-sm min-[360px]:gap-3 min-[360px]:text-base">
+                            <PiShoppingBagOpenDuotone className="shrink-0 text-xl text-gold" />
+                            <span>{count}<span className="hidden min-[360px]:inline"> item{count === 1 ? '' : 's'}</span></span>
+                            <span aria-hidden="true">·</span>
+                            <b className="tabular-nums">{formatPrice(total)}</b>
+                        </span>
+                        <span className="flex shrink-0 items-center gap-1.5 rounded-full bg-gold px-4 py-2.5 text-sm font-semibold text-ink min-[360px]:px-5"><PiCheckBold /> Checkout</span>
                     </button>
                 </div>
             )}
             {sheet && (
                 <div className="fixed inset-0 z-40 flex items-end justify-center bg-ink/60 backdrop-blur-sm lg:hidden" onClick={() => !paying && setSheet(false)} role="presentation">
-                    <div onClick={(event) => event.stopPropagation()} className="qb-sheet max-h-[92dvh] w-full max-w-lg overflow-y-auto rounded-t-[28px] bg-paper p-6 pb-[calc(1.5rem+env(safe-area-inset-bottom))]" role="dialog" aria-modal="true" aria-labelledby="order-title">
+                    <div onClick={(event) => event.stopPropagation()} className="qb-sheet max-h-[92dvh] w-full max-w-lg overflow-y-auto overscroll-contain rounded-t-[28px] bg-paper px-6 pb-0 pt-6 [--panel-bg:var(--color-paper)]" role="dialog" aria-modal="true" aria-labelledby="order-title">
                         <div className="flex items-center justify-between">
                             <h2 id="order-title" className="font-accent text-4xl">Your order</h2>
                             <button type="button" onClick={() => setSheet(false)} disabled={paying} className="flex h-10 w-10 items-center justify-center rounded-full ring-1 ring-ink/15" aria-label="Close"><PiX /></button>
